@@ -2,7 +2,7 @@ import os
 import re
 import uuid
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -13,9 +13,24 @@ app.secret_key = os.environ.get('SECRET_KEY', 'spotted_university_ultra_v8_final
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///spotted.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 
+app.config['PUBLIC_FOLDER'] = os.path.join(app.root_path, 'static', 'public')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 db = SQLAlchemy(app)
+
+@app.route('/public/')
+def public_index():
+    files = []
+    for root, _, filenames in os.walk(app.config['PUBLIC_FOLDER']):
+        rel_root = os.path.relpath(root, app.config['PUBLIC_FOLDER'])
+        for name in filenames:
+            rel_path = os.path.join(rel_root, name) if rel_root != '.' else name
+            files.append(rel_path.replace('\\', '/'))
+    return jsonify(sorted(files))
+
+@app.route('/public/<path:filename>')
+def public_files(filename):
+    return send_from_directory(app.config['PUBLIC_FOLDER'], filename)
 
 def br_time():
     return datetime.utcnow() - timedelta(hours=3)
