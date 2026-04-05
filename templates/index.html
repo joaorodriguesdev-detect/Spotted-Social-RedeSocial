@@ -2,14 +2,11 @@
 
 {% block content %}
     <nav class="border-b twitter-border">
-        <div class="max-w-5xl mx-auto flex justify-between items-center px-4">
+        <div class="max-w-[600px] mx-auto flex justify-between items-center px-4">
              <div class="flex w-full">
                 <a href="/feed" class="flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition {% if not searching %}tab-active{% endif %} text-sm">Feed</a>
                 <a href="/eventos" class="flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition text-secondary font-medium text-sm">Eventos</a>
             </div>
-            <button onclick="toggleSearchBar()" class="p-2 ml-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition text-main">
-                <i class="fa-solid fa-magnifying-glass text-base"></i>
-            </button>
         </div>
     </nav>
 
@@ -88,7 +85,11 @@
                             <div class="flex flex-col">
                                 {% if post.is_anonymous %}
                                     <span class="font-bold text-main text-[14px]">Anônimo</span>
-                                    <span class="text-[12px] text-secondary">@SpottedAnonimo</span>
+                                    <div class="flex items-center space-x-1 text-[12px] text-secondary">
+                                        <span>@SpottedAnonimo</span>
+                                        <span>&middot;</span>
+                                        <span>{{ post.timestamp | post_time }}</span>
+                                    </div>
                                 {% else %}
                                     <div class="flex items-center space-x-2">
                                         <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
@@ -102,10 +103,13 @@
                                                 {{ post.author.university }}
                                             </span>
                                         {% endif %}
+                                        <span class="text-secondary text-[12px]">{{ post.timestamp | post_time }}</span>
                                     </div>
-                                    <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
-                                        <span class="text-[12px] text-secondary">@{{ post.author.username }}</span>
-                                    </a>
+                                    <div class="flex items-center space-x-1 text-[12px] text-secondary">
+                                        <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
+                                            <span>@{{ post.author.username }}</span>
+                                        </a>
+                                    </div>
                                 {% endif %}
                             </div>
                             {% if (session.get('user_id') == post.user_id and post.user_id) or session.get('is_admin') %}
@@ -167,6 +171,7 @@
                                         </a>
                                     {% endif %}
                                     <span class="text-main ml-1">{{ comment.content | mention | safe }}</span>
+                                    <span class="text-secondary text-[11px] ml-1">&middot; {{ comment.timestamp | post_time }}</span>
                                 </div>
                                 {% endfor %}
 
@@ -185,6 +190,7 @@
                                             </a>
                                         {% endif %}
                                         <span class="text-main ml-1">{{ comment.content | mention | safe }}</span>
+                                        <span class="text-secondary text-[11px] ml-1">&middot; {{ comment.timestamp | post_time }}</span>
                                     </div>
                                     {% endfor %}
                                 </div>
@@ -219,13 +225,6 @@
         }
     }
 
-    function toggleSearchBar() {
-        const sb = document.getElementById('search-container');
-        if(sb) {
-            sb.classList.toggle('hidden');
-            if (!sb.classList.contains('hidden')) document.getElementById('search-input').focus();
-        }
-    }
 
     function showComments(postId, btn) {
         const extra = document.getElementById('extra-comments-' + postId);
@@ -270,6 +269,7 @@
                         <span class="font-bold text-main">${username}</span>
                     </a>
                     <span class="text-main ml-1">${content}</span>
+                    <span class="text-secondary text-[11px] ml-1">&middot; agora</span>
                 `;
 
                 container.appendChild(newComment);

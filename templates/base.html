@@ -41,6 +41,7 @@
         body.dark-mode .twitter-card { background-color: #000000; border-color: #2f3336; }
         body.dark-mode .twitter-card:hover { background-color: rgba(255, 255, 255, 0.03); }
     </style>
+    {% block head_extra %}{% endblock %}
 </head>
 <body class="min-h-screen">
     <script>
@@ -51,25 +52,30 @@
         }
     </script>
 
+    {% if not hide_chrome|default(false) %}
     <nav class="backdrop-blur-md border-b sticky top-0 z-[100] py-3 px-4 transition-all">
-        <div class="max-w-5xl mx-auto flex justify-between items-center relative">
-            <div class="w-10"></div> 
+        <div class="max-w-[600px] mx-auto flex justify-between items-center relative">
+            <div class="w-10"></div>
             <h1 class="text-xl insta-font cursor-pointer absolute left-1/2 -translate-x-1/2" onclick="window.location.href='/feed'">Spotted</h1>
-            <button onclick="toggleTheme()" class="text-lg p-2 hover:bg-gray-200 dark:hover:bg-gray-800 active:scale-90 rounded-full transition-all" id="theme-btn">
+            <button onclick="toggleTheme()" class="w-10 h-10 flex items-center justify-center text-lg hover:bg-gray-200 dark:hover:bg-gray-800 active:scale-90 rounded-full transition-all" id="theme-btn">
                 <i class="fa-solid fa-moon"></i>
             </button>
         </div>
     </nav>
+    {% endif %}
 
     <main>
         {% block content %}{% endblock %}
     </main>
 
-    <div class="fixed bottom-0 left-0 right-0 border-t bottom-nav py-2 px-6 z-[100] backdrop-blur-md transition-all">
-        <div class="max-w-md mx-auto flex justify-between items-center">
-            <a href="/feed" class="text-lg hover:text-indigo-500 text-main"><i class="fa-solid fa-house"></i></a>
-            
-            <a href="/notificacoes" class="relative text-lg hover:text-indigo-500 text-main">
+    {% if not hide_chrome|default(false) %}
+    <div class="fixed bottom-0 left-0 right-0 border-t bottom-nav py-2 px-4 z-[100] backdrop-blur-md transition-all">
+        <div class="max-w-[600px] mx-auto flex justify-between items-center">
+            <a href="/feed" class="w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 text-main"><i class="fa-solid fa-house"></i></a>
+
+            <a href="/search" class="w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 text-main"><i class="fa-solid fa-magnifying-glass"></i></a>
+
+            <a href="/notificacoes" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 text-main">
                 <i class="fa-regular fa-bell"></i>
                 {% if unread_count and unread_count > 0 %}
                     <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ unread_count }}</span>
@@ -85,13 +91,15 @@
                 {% endif %}
             </a>
             {% else %}
-            <a href="/logout" class="text-red-500 text-lg"><i class="fa-solid fa-right-from-bracket"></i></a>
+            <a href="/" class="w-9 h-9 flex items-center justify-center text-main text-lg"><i class="fa-solid fa-right-from-bracket"></i></a>
             {% endif %}
         </div>
     </div>
+    {% endif %}
 
     <script>
         const themeBtn = document.getElementById('theme-btn');
+        if (themeBtn) {
         function syncIcon() {
             const icon = themeBtn.querySelector('i');
             if (document.body.classList.contains('dark-mode')) {
@@ -107,6 +115,7 @@
             const isDark = document.body.classList.contains('dark-mode');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             syncIcon();
+        }
         }
     </script>
     {% block scripts %}{% endblock %}

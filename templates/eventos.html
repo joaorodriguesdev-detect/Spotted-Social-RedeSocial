@@ -1,21 +1,18 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('public_files', filename='icon-page.ico') }}">
-    <title>Eventos | Spotted</title>
+{% extends "base.html" %}
+
+{% block title %}Eventos | Spotted{% endblock %}
+
+{% block head_extra %}
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; transition: 0.3s; }
         .insta-font { font-family: 'Lobster', cursive; }
         .twitter-border { border-color: #eff3f4; }
         body.dark-mode { background-color: #000000; color: #e7e9ea; }
-        body.dark-mode nav { background-color: rgba(0, 0, 0, 0.8); border-color: #2f3336; }
         body.dark-mode .twitter-border { border-color: #2f3336; }
         body.dark-mode .bg-white { background-color: #16181c !important; }
+        .text-secondary { color: #536471; }
+        body.dark-mode .text-secondary { color: #71767b; }
         .tab-active { border-bottom: 4px solid #4f46e5; color: #0f1419; font-weight: 700; }
         body.dark-mode .tab-active { color: #ffffff; }
         #modal-evento { display: none; }
@@ -26,19 +23,16 @@
         .desc-container { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; transition: all 0.3s ease; }
         .desc-expanded { -webkit-line-clamp: unset !important; display: block !important; }
     </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
-    <script>if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');</script>
+{% endblock %}
 
-    <nav class="backdrop-blur-md border-b sticky top-0 z-[100] transition-all bg-white/80">
-        <div class="max-w-5xl mx-auto flex justify-between items-center relative py-2 px-4">
-            <a href="/feed" class="text-indigo-600 text-base"><i class="fa-solid fa-house"></i></a>
-            <h1 class="text-lg insta-font absolute left-1/2 -translate-x-1/2">Spotted</h1>
-            <div class="w-8"></div>
-        </div>
-        <div class="flex border-b twitter-border">
-            <a href="/feed" class="flex-1 py-3 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition text-secondary font-medium text-xs">Feed</a>
-            <a href="/eventos" class="flex-1 py-3 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition tab-active text-xs">Eventos</a>
+{% block content %}
+
+    <nav class="border-b twitter-border">
+        <div class="max-w-[600px] mx-auto flex justify-between items-center px-4">
+            <div class="flex w-full">
+                <a href="/feed" class="flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition text-secondary font-medium text-sm">Feed</a>
+                <a href="/eventos" class="flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition tab-active text-sm">Eventos</a>
+            </div>
         </div>
     </nav>
 
@@ -129,6 +123,9 @@
         </div>
     </div>
 
+{% endblock %}
+
+{% block scripts %}
     <script>
         // Contador de caracteres
         const descInput = document.getElementById('event-desc-input');
@@ -178,6 +175,6 @@
             document.getElementById('modal-evento').classList.remove('active');
             removeImagePreview();
         }
+
     </script>
-</body>
-</html>
+{% endblock %}

@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -34,6 +35,49 @@ def public_files(filename):
 
 def br_time():
     return datetime.utcnow() - timedelta(hours=3)
+
+def ensure_user_created_at_column():
+    inspector = inspect(db.engine)
+    user_columns = {col['name'] for col in inspector.get_columns('user')}
+    if 'created_at' in user_columns:
+        return
+    with db.engine.begin() as conn:
+        conn.exec_driver_sql('ALTER TABLE user ADD COLUMN created_at DATETIME')
+
+@app.template_filter('joined_month_year')
+def joined_month_year_filter(ts):
+    if not ts:
+        return ''
+    months_pt = {
+        1: 'janeiro', 2: 'fevereiro', 3: 'marco', 4: 'abril',
+        5: 'maio', 6: 'junho', 7: 'julho', 8: 'agosto',
+        9: 'setembro', 10: 'outubro', 11: 'novembro', 12: 'dezembro'
+    }
+    return f"{months_pt[ts.month]} de {ts.year}"
+
+@app.template_filter('post_time')
+def post_time_filter(ts):
+    if not ts:
+        return ''
+
+    now = br_time()
+    delta = now - ts
+
+    # Guard against future timestamps caused by clock drift.
+    if delta.total_seconds() < 0:
+        return 'agora'
+
+    if delta < timedelta(minutes=1):
+        return 'agora'
+    if delta < timedelta(hours=1):
+        return f"{int(delta.total_seconds() // 60)} min"
+    if delta < timedelta(days=1):
+        return f"{int(delta.total_seconds() // 3600)} h"
+    if delta < timedelta(days=30):
+        return f"{delta.days} d"
+    if delta < timedelta(days=365):
+        return ts.strftime('%d/%m')
+    return ts.strftime('%d/%m/%Y')
 
 @app.template_filter('mention')
 def mention_filter(text):
@@ -76,6 +120,7 @@ class User(db.Model):
     bio = db.Column(db.String(150), default="Estudante no Spotted University 🎓")
     profile_pic = db.Column(db.String(200), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=br_time, nullable=True)
     posts = db.relationship('Post', backref='author', lazy=True)
     notifications = db.relationship('Notification', backref='receiver', lazy=True, cascade="all, delete-orphan")
     followed = db.relationship('User', secondary=followers,
@@ -133,6 +178,10 @@ class Event(db.Model):
 
 with app.app_context():
     db.create_all()
+    ensure_user_created_at_column()
+    missing_created_at = User.query.filter(User.created_at.is_(None)).all()
+    for user in missing_created_at:
+        user.created_at = br_time()
     admin_master = User.query.filter_by(username='admin').first()
     if not admin_master:
         nova_senha_hash = generate_password_hash('Migo@2026!#')
@@ -274,7 +323,8 @@ def perfil(username):
     posts = Post.query.filter_by(user_id=user.id, is_anonymous=False).order_by(Post.timestamp.desc()).all()
     messages = Message.query.filter_by(receiver_id=user.id).order_by(Message.timestamp.desc()).all()
     me = User.query.get(session['user_id'])
-    return render_template('profile.html', user=user, posts=posts, messages=messages, me=me)
+    unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
+    return render_template('profile.html', user=user, posts=posts, messages=messages, me=me, unread_count=unread)
 
 @app.route('/editar_perfil', methods=['POST'])
 def editar_perfil():
@@ -329,7 +379,7 @@ def notificacoes():
     notifs = Notification.query.filter_by(user_id=session['user_id']).order_by(Notification.timestamp.desc()).all()
     for n in notifs: n.is_read = True
     db.session.commit()
-    return render_template('notifications.html', notifications=notifs)
+    return render_template('notifications.html', notifications=notifs, unread_count=0)
 
 @app.route('/eventos')
 def eventos():

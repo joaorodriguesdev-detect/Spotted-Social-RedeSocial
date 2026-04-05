@@ -1,11 +1,10 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" type="image/x-icon" href="{{ url_for('public_files', filename='icon-page.ico') }}">
-    <title>Painel Dev - Spotted</title>
-</head>
-<body class="bg-gray-900 text-gray-200">
+{% set hide_chrome = true %}
+{% extends "base.html" %}
+
+{% block title %}Painel Dev - Spotted{% endblock %}
+
+{% block content %}
+<div class="bg-gray-900 text-gray-200 min-h-screen">
     <div class="container mx-auto p-6">
         <h1 class="text-2xl font-bold mb-6 text-indigo-400">Moderação de Posts</h1>
         <a href="/" class="text-blue-400 underline mb-4 inline-block">← Voltar ao site</a>
@@ -33,5 +32,5 @@
             </tbody>
         </table>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

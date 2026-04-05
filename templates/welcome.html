@@ -1,19 +1,18 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" type="image/x-icon" href="{{ url_for('public_files', filename='icon-page.ico') }}">
-    <title>Spotted - Conecte-se</title>
+{% set hide_chrome = true %}
+{% extends "base.html" %}
+
+{% block title %}Spotted - Conecte-se{% endblock %}
+
+{% block head_extra %}
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
         .insta-font { font-family: 'Lobster', cursive; }
     </style>
-</head>
-<body class="bg-gray-50 flex flex-col items-center min-h-screen font-sans">
+{% endblock %}
 
-    <div class="flex-grow container max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center p-6 md:space-x-12">
+{% block content %}
+
+    <div class="flex-grow container max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center p-6 md:space-x-12 min-h-screen">
         <div class="hidden md:block md:w-1/2">
             <h1 class="text-7xl insta-font text-indigo-600 mb-6 tracking-tight text-center md:text-left">Spotted</h1>
             <p class="text-2xl text-gray-500 leading-tight pr-10">Compartilhe segredos e momentos da sua universidade com total liberdade.</p>
@@ -86,5 +85,4 @@
             </form>
         </div>
     </div>
-</body>
-</html>
+{% endblock %}

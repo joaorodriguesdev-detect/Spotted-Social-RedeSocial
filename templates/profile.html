@@ -1,12 +1,8 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('public_files', filename='icon-page.ico') }}">
-    <title>{{ user.username }} | Spotted</title>
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} | Spotted{% endblock %}
+
+{% block head_extra %}
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
         .insta-font { font-family: 'Lobster', cursive; }
@@ -25,23 +21,9 @@
         body.dark-mode .text-secondary { color: #71767b !important; }
         body.dark-mode textarea, body.dark-mode input, body.dark-mode select { background-color: #000000 !important; color: #ffffff !important; border: 1px solid #2f3336 !important; }
     </style>
-</head>
-<body class="bg-[#F8FAFC] min-h-screen">
-    <script>if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');</script>
+{% endblock %}
 
-    <nav class="bg-white border-b py-4 px-6 sticky top-0 z-50 transition-all">
-        <div class="max-w-5xl mx-auto flex justify-between items-center relative">
-            <div class="w-10">
-                {% if me and me.id == user.id %}
-                <a href="/logout" class="text-red-500 hover:text-red-700 transition-all"><i class="fa-solid fa-right-from-bracket text-xl"></i></a>
-                {% endif %}
-            </div> 
-            <h1 class="text-2xl insta-font cursor-pointer absolute left-1/2 -translate-x-1/2" onclick="window.location.href='/feed'">Spotted</h1>
-            <div class="flex items-center space-x-4">
-                <a href="/feed" class="text-gray-500 hover:text-indigo-600 transition-all"><i class="fa-solid fa-house text-xl"></i></a>
-            </div>
-        </div>
-    </nav>
+{% block content %}
 
     <div class="max-w-4xl mx-auto pt-10 px-6 pb-20">
         <div class="bg-white rounded-[40px] p-8 shadow-sm border flex flex-col md:flex-row items-center md:space-x-10 mb-10">
@@ -75,21 +57,32 @@
                 <div class="mb-6">
                     <p class="font-bold text-sm text-secondary">@{{ user.username }}</p>
                     {% if user.university %}<p class="text-xs font-black text-indigo-600 uppercase mt-2 mb-2 tracking-widest flex items-center justify-center md:justify-start"><i class="fa-solid fa-graduation-cap mr-2"></i> {{ user.university }}</p>{% endif %}
+                    {% if user.created_at %}<p class="text-xs text-secondary font-bold mt-1">Entrou em {{ user.created_at | joined_month_year }}</p>{% endif %}
                     <p class="text-sm whitespace-pre-wrap break-words leading-relaxed mt-4">{% if user.bio %}{{ user.bio }}{% else %}Sem biografia.{% endif %}</p>
                 </div>
                 <div class="flex space-x-8 justify-center md:justify-start pt-4">
                     <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ posts|length }}</span><span class="text-[10px] uppercase font-bold text-gray-400">Posts</span></div>
                     <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followers.count() }}</span><span class="text-[10px] uppercase font-bold text-gray-400">Seguidores</span></div>
+                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followed.count() }}</span><span class="text-[10px] uppercase font-bold text-gray-400">Seguindo</span></div>
                 </div>
+                {% if user.created_at %}
+                <div class="mt-4 flex justify-center md:justify-start">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-full">Entrou em {{ user.created_at | joined_month_year }}</span>
+                </div>
+                {% endif %}
             </div>
         </div>
 
         <div class="space-y-6">
             <h3 class="font-black text-gray-400 uppercase text-xs tracking-widest mb-4">Mural</h3>
             {% if not user.is_admin %}
-            <form action="/enviar_recado/{{ user.id }}" method="POST" class="bg-white p-4 rounded-3xl border shadow-sm">
-                <textarea name="content" class="w-full text-xs text-black outline-none bg-gray-50 p-2 rounded-xl resize-none" placeholder="Escreva algo..." required></textarea>
-                <button class="w-full bg-indigo-50 text-indigo-600 font-black py-2 rounded-xl mt-2 text-xs hover:bg-indigo-100 transition">Enviar</button>
+            <form action="/enviar_recado/{{ user.id }}" method="POST" class="bg-white p-4 rounded-3xl border shadow-sm space-y-3">
+                <div class="flex items-center justify-between">
+                    <p class="text-[11px] font-black uppercase tracking-widest text-indigo-500">Deixe um recado</p>
+                    <span id="wall-char-count" class="text-[10px] text-gray-400 font-bold">0 / 500</span>
+                </div>
+                <textarea id="wall-textarea" name="content" maxlength="500" class="w-full text-sm text-main outline-none bg-gray-50 dark:bg-black/20 p-3 rounded-2xl resize-none min-h-[90px]" placeholder="Escreva algo no mural..." required></textarea>
+                <button class="w-full bg-indigo-50 text-indigo-600 font-black py-2.5 rounded-xl text-xs hover:bg-indigo-100 transition">Enviar</button>
             </form>
             {% endif %}
             {% for msg in messages %}
@@ -108,7 +101,10 @@
                     <div class="aspect-square bg-white rounded-3xl overflow-hidden shadow-sm border relative group">
                         <a href="/feed#post-{{ post.id }}" class="w-full h-full block">
                             {% if post.media_url %}<img src="{{ url_for('static', filename='uploads/' + post.media_url) }}" class="w-full h-full object-cover">{% else %}<div class="p-4 text-[10px] text-gray-400 flex items-center justify-center h-full text-center">{{ post.content[:50] }}...</div>{% endif %}
-                            <div class="absolute inset-0 bg-indigo-600/80 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-black"><i class="fa-solid fa-heart"></i> {{ post.likes }}</div>
+                            <div class="absolute inset-0 bg-indigo-600/80 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-4 text-white font-black text-sm">
+                                <span class="flex items-center"><i class="fa-solid fa-heart mr-1"></i> {{ post.likes }}</span>
+                                <span class="flex items-center"><i class="fa-regular fa-comment mr-1"></i> {{ post.comments|length }}</span>
+                            </div>
                         </a>
                         {% if (me and me.id == user.id) or session.get('is_admin') %}
                         <a href="/excluir_post/{{ post.id }}" onclick="return confirm('Excluir?')" class="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg z-10"><i class="fa-solid fa-trash-can text-xs"></i></a>
@@ -120,7 +116,7 @@
         </div>
     </div>
 
-    <div id="edit-modal" class="fixed inset-0 bg-black/50 z-[100] items-center justify-center p-4">
+    <div id="edit-modal" class="fixed inset-0 bg-black/50 z-[200] items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
             <div class="p-6 border-b flex justify-between items-center">
                 <h3 class="font-bold text-lg">Editar perfil</h3>
@@ -165,12 +161,22 @@
             </form>
         </div>
     </div>
+
+{% endblock %}
+
+{% block scripts %}
     <script>
         function toggleModal() { document.getElementById('edit-modal').classList.toggle('active'); }
         const bioText = document.getElementById('bio-textarea');
         const charCount = document.getElementById('char-count');
         bioText.addEventListener('input', () => { charCount.textContent = `${bioText.value.length} / 150`; });
         charCount.textContent = `${bioText.value.length} / 150`;
+
+        const wallText = document.getElementById('wall-textarea');
+        const wallCount = document.getElementById('wall-char-count');
+        if (wallText && wallCount) {
+            wallText.addEventListener('input', () => { wallCount.textContent = `${wallText.value.length} / 500`; });
+            wallCount.textContent = `${wallText.value.length} / 500`;
+        }
     </script>
-</body>
-</html>
+{% endblock %}
