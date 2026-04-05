@@ -3,117 +3,7 @@
 {% block title %}Eventos | Spotted{% endblock %}
 
 {% block head_extra %}
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; transition: 0.3s; }
-        .insta-font { font-family: 'Lobster', cursive; }
-        .twitter-border { border-color: #eff3f4; }
-        body.dark-mode { background-color: #000000; color: #e7e9ea; }
-        body.dark-mode .twitter-border { border-color: #2f3336; }
-        body.dark-mode .bg-white { background-color: #16181c !important; }
-        .text-secondary { color: #536471; }
-        body.dark-mode .text-secondary { color: #71767b; }
-        #modal-evento { display: none; }
-        #modal-evento.active { display: flex; }
-        #modal-editar-evento { display: none; }
-        #modal-editar-evento.active { display: flex; }
-        .preview-img-event { display: none; width: 100%; max-height: 200px; object-fit: cover; border-radius: 0.75rem; margin-bottom: 1rem; border: 1px solid #4f46e5; }
-
-        .event-card {
-            border: 1px solid #dbe2f0;
-            border-radius: 1rem;
-            overflow: hidden;
-            box-shadow: 0 2px 14px rgba(15, 23, 42, 0.06);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .event-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
-        }
-        .event-media {
-            width: 100%;
-            height: 12rem;
-            object-fit: cover;
-        }
-        .event-title {
-            font-size: 1.1rem;
-            line-height: 1.3;
-            font-weight: 900;
-            letter-spacing: -0.01em;
-        }
-        .event-description {
-            font-size: 0.87rem;
-            line-height: 1.45;
-            color: #1f2937;
-        }
-        .event-toggle-btn {
-            font-size: 0.76rem;
-            font-weight: 800;
-        }
-        .event-meta-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.3rem 0.55rem;
-            border-radius: 999px;
-            background-color: #eef2ff;
-            color: #4338ca;
-            font-size: 12px;
-            font-weight: 700;
-        }
-        .event-author-link {
-            color: #4f46e5;
-            font-size: 12px;
-            font-weight: 700;
-        }
-        .event-author-link:hover {
-            color: #4338ca;
-        }
-        .event-form-error {
-            display: none;
-            margin-top: 0.25rem;
-            color: #ef4444;
-            font-size: 11px;
-            font-weight: 700;
-        }
-        .event-form-error.visible {
-            display: block;
-        }
-
-        /* Estilo para truncar descrição */
-        .desc-container { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; transition: all 0.3s ease; }
-        .desc-expanded { -webkit-line-clamp: unset !important; display: block !important; }
-
-        body.dark-mode .event-card {
-            border-color: #2f3336;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
-        }
-        body.dark-mode .event-card:hover {
-            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.5);
-        }
-        body.dark-mode .event-meta-chip {
-            background-color: rgba(79, 70, 229, 0.22);
-            color: #a5b4fc;
-        }
-        body.dark-mode .event-author-link {
-            color: #a5b4fc;
-        }
-        body.dark-mode .event-author-link:hover {
-            color: #c7d2fe;
-        }
-        body.dark-mode .event-description {
-            color: #d1d5db;
-        }
-
-        @media (max-width: 430px) {
-            .event-title {
-                font-size: 1rem;
-            }
-            .event-description {
-                font-size: 0.83rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('public_files', filename='css/eventos.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -122,7 +12,7 @@
 
     <div class="max-w-[600px] mx-auto p-4 pb-24 text-center">
         <div class="mb-6">
-            <h2 class="text-xl font-black mb-3 tracking-tight">Próximos Eventos</h2>
+            <h2 class="text-xl font-black mb-3 tracking-tight">Proximos Eventos</h2>
             <button onclick="document.getElementById('modal-evento').classList.add('active')" class="bg-indigo-500 text-white px-5 py-2 rounded-full font-bold text-xs hover:bg-indigo-600 transition shadow-lg inline-flex items-center">
                 <i class="fa-solid fa-calendar-plus mr-2 text-[10px]"></i> Criar Novo Evento
             </button>
@@ -150,7 +40,7 @@
                         <a href="/excluir_evento/{{ event.id }}" data-confirm-delete="true" data-confirm-message="Tem certeza que deseja excluir este evento?" class="text-gray-400 hover:text-red-500 transition-colors p-1" title="Excluir evento"><i class="fa-solid fa-trash-can text-xs"></i></a>
                         {% endif %}
                     </div>
-                    
+
                     <div id="desc-{{ event.id }}" class="event-description desc-container whitespace-pre-line break-words mb-1">
                         {{ event.description | trim }}
                     </div>
@@ -205,7 +95,7 @@
             </div>
             <form id="create-event-form" action="/criar_evento" method="POST" enctype="multipart/form-data" class="space-y-3" novalidate>
                 <div>
-                    <input id="event-title-input" type="text" name="title" placeholder="Título impactante" maxlength="100" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                    <input id="event-title-input" type="text" name="title" placeholder="Titulo impactante" maxlength="100" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
                     <p id="event-title-error" class="event-form-error" aria-live="polite"></p>
                 </div>
 
@@ -226,7 +116,7 @@
                     </div>
                 </div>
                 <div>
-                    <input id="event-location-input" type="text" name="location" placeholder="Localização" maxlength="100" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                    <input id="event-location-input" type="text" name="location" placeholder="Localizacao" maxlength="100" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
                     <p id="event-location-error" class="event-form-error" aria-live="polite"></p>
                 </div>
 
@@ -254,7 +144,7 @@
             </div>
             <form id="edit-event-form" method="POST" class="space-y-3">
                 <div>
-                    <input id="edit-event-title" type="text" name="title" placeholder="Título impactante" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                    <input id="edit-event-title" type="text" name="title" placeholder="Titulo impactante" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
                     <p id="edit-event-title-error" class="event-form-error" aria-live="polite"></p>
                 </div>
                 <div>
@@ -272,11 +162,11 @@
                     </div>
                 </div>
                 <div>
-                    <input id="edit-event-location" type="text" name="location" placeholder="Localização" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                    <input id="edit-event-location" type="text" name="location" placeholder="Localizacao" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
                     <p id="edit-event-location-error" class="event-form-error" aria-live="polite"></p>
                 </div>
-                <p class="text-[10px] text-secondary">A imagem de capa não pode ser alterada nesta edição.</p>
-                <button type="submit" class="w-full bg-indigo-600 text-white font-black py-3 rounded-xl hover:bg-indigo-700 transition shadow-xl active:scale-95 text-xs">Salvar Alterações</button>
+                <p class="text-[10px] text-secondary">A imagem de capa nao pode ser alterada nesta edicao.</p>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-black py-3 rounded-xl hover:bg-indigo-700 transition shadow-xl active:scale-95 text-xs">Salvar Alteracoes</button>
             </form>
         </div>
     </div>
@@ -284,287 +174,5 @@
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        // Contador de caracteres
-        const descInput = document.getElementById('event-desc-input');
-        const counter = document.getElementById('char-counter');
-        const eventForm = document.getElementById('create-event-form');
-        const editEventForm = document.getElementById('edit-event-form');
-        const createEventModal = document.getElementById('modal-evento');
-        const editEventModal = document.getElementById('modal-editar-evento');
-        const titleInput = document.getElementById('event-title-input');
-        const dateInput = document.getElementById('event-date-input');
-        const timeInput = document.getElementById('event-time-input');
-        const locationInput = document.getElementById('event-location-input');
-        const editTitleInput = document.getElementById('edit-event-title');
-        const editDescriptionInput = document.getElementById('edit-event-description');
-        const editDateInput = document.getElementById('edit-event-date');
-        const editTimeInput = document.getElementById('edit-event-time');
-        const editLocationInput = document.getElementById('edit-event-location');
-
-        function setFieldError(inputEl, errorId, message) {
-            const errorEl = document.getElementById(errorId);
-            if (!inputEl || !errorEl) return;
-            if (message) {
-                errorEl.textContent = message;
-                errorEl.classList.add('visible');
-                inputEl.classList.add('border-red-400');
-            } else {
-                errorEl.textContent = '';
-                errorEl.classList.remove('visible');
-                inputEl.classList.remove('border-red-400');
-            }
-        }
-
-        function validateCreateEventForm() {
-            let isValid = true;
-
-            const titleValue = titleInput ? titleInput.value.trim() : '';
-            const descriptionValue = descInput ? descInput.value.trim() : '';
-            const dateValue = dateInput ? dateInput.value : '';
-            const timeValue = timeInput ? timeInput.value : '';
-            const locationValue = locationInput ? locationInput.value.trim() : '';
-
-            if (!titleValue) {
-                setFieldError(titleInput, 'event-title-error', 'Informe um título para o evento.');
-                isValid = false;
-            } else {
-                setFieldError(titleInput, 'event-title-error', '');
-            }
-
-            if (!descriptionValue) {
-                setFieldError(descInput, 'event-description-error', 'Descreva o que vai acontecer no evento.');
-                isValid = false;
-            } else {
-                setFieldError(descInput, 'event-description-error', '');
-            }
-
-            if (!dateValue) {
-                setFieldError(dateInput, 'event-date-error', 'Selecione uma data.');
-                isValid = false;
-            } else {
-                setFieldError(dateInput, 'event-date-error', '');
-            }
-
-            if (!timeValue) {
-                setFieldError(timeInput, 'event-time-error', 'Selecione um horário.');
-                isValid = false;
-            } else {
-                setFieldError(timeInput, 'event-time-error', '');
-            }
-
-            if (!locationValue) {
-                setFieldError(locationInput, 'event-location-error', 'Informe o local do evento.');
-                isValid = false;
-            } else {
-                setFieldError(locationInput, 'event-location-error', '');
-            }
-
-            return isValid;
-        }
-
-        function validateEditEventForm() {
-            let isValid = true;
-
-            const titleValue = editTitleInput ? editTitleInput.value.trim() : '';
-            const descriptionValue = editDescriptionInput ? editDescriptionInput.value.trim() : '';
-            const dateValue = editDateInput ? editDateInput.value : '';
-            const timeValue = editTimeInput ? editTimeInput.value : '';
-            const locationValue = editLocationInput ? editLocationInput.value.trim() : '';
-
-            if (!titleValue) {
-                setFieldError(editTitleInput, 'edit-event-title-error', 'Informe um título para o evento.');
-                isValid = false;
-            } else {
-                setFieldError(editTitleInput, 'edit-event-title-error', '');
-            }
-
-            if (!descriptionValue) {
-                setFieldError(editDescriptionInput, 'edit-event-description-error', 'Descreva o que vai acontecer no evento.');
-                isValid = false;
-            } else {
-                setFieldError(editDescriptionInput, 'edit-event-description-error', '');
-            }
-
-            if (!dateValue) {
-                setFieldError(editDateInput, 'edit-event-date-error', 'Selecione uma data.');
-                isValid = false;
-            } else {
-                setFieldError(editDateInput, 'edit-event-date-error', '');
-            }
-
-            if (!timeValue) {
-                setFieldError(editTimeInput, 'edit-event-time-error', 'Selecione um horário.');
-                isValid = false;
-            } else {
-                setFieldError(editTimeInput, 'edit-event-time-error', '');
-            }
-
-            if (!locationValue) {
-                setFieldError(editLocationInput, 'edit-event-location-error', 'Informe o local do evento.');
-                isValid = false;
-            } else {
-                setFieldError(editLocationInput, 'edit-event-location-error', '');
-            }
-
-            return isValid;
-        }
-
-        descInput.addEventListener('input', () => {
-            counter.innerText = `${descInput.value.length} / 500`;
-        });
-
-        if (eventForm && descInput) {
-            eventForm.addEventListener('submit', (event) => {
-                const isValid = validateCreateEventForm();
-                if (!isValid) {
-                    event.preventDefault();
-                    return;
-                }
-                // Remove excesso de linhas em branco e espaços nas extremidades.
-                const normalized = descInput.value
-                    .replace(/\r\n/g, '\n')
-                    .replace(/\n{3,}/g, '\n\n')
-                    .trim();
-                descInput.value = normalized;
-            });
-
-            titleInput && titleInput.addEventListener('input', validateCreateEventForm);
-            descInput.addEventListener('input', validateCreateEventForm);
-            dateInput && dateInput.addEventListener('change', validateCreateEventForm);
-            timeInput && timeInput.addEventListener('change', validateCreateEventForm);
-            locationInput && locationInput.addEventListener('input', validateCreateEventForm);
-        }
-
-        // Função Mostrar/Recolher
-        function toggleDescription(id, btn) {
-            const container = document.getElementById('desc-' + id);
-            if (container.classList.contains('desc-expanded')) {
-                container.classList.remove('desc-expanded');
-                btn.innerText = "Ver mais";
-            } else {
-                container.classList.add('desc-expanded');
-                btn.innerText = "Ver menos";
-            }
-        }
-
-        function initDescriptionToggles() {
-            const descBlocks = document.querySelectorAll('[id^="desc-"]');
-            descBlocks.forEach((block) => {
-                const id = block.id.replace('desc-', '');
-                const toggleBtn = document.querySelector(`[data-desc-toggle="${id}"]`);
-                if (!toggleBtn) return;
-
-                // Show toggle only when content exceeds the clamped height.
-                if (block.scrollHeight > block.clientHeight + 4) {
-                    toggleBtn.classList.remove('hidden');
-                    toggleBtn.innerText = 'Ver mais';
-                } else {
-                    toggleBtn.classList.add('hidden');
-                }
-            });
-        }
-
-        window.addEventListener('load', initDescriptionToggles);
-
-        function previewEventImage(input) {
-            const preview = document.getElementById('event-image-preview');
-            const removeBtn = document.getElementById('remove-preview');
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.src = e.target.result;
-                    preview.style.display = 'block';
-                    removeBtn.classList.remove('hidden');
-                }
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        function removeImagePreview() {
-            const input = document.getElementById('event-file-input');
-            const preview = document.getElementById('event-image-preview');
-            const removeBtn = document.getElementById('remove-preview');
-            input.value = "";
-            preview.src = "#";
-            preview.style.display = 'none';
-            removeBtn.classList.add('hidden');
-        }
-
-        function closeEventModal() {
-            document.getElementById('modal-evento').classList.remove('active');
-            removeImagePreview();
-        }
-
-        function openEditEventModal(eventId, title, description, date, time, location) {
-            const modal = document.getElementById('modal-editar-evento');
-            const form = document.getElementById('edit-event-form');
-            if (!modal || !form) return;
-
-            form.setAttribute('action', `/editar_evento/${eventId}`);
-            document.getElementById('edit-event-title').value = title || '';
-            document.getElementById('edit-event-description').value = description || '';
-            document.getElementById('edit-event-date').value = date || '';
-            document.getElementById('edit-event-time').value = time || '';
-            document.getElementById('edit-event-location').value = location || '';
-            modal.classList.add('active');
-        }
-
-        function closeEditEventModal() {
-            const modal = document.getElementById('modal-editar-evento');
-            if (modal) modal.classList.remove('active');
-        }
-
-        if (createEventModal) {
-            createEventModal.addEventListener('click', (event) => {
-                if (event.target === createEventModal) {
-                    closeEventModal();
-                }
-            });
-        }
-
-        if (editEventModal) {
-            editEventModal.addEventListener('click', (event) => {
-                if (event.target === editEventModal) {
-                    closeEditEventModal();
-                }
-            });
-        }
-
-        document.addEventListener('click', (event) => {
-            const trigger = event.target.closest('[data-edit-event="true"]');
-            if (!trigger) return;
-            event.preventDefault();
-            openEditEventModal(
-                trigger.getAttribute('data-event-id') || '',
-                trigger.getAttribute('data-event-title') || '',
-                trigger.getAttribute('data-event-description') || '',
-                trigger.getAttribute('data-event-date') || '',
-                trigger.getAttribute('data-event-time') || '',
-                trigger.getAttribute('data-event-location') || ''
-            );
-        });
-
-        if (editEventForm) {
-            editEventForm.addEventListener('submit', (event) => {
-                const isValid = validateEditEventForm();
-                if (!isValid) {
-                    event.preventDefault();
-                    return;
-                }
-                if (!editDescriptionInput) return;
-                editDescriptionInput.value = editDescriptionInput.value
-                    .replace(/\r\n/g, '\n')
-                    .replace(/\n{3,}/g, '\n\n')
-                    .trim();
-            });
-
-            editTitleInput && editTitleInput.addEventListener('input', validateEditEventForm);
-            editDescriptionInput && editDescriptionInput.addEventListener('input', validateEditEventForm);
-            editDateInput && editDateInput.addEventListener('change', validateEditEventForm);
-            editTimeInput && editTimeInput.addEventListener('change', validateEditEventForm);
-            editLocationInput && editLocationInput.addEventListener('input', validateEditEventForm);
-        }
-
-    </script>
+    <script src="{{ url_for('public_files', filename='js/eventos.js') }}"></script>
 {% endblock %}

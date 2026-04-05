@@ -34,6 +34,11 @@ def resolve_feed_page_size():
 FEED_PAGE_SIZE = resolve_feed_page_size()
 
 
+def normalize_search_category(raw_value):
+    category = (raw_value or 'usuarios').strip().lower()
+    return category if category in {'usuarios', 'eventos'} else 'usuarios'
+
+
 def get_feed_chunk(cursor_ts=None, cursor_id=None, limit=FEED_PAGE_SIZE):
     query = Post.query.order_by(Post.timestamp.desc(), Post.id.desc())
     if cursor_ts is not None and cursor_id is not None:
@@ -63,6 +68,26 @@ def normalize_event_description(value):
     normalized = value.replace('\r\n', '\n').strip()
     normalized = re.sub(r'\n{3,}', '\n\n', normalized)
     return normalized
+
+
+def parse_event_datetime(date_value, time_value):
+    clean_date = (date_value or '').strip()
+    clean_time = (time_value or '').strip()
+
+    if not clean_date or not clean_time:
+        return None, 'Selecione data e horario validos para o evento.'
+
+    try:
+        event_date = datetime.strptime(clean_date, '%Y-%m-%d').date()
+        event_time = datetime.strptime(clean_time, '%H:%M').time()
+    except ValueError:
+        return None, 'Data ou horario invalido.'
+
+    combined = datetime.combine(event_date, event_time)
+    if combined < br_time():
+        return None, 'Nao e permitido criar ou editar evento com data/horario no passado.'
+
+    return combined, None
 
 
 def build_event_post_content(title, location, event_date, description, username):
@@ -392,12 +417,98 @@ def feed_more():
 def search():
     if 'user_id' not in session: return redirect(url_for('welcome'))
     query = request.args.get('query', '').lower().strip().replace('@', '')
+    category = normalize_search_category(request.args.get('category'))
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
     if not query:
         posts = Post.query.order_by(Post.timestamp.desc()).all()
-        return render_template('index.html', searching=True, posts=posts, unread_count=unread)
+        return render_template(
+            'index.html',
+            searching=True,
+            query='',
+            posts=posts,
+            unread_count=unread,
+            search_category=category,
+            search_results=[],
+            event_results=[]
+        )
+
+    if category == 'eventos':
+        event_results = Event.query.filter(
+            or_(
+                Event.title.ilike(f'%{query}%'),
+                Event.location.ilike(f'%{query}%'),
+                Event.description.ilike(f'%{query}%')
+            )
+        ).order_by(Event.created_at.desc()).all()
+        return render_template(
+            'index.html',
+            event_results=event_results,
+            search_results=[],
+            query=query,
+            searching=True,
+            unread_count=unread,
+            search_category=category
+        )
+
     results = User.query.filter(User.username.contains(query), User.is_admin == False).all()
-    return render_template('index.html', search_results=results, query=query, searching=True, unread_count=unread)
+    return render_template(
+        'index.html',
+        search_results=results,
+        event_results=[],
+        query=query,
+        searching=True,
+        unread_count=unread,
+        search_category=category
+    )
+
+
+@app.route('/api/search')
+def api_search():
+    if 'user_id' not in session:
+        return jsonify({'error': 'nao autenticado'}), 401
+
+    query = (request.args.get('query') or '').lower().strip().replace('@', '')
+    category = normalize_search_category(request.args.get('category'))
+
+    if not query:
+        return jsonify({'category': category, 'query': query, 'users': [], 'events': []})
+
+    if category == 'eventos':
+        events = Event.query.filter(
+            or_(
+                Event.title.ilike(f'%{query}%'),
+                Event.location.ilike(f'%{query}%'),
+                Event.description.ilike(f'%{query}%')
+            )
+        ).order_by(Event.created_at.desc()).limit(20).all()
+
+        payload = []
+        for event in events:
+            event_date_parts = (event.event_date or '').split(' às ')
+            raw_event_date = event_date_parts[0] if event_date_parts and event_date_parts[0] else (event.event_date or '')
+            parsed = raw_event_date.split('-')
+            event_date_label = raw_event_date
+            if len(parsed) == 3:
+                event_date_label = f"{parsed[2]}/{parsed[1]}/{parsed[0]}"
+            payload.append({
+                'id': event.id,
+                'title': event.title,
+                'description': event.description,
+                'location': event.location,
+                'media_url': event.media_url,
+                'event_date_label': event_date_label,
+                'creator_username': event.creator.username if event.creator else ''
+            })
+
+        return jsonify({'category': category, 'query': query, 'users': [], 'events': payload})
+
+    users = User.query.filter(User.username.contains(query), User.is_admin == False).limit(20).all()
+    return jsonify({
+        'category': category,
+        'query': query,
+        'users': [{'username': u.username, 'name': u.name} for u in users],
+        'events': []
+    })
 
 @app.route('/postar', methods=['POST'])
 def postar():
@@ -565,6 +676,15 @@ def criar_evento():
     date = request.form.get('date')
     time = request.form.get('time')
     location = request.form.get('location')
+
+    if not (title or '').strip() or not description or not (location or '').strip():
+        flash('Preencha todos os campos obrigatorios do evento.')
+        return redirect(url_for('eventos'))
+
+    _, datetime_error = parse_event_datetime(date, time)
+    if datetime_error:
+        flash(datetime_error)
+        return redirect(url_for('eventos'))
     
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
@@ -607,6 +727,11 @@ def editar_evento(event_id):
 
     if not title or not description or not date or not time or not location:
         flash('Preencha todos os campos obrigatorios do evento.')
+        return redirect(url_for('eventos'))
+
+    _, datetime_error = parse_event_datetime(date, time)
+    if datetime_error:
+        flash(datetime_error)
         return redirect(url_for('eventos'))
 
     event.title = title[:100]

@@ -1,50 +1,61 @@
 # AGENTS Guide - spotted-social
 
-## Project Snapshot
-- Single-process Flask app: backend, ORM models, and routes all live in `app.py`.
-- Server-rendered UI with Jinja templates in `templates/`; uploaded media is served from `static/uploads/`.
-- Persistence uses Flask-SQLAlchemy with SQLite by default (`sqlite:///spotted.db`), configurable via `DATABASE_URL`.
-- No existing agent/rules docs were found via `**/{.github/copilot-instructions.md,AGENT.md,AGENTS.md,CLAUDE.md,.cursorrules,.windsurfrules,.clinerules,.cursor/rules/**,.windsurf/rules/**,.clinerules/**,README.md}`.
+## Snapshot
+- Monolith Flask app: routes, models, filters, and startup setup are in `app.py`.
+- Server-rendered Jinja views live in `templates/`.
+- User uploads are in `static/uploads/`; app-level static assets are in `static/public/`.
+- Public assets are served by Flask routes `/public/` and `/public/<path:filename>`.
+- DB is Flask-SQLAlchemy with SQLite by default (`sqlite:///spotted.db`), overridable via `DATABASE_URL`.
 
-## Architecture and Data Flow
-- `app.py` defines models (`User`, `Post`, `Comment`, `Notification`, `Message`, `Event`) plus all HTTP routes.
-- Startup side effects happen at import time (`with app.app_context(): db.create_all(); ...`): schema creation + admin bootstrap.
-- Feed flow: `/feed` -> query all posts desc -> render `templates/index.html`.
-- Mentions flow: `mention_filter` converts `@username` to profile links in templates; `notify_mentions()` creates `Notification` rows on post/comment creation.
-- Event flow: `/criar_evento` creates an `Event` and also inserts a feed `Post` containing a marker string (`"📢 NOVO EVENTO:"`), then `templates/index.html` parses that text format to render event cards.
-- Profile flow: `/perfil/<username>` renders both user posts and wall messages (`Message`) in `templates/profile.html`.
+## Core Architecture and Data Flow
+- `app.py` models: `User`, `Post`, `Comment`, `Notification`, `Message`, `Event`.
+- Import-time startup runs `db.create_all()`, ensures `user.created_at`, backfills nulls, and seeds admin if missing.
+- Feed:
+  - `/feed` renders initial chunk (`get_feed_chunk`).
+  - `/feed/more` returns HTML partial (`_feed_posts.html`) for infinite scroll.
+- Search:
+  - `/search` renders page state for users/events categories.
+  - `/api/search` returns JSON for live search as user types.
+- Events:
+  - `/criar_evento` creates `Event` and mirrors it into feed as a `Post` using `build_event_post_content(...)`.
+  - `/editar_evento` updates `Event` and syncs mirrored feed post via `sync_event_feed_post(...)`.
 
-## Developer Workflows (Current State)
-- Run app locally:
+## Frontend Organization (Current)
+- `templates/index.html` loads page-specific assets from:
+  - `public/css/index-search.css`
+  - `public/js/index-search.js`
+- `templates/eventos.html` loads page-specific assets from:
+  - `public/css/eventos.css`
+  - `public/js/eventos.js`
+- Keep JS in `static/public/js/` and CSS in `static/public/css/`.
+- Avoid putting large inline JS/CSS back into templates unless strictly needed.
+
+## Project Conventions That Matter
+- Session contract used across templates/routes: `user_id`, `username`, `name`, `is_admin`, `profile_pic`.
+- Username normalization is lowercase in login/register flows.
+- Event mirror posts are identified by marker text `"NOVO EVENTO:"`; producer/parser must stay aligned.
+- Relative time and defaults use local helper `br_time()` (UTC-3 offset logic).
+- Allowed `FEED_PAGE_SIZE` values are constrained in code (`6`, `8`, `12`).
+
+## Event Validation Rules (Implemented)
+- Backend validation in `app.py` (`parse_event_datetime`) blocks:
+  - invalid date/time format
+  - past date/time
+- Frontend validation in `static/public/js/eventos.js` mirrors backend checks and sets `min` date on inputs.
+- Preserve both layers; frontend is UX, backend is source of truth.
+
+## Developer Workflows
+- Run locally:
   ```powershell
   python app.py
   ```
-- Default runtime mode is debug (`app.run(debug=True)` in `app.py`).
-- Environment knobs used by the app:
-  - `SECRET_KEY` (falls back to hardcoded dev secret in code)
-  - `DATABASE_URL` (falls back to local SQLite file)
-- One-off DB maintenance scripts exist:
-  - `migrar.py` (schema/column/event-table migration)
-  - `corrigir_vazios.py` (fills empty `user.name`/`user.university`)
-- Both scripts target a hardcoded Linux DB path (`/home/SpottedSocial/.../spotted.db`), so adjust `DB_PATH` before running locally on Windows.
+- Quick syntax check:
+  ```powershell
+  python -m py_compile app.py
+  ```
 
-## Project-Specific Conventions
-- Session keys (`user_id`, `username`, `name`, `is_admin`, `profile_pic`) are treated as the auth/user context contract across routes/templates.
-- Usernames are normalized to lowercase during auth/register (`login`, `registro` routes).
-- Anonymous posting is explicit via form field `anon_mode=true|false` and persisted as `Post.is_anonymous`.
-- Upload naming pattern:
-  - Posts/events: UUID + original extension.
-  - Profile pics: `pfp_<user_id>_<8char_uuid>.<ext>`.
-- Localized time is implemented as UTC-3 manually (`br_time()`), then used as model defaults.
-
-## Integration and UI Coupling Points
-- Frontend relies on CDN assets (Tailwind and Font Awesome) in templates; there is no local JS/CSS build pipeline.
-- Bottom nav unread badge in `templates/base.html` depends on `unread_count` passed by routes (`/feed`, `/search`, `/eventos`).
-- `/api/users` supports mention autocomplete style lookups (prefix search, excludes admins).
-- `templates/admin.html` references `post.reports` and `/admin/deletar/...`, but matching model fields/routes are not present in `app.py` (appears stale).
-
-## Change Safety Notes for Agents
-- Be careful with import-time DB side effects in `app.py`; changes near app initialization can alter first-run behavior.
-- Keep event-post text format stable unless updating both producer (`/criar_evento`) and parser (`templates/index.html`).
-- If changing like behavior, align backend toggle logic (`/like/<id>`) with optimistic UI JS in `templates/index.html` (`ajaxLike`).
-- Prefer small, route-template paired edits because most behaviors are tightly coupled between Jinja markup and route return context.
+## Change Safety Notes
+- Be careful editing initialization in `app.py`; side effects run at import time.
+- When changing event text format, update both event writer and any event parsing/render logic.
+- Keep route/template pairs in sync; this codebase is tightly coupled by context variables.
+- If moving/renaming public assets, update `url_for('public_files', filename=...)` references in templates.
