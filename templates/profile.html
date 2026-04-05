@@ -10,16 +10,15 @@
         #edit-modal.active { display: flex; }
         .profile-pic-container:hover .edit-overlay { opacity: 1; }
         .edit-overlay { transition: opacity 0.3s ease; background: rgba(0, 0, 0, 0.4); }
-        body { background-color: #ffffff; color: #0f1419; transition: 0.3s; }
+        body { background-color: #f5f8ff; color: #0f172a; transition: 0.3s; }
         body.dark-mode { background-color: #000000; color: #e7e9ea; }
-        nav { background-color: rgba(255, 255, 255, 0.8); border-bottom: 1px solid #eff3f4; }
+        nav { background-color: rgba(255, 255, 255, 0.88); border-bottom: 1px solid #dbe2f0; }
         body.dark-mode nav { background-color: rgba(0, 0, 0, 0.8); border-color: #2f3336; }
-        .twitter-border { border-color: #eff3f4; }
+        .twitter-border { border-color: #dbe2f0; }
         body.dark-mode .twitter-border { border-color: #2f3336; }
         body.dark-mode .bg-white { background-color: #16181c !important; border-color: #2f3336 !important; color: #ffffff !important; }
         body.dark-mode .text-main { color: #ffffff !important; }
         body.dark-mode .text-secondary { color: #71767b !important; }
-        body.dark-mode textarea, body.dark-mode input, body.dark-mode select { background-color: #000000 !important; color: #ffffff !important; border: 1px solid #2f3336 !important; }
     </style>
 {% endblock %}
 
@@ -49,78 +48,123 @@
                         {% endif %}
                     </div>
                     {% if me and me.id == user.id %}
-                        <button onclick="toggleModal()" class="bg-[#4f46e5] hover:bg-[#4338ca] text-white px-6 py-1.5 rounded-xl text-xs font-bold transition mt-2 md:mt-0">Editar perfil</button>
+                        <button onclick="toggleModal()" class="interactive-control bg-[#4f46e5] hover:bg-[#4338ca] text-white px-6 py-1.5 rounded-xl text-xs font-bold transition mt-2 md:mt-0">Editar perfil</button>
                     {% elif me and me.id != user.id and not user.is_admin %}
-                        <a href="/seguir/{{ user.username }}" class="bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg mt-2 md:mt-0">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
+                        <a href="/seguir/{{ user.username }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg mt-2 md:mt-0">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
                     {% endif %}
                 </div>
                 <div class="mb-6">
                     <p class="font-bold text-sm text-secondary">@{{ user.username }}</p>
                     {% if user.university %}<p class="text-xs font-black text-indigo-600 uppercase mt-2 mb-2 tracking-widest flex items-center justify-center md:justify-start"><i class="fa-solid fa-graduation-cap mr-2"></i> {{ user.university }}</p>{% endif %}
-                    {% if user.created_at %}<p class="text-xs text-secondary font-bold mt-1">Entrou em {{ user.created_at | joined_month_year }}</p>{% endif %}
                     <p class="text-sm whitespace-pre-wrap break-words leading-relaxed mt-4">{% if user.bio %}{{ user.bio }}{% else %}Sem biografia.{% endif %}</p>
                 </div>
                 <div class="flex space-x-8 justify-center md:justify-start pt-4">
-                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ posts|length }}</span><span class="text-[10px] uppercase font-bold text-gray-400">Posts</span></div>
-                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followers.count() }}</span><span class="text-[10px] uppercase font-bold text-gray-400">Seguidores</span></div>
-                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followed.count() }}</span><span class="text-[10px] uppercase font-bold text-gray-400">Seguindo</span></div>
+                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ posts|length }}</span><span class="text-[10px] uppercase font-bold text-secondary">Posts</span></div>
+                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followers.count() }}</span><span class="text-[10px] uppercase font-bold text-secondary">Seguidores</span></div>
+                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followed.count() }}</span><span class="text-[10px] uppercase font-bold text-secondary">Seguindo</span></div>
                 </div>
-                {% if user.created_at %}
-                <div class="mt-4 flex justify-center md:justify-start">
-                    <span class="text-[10px] font-black uppercase tracking-wider text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-full">Entrou em {{ user.created_at | joined_month_year }}</span>
-                </div>
-                {% endif %}
             </div>
         </div>
 
+        {% if not user.is_admin %}
         <div class="space-y-6">
-            <h3 class="font-black text-gray-400 uppercase text-xs tracking-widest mb-4">Mural</h3>
-            {% if not user.is_admin %}
-            <form action="/enviar_recado/{{ user.id }}" method="POST" class="bg-white p-4 rounded-3xl border shadow-sm space-y-3">
+            <h3 class="font-black text-secondary uppercase text-xs tracking-widest mb-4">Mural</h3>
+            <form id="wall-message-form" action="/enviar_recado/{{ user.id }}" method="POST" class="bg-white p-4 rounded-3xl border shadow-sm space-y-3" novalidate>
                 <div class="flex items-center justify-between">
                     <p class="text-[11px] font-black uppercase tracking-widest text-indigo-500">Deixe um recado</p>
-                    <span id="wall-char-count" class="text-[10px] text-gray-400 font-bold">0 / 500</span>
+                    <span id="wall-char-count" class="text-[10px] text-secondary font-bold">0 / 500</span>
                 </div>
-                <textarea id="wall-textarea" name="content" maxlength="500" class="w-full text-sm text-main outline-none bg-gray-50 dark:bg-black/20 p-3 rounded-2xl resize-none min-h-[90px]" placeholder="Escreva algo no mural..." required></textarea>
-                <button class="w-full bg-indigo-50 text-indigo-600 font-black py-2.5 rounded-xl text-xs hover:bg-indigo-100 transition">Enviar</button>
+                <textarea id="wall-textarea" name="content" maxlength="500" class="form-field w-full text-sm text-main p-3 rounded-2xl resize-none min-h-[90px]" placeholder="Escreva algo no mural..." required></textarea>
+                <p id="wall-error" class="form-error hidden text-[11px] font-semibold">Escreva um recado antes de enviar.</p>
+                <button class="interactive-control w-full bg-indigo-50 text-indigo-600 font-black py-2.5 rounded-xl text-xs hover:bg-indigo-100 transition">Enviar</button>
             </form>
-            {% endif %}
             {% for msg in messages %}
             <div class="bg-white p-4 rounded-2xl border text-xs shadow-sm">
-                <p class="font-black text-indigo-400 uppercase mb-1">{{ msg.sender_name }}</p>
+                <p class="font-black text-indigo-400 uppercase mb-1">
+                    {% if msg.sender_name %}
+                    <a href="{{ url_for('perfil_por_remetente', sender_name=msg.sender_name) }}" class="hover:underline hover:text-indigo-500 transition">{{ msg.sender_name }}</a>
+                    {% else %}
+                    usuário
+                    {% endif %}
+                </p>
                 <p class="leading-tight break-words">{{ msg.content }}</p>
             </div>
             {% endfor %}
         </div>
+        {% endif %}
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
-            <div class="lg:col-span-2">
-                <h3 class="font-black text-gray-400 uppercase text-xs tracking-widest mb-4">Galeria</h3>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="mt-10">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-black text-secondary uppercase text-xs tracking-widest">Eventos</h3>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-secondary">{{ user_events|length }} itens</span>
+            </div>
+            {% if user_events %}
+                <div class="{% if user_events|length > 2 %}flex gap-4 overflow-x-auto pb-2 pr-1 snap-x snap-mandatory{% else %}grid grid-cols-1 md:grid-cols-2 gap-4{% endif %}">
+                    {% for event in user_events %}
+                    <div class="bg-white border twitter-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition {% if user_events|length > 2 %}min-w-[280px] sm:min-w-[320px] max-w-[320px] flex-shrink-0 snap-start{% endif %}">
+                        {% if event.media_url %}
+                        <div class="w-full h-36 overflow-hidden">
+                            <img src="{{ url_for('static', filename='uploads/' + event.media_url) }}" class="w-full h-full object-cover" alt="Capa do evento {{ event.title }}">
+                        </div>
+                        {% endif %}
+                        <div class="p-4">
+                            <div class="flex items-start justify-between gap-2">
+                                <h4 class="text-sm font-black text-main leading-tight">{{ event.title }}</h4>
+                                {% if (me and me.id == user.id) or session.get('is_admin') %}
+                                <a href="/excluir_evento/{{ event.id }}" data-confirm-delete="true" data-confirm-message="Tem certeza que deseja excluir este evento?" class="interactive-control text-secondary hover:text-red-500 p-1 transition" title="Excluir evento">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                            <p class="mt-2 text-[11px] font-bold text-secondary flex items-center"><i class="fa-regular fa-calendar mr-2"></i>{{ event.event_date }}</p>
+                            <p class="mt-1 text-[11px] font-bold text-secondary flex items-center"><i class="fa-solid fa-location-dot mr-2"></i>{{ event.location }}</p>
+                            <p class="mt-2 text-[12px] text-main/90">{{ event.description[:120] }}{% if event.description|length > 120 %}...{% endif %}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-white border twitter-border rounded-2xl p-6 text-center text-secondary text-sm">
+                    Nenhum evento.
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="mt-10">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-black text-secondary uppercase text-xs tracking-widest">Últimas postagens</h3>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-secondary">{{ posts|length }} itens</span>
+            </div>
+            {% if posts %}
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {% for post in posts %}
-                    <div class="aspect-square bg-white rounded-3xl overflow-hidden shadow-sm border relative group">
+                    <div class="aspect-square bg-white rounded-2xl overflow-hidden shadow-sm border relative group hover:-translate-y-0.5 hover:shadow-lg transition-all">
                         <a href="/feed#post-{{ post.id }}" class="w-full h-full block">
-                            {% if post.media_url %}<img src="{{ url_for('static', filename='uploads/' + post.media_url) }}" class="w-full h-full object-cover">{% else %}<div class="p-4 text-[10px] text-gray-400 flex items-center justify-center h-full text-center">{{ post.content[:50] }}...</div>{% endif %}
+                            {% if post.media_url %}<img src="{{ url_for('static', filename='uploads/' + post.media_url) }}" class="w-full h-full object-cover">{% else %}<div class="p-4 text-[10px] text-secondary flex items-center justify-center h-full text-center">{{ post.content[:50] }}...</div>{% endif %}
                             <div class="absolute inset-0 bg-indigo-600/80 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-4 text-white font-black text-sm">
                                 <span class="flex items-center"><i class="fa-solid fa-heart mr-1"></i> {{ post.likes }}</span>
                                 <span class="flex items-center"><i class="fa-regular fa-comment mr-1"></i> {{ post.comments|length }}</span>
                             </div>
                         </a>
                         {% if (me and me.id == user.id) or session.get('is_admin') %}
-                        <a href="/excluir_post/{{ post.id }}" onclick="return confirm('Excluir?')" class="absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg z-10"><i class="fa-solid fa-trash-can text-xs"></i></a>
+                        <a href="/excluir_post/{{ post.id }}" data-confirm-delete="true" data-confirm-message="Tem certeza que deseja excluir esta postagem?" class="interactive-control absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition shadow-lg z-10" title="Excluir postagem"><i class="fa-solid fa-trash-can text-xs"></i></a>
                         {% endif %}
                     </div>
                     {% endfor %}
                 </div>
-            </div>
+            {% else %}
+                <div class="bg-white border twitter-border rounded-2xl p-6 text-center text-secondary text-sm">
+                    Nenhuma Postagem.
+                </div>
+            {% endif %}
         </div>
     </div>
 
-    <div id="edit-modal" class="fixed inset-0 bg-black/50 z-[200] items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+    <div id="edit-modal" class="fixed inset-0 bg-black/50 z-[200] items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="p-6 border-b flex justify-between items-center">
                 <h3 class="font-bold text-lg">Editar perfil</h3>
-                <button onclick="toggleModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <button onclick="toggleModal()" class="interactive-control text-secondary hover:text-main"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <form action="/editar_perfil" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
                 <div class="flex items-center space-x-4">
@@ -135,11 +179,11 @@
                 </div>
                 <div>
                     <label class="block text-sm font-bold mb-1">Nome</label>
-                    <input type="text" name="name" value="{{ user.name if user.name else '' }}" class="w-full border rounded-xl p-3 text-sm outline-none focus:ring-2 ring-indigo-100 bg-transparent">
+                    <input type="text" name="name" value="{{ user.name if user.name else '' }}" class="form-field w-full rounded-xl p-3 text-sm bg-transparent">
                 </div>
                 <div>
                     <label class="block text-sm font-bold mb-1">Universidade</label>
-                    <select name="university" class="w-full border rounded-xl p-3 text-sm outline-none focus:ring-2 ring-indigo-100 bg-transparent appearance-none">
+                    <select name="university" class="form-field w-full rounded-xl p-3 text-sm bg-transparent appearance-none">
                         <option value="UFPR (Federal)" {% if user.university == 'UFPR (Federal)' %}selected{% endif %}>UFPR (Federal)</option>
                         <option value="UTFPR" {% if user.university == 'UTFPR' %}selected{% endif %}>UTFPR</option>
                         <option value="PUCPR" {% if user.university == 'PUCPR' %}selected{% endif %}>PUCPR</option>
@@ -153,11 +197,11 @@
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-sm font-bold">Bio</label>
-                        <span id="char-count" class="text-[10px] text-gray-400 font-bold">0 / 150</span>
+                        <span id="char-count" class="text-[10px] text-secondary font-bold">0 / 150</span>
                     </div>
-                    <textarea name="bio" id="bio-textarea" rows="3" maxlength="150" class="w-full border rounded-xl p-3 text-sm outline-none focus:ring-2 ring-indigo-100 resize-none bg-transparent">{{ user.bio }}</textarea>
+                    <textarea name="bio" id="bio-textarea" rows="3" maxlength="150" class="form-field w-full rounded-xl p-3 text-sm resize-none bg-transparent">{{ user.bio }}</textarea>
                 </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition">Concluir</button>
+                <button type="submit" class="interactive-control w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition">Concluir</button>
             </form>
         </div>
     </div>
@@ -166,7 +210,31 @@
 
 {% block scripts %}
     <script>
+        function setWallError(inputEl, errorEl, message) {
+            if (!inputEl || !errorEl) return;
+            if (message) {
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+                inputEl.setAttribute('aria-invalid', 'true');
+            } else {
+                errorEl.textContent = '';
+                errorEl.classList.add('hidden');
+                inputEl.removeAttribute('aria-invalid');
+            }
+        }
+
+        const editModal = document.getElementById('edit-modal');
+
         function toggleModal() { document.getElementById('edit-modal').classList.toggle('active'); }
+
+        if (editModal) {
+            editModal.addEventListener('click', (event) => {
+                if (event.target === editModal) {
+                    editModal.classList.remove('active');
+                }
+            });
+        }
+
         const bioText = document.getElementById('bio-textarea');
         const charCount = document.getElementById('char-count');
         bioText.addEventListener('input', () => { charCount.textContent = `${bioText.value.length} / 150`; });
@@ -174,9 +242,29 @@
 
         const wallText = document.getElementById('wall-textarea');
         const wallCount = document.getElementById('wall-char-count');
+        const wallForm = document.getElementById('wall-message-form');
+        const wallError = document.getElementById('wall-error');
         if (wallText && wallCount) {
             wallText.addEventListener('input', () => { wallCount.textContent = `${wallText.value.length} / 500`; });
             wallCount.textContent = `${wallText.value.length} / 500`;
+        }
+
+        if (wallForm && wallText && wallError) {
+            wallForm.addEventListener('submit', (event) => {
+                if (!wallText.value.trim()) {
+                    event.preventDefault();
+                    setWallError(wallText, wallError, 'Escreva um recado antes de enviar.');
+                    wallText.focus();
+                    return;
+                }
+                setWallError(wallText, wallError, '');
+            });
+
+            wallText.addEventListener('input', () => {
+                if (wallText.value.trim()) {
+                    setWallError(wallText, wallError, '');
+                }
+            });
         }
     </script>
 {% endblock %}

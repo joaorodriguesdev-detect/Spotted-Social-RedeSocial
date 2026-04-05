@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import inspect
+from sqlalchemy import inspect, and_, or_, func
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -18,6 +18,92 @@ app.config['PUBLIC_FOLDER'] = os.path.join(app.root_path, 'static', 'public')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 db = SQLAlchemy(app)
+
+ALLOWED_FEED_PAGE_SIZES = {6, 8, 12}
+
+
+def resolve_feed_page_size():
+    raw_value = os.environ.get('FEED_PAGE_SIZE', '8')
+    try:
+        parsed_value = int(raw_value)
+    except (TypeError, ValueError):
+        return 8
+    return parsed_value if parsed_value in ALLOWED_FEED_PAGE_SIZES else 8
+
+
+FEED_PAGE_SIZE = resolve_feed_page_size()
+
+
+def get_feed_chunk(cursor_ts=None, cursor_id=None, limit=FEED_PAGE_SIZE):
+    query = Post.query.order_by(Post.timestamp.desc(), Post.id.desc())
+    if cursor_ts is not None and cursor_id is not None:
+        query = query.filter(
+            or_(
+                Post.timestamp < cursor_ts,
+                and_(Post.timestamp == cursor_ts, Post.id < cursor_id)
+            )
+        )
+
+    posts = query.limit(limit + 1).all()
+    has_more = len(posts) > limit
+    posts = posts[:limit]
+
+    next_cursor_ts = None
+    next_cursor_id = None
+    if posts:
+        next_cursor_ts = posts[-1].timestamp.isoformat()
+        next_cursor_id = posts[-1].id
+
+    return posts, has_more, next_cursor_ts, next_cursor_id
+
+
+def normalize_event_description(value):
+    if value is None:
+        return ''
+    normalized = value.replace('\r\n', '\n').strip()
+    normalized = re.sub(r'\n{3,}', '\n\n', normalized)
+    return normalized
+
+
+def build_event_post_content(title, location, event_date, description, username):
+    clean_description = normalize_event_description(description)
+    return (
+        f"📢 NOVO EVENTO: {title}\n"
+        f"📍 Local: {location}\n"
+        f"📅 Data: {event_date}\n\n"
+        f"{clean_description}\n\n"
+        f"Criado por @{username}"
+    )
+
+
+def sync_event_feed_post(event, old_title, old_location, old_event_date, old_description):
+    owner = User.query.get(event.user_id)
+    if not owner:
+        return
+
+    old_content = build_event_post_content(old_title, old_location, old_event_date, old_description, owner.username)
+    new_content = build_event_post_content(event.title, event.location, event.event_date, event.description, owner.username)
+
+    query = Post.query.filter(
+        Post.user_id == event.user_id,
+        Post.is_anonymous.is_(False),
+        Post.content.contains('📢 NOVO EVENTO:')
+    )
+    if event.media_url:
+        query = query.filter(Post.media_url == event.media_url)
+
+    post = query.order_by(Post.id.desc()).first()
+    if post and post.content == old_content:
+        post.content = new_content
+        return
+
+    exact = Post.query.filter_by(
+        user_id=event.user_id,
+        is_anonymous=False,
+        content=old_content
+    ).order_by(Post.id.desc()).first()
+    if exact:
+        exact.content = new_content
 
 @app.route('/public/')
 def public_index():
@@ -100,6 +186,22 @@ def notify_mentions(content, sender_name, post_id):
                 action_type="mencionou você em uma publicação", 
                 post_id=post_id
             ))
+
+
+def resolve_user_by_sender_name(sender_name):
+    if not sender_name:
+        return None
+
+    normalized_sender = sender_name.strip().lower()
+    if not normalized_sender:
+        return None
+
+    # Prefer exact username match, then fallback to display name.
+    user = User.query.filter(func.lower(User.username) == normalized_sender).first()
+    if user:
+        return user
+
+    return User.query.filter(func.lower(User.name) == normalized_sender).order_by(User.id.desc()).first()
 
 followers = db.Table('followers',
     db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
@@ -245,9 +347,46 @@ def registro():
 @app.route('/feed')
 def feed():
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk()
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
-    return render_template('index.html', posts=posts, unread_count=unread)
+    return render_template(
+        'index.html',
+        posts=posts,
+        unread_count=unread,
+        has_more=has_more,
+        next_cursor_ts=next_cursor_ts,
+        next_cursor_id=next_cursor_id
+    )
+
+
+@app.route('/feed/more')
+def feed_more():
+    if 'user_id' not in session:
+        return jsonify({'error': 'nao autenticado'}), 401
+
+    cursor_ts_raw = request.args.get('cursor_ts')
+    cursor_id_raw = request.args.get('cursor_id')
+
+    cursor_ts = None
+    cursor_id = None
+    if cursor_ts_raw and cursor_id_raw:
+        try:
+            cursor_ts = datetime.fromisoformat(cursor_ts_raw)
+            cursor_id = int(cursor_id_raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'cursor invalido'}), 400
+
+    posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk(
+        cursor_ts=cursor_ts,
+        cursor_id=cursor_id
+    )
+    html = render_template('_feed_posts.html', posts=posts)
+    return jsonify({
+        'html': html,
+        'has_more': has_more,
+        'next_cursor_ts': next_cursor_ts,
+        'next_cursor_id': next_cursor_id
+    })
 
 @app.route('/search')
 def search():
@@ -320,11 +459,41 @@ def perfil(username):
     if 'user_id' not in session: return redirect(url_for('welcome'))
     user = User.query.filter_by(username=username).first_or_404()
     if user.is_admin and not session.get('is_admin'): return redirect(url_for('feed'))
-    posts = Post.query.filter_by(user_id=user.id, is_anonymous=False).order_by(Post.timestamp.desc()).all()
+    posts = Post.query.filter(
+        Post.user_id == user.id,
+        Post.is_anonymous.is_(False),
+        ~Post.content.contains('📢 NOVO EVENTO:')
+    ).order_by(Post.timestamp.desc()).all()
+    user_events = Event.query.filter_by(user_id=user.id).order_by(Event.created_at.desc()).all()
     messages = Message.query.filter_by(receiver_id=user.id).order_by(Message.timestamp.desc()).all()
     me = User.query.get(session['user_id'])
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
-    return render_template('profile.html', user=user, posts=posts, messages=messages, me=me, unread_count=unread)
+    return render_template(
+        'profile.html',
+        user=user,
+        posts=posts,
+        user_events=user_events,
+        messages=messages,
+        me=me,
+        unread_count=unread
+    )
+
+
+@app.route('/perfil_por_remetente')
+def perfil_por_remetente():
+    if 'user_id' not in session:
+        return redirect(url_for('welcome'))
+
+    sender_name = request.args.get('sender_name', '')
+    user = resolve_user_by_sender_name(sender_name)
+    if not user:
+        flash('Perfil do remetente nao encontrado.')
+        return redirect(request.referrer or url_for('feed'))
+
+    if user.is_admin and not session.get('is_admin'):
+        return redirect(url_for('feed'))
+
+    return redirect(url_for('perfil', username=user.username))
 
 @app.route('/editar_perfil', methods=['POST'])
 def editar_perfil():
@@ -356,7 +525,7 @@ def seguir(username):
     if user_to_follow.id != me.id:
         if not me.is_following(user_to_follow):
             me.followed.append(user_to_follow)
-            db.session.add(Notification(user_id=user_to_follow.id, sender_name=me.name, action_type="começou a te seguir"))
+            db.session.add(Notification(user_id=user_to_follow.id, sender_name=me.username, action_type="começou a te seguir"))
         else:
             me.followed.remove(user_to_follow)
         db.session.commit()
@@ -367,7 +536,7 @@ def enviar_recado(user_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
     content = request.form.get('content')
     if content:
-        sender = session.get('name')
+        sender = session.get('username')
         db.session.add(Message(receiver_id=user_id, sender_name=sender, content=content))
         db.session.add(Notification(user_id=user_id, sender_name=sender, action_type="deixou um recado no mural"))
         db.session.commit()
@@ -392,7 +561,7 @@ def eventos():
 def criar_evento():
     if 'user_id' not in session: return redirect(url_for('welcome'))
     title = request.form.get('title')
-    description = request.form.get('description')
+    description = normalize_event_description(request.form.get('description'))
     date = request.form.get('date')
     time = request.form.get('time')
     location = request.form.get('location')
@@ -408,10 +577,44 @@ def criar_evento():
     db.session.add(new_event)
     
     # Criar postagem no feed automaticamente
-    event_content = f"📢 NOVO EVENTO: {title}\n📍 Local: {location}\n📅 Data: {full_date}\n\n{description}\n\nCriado por @{session['username']}"
+    event_content = build_event_post_content(title, location, full_date, description, session['username'])
     feed_post = Post(content=event_content, media_url=filename, user_id=session['user_id'], is_anonymous=False)
     db.session.add(feed_post)
     
+    db.session.commit()
+    return redirect(url_for('eventos'))
+
+
+@app.route('/editar_evento/<int:event_id>', methods=['POST'])
+def editar_evento(event_id):
+    if 'user_id' not in session:
+        return redirect(url_for('welcome'))
+
+    event = Event.query.get_or_404(event_id)
+    if event.user_id != session.get('user_id') and not session.get('is_admin'):
+        return redirect(url_for('eventos'))
+
+    old_title = event.title
+    old_location = event.location
+    old_event_date = event.event_date
+    old_description = event.description
+
+    title = (request.form.get('title') or '').strip()
+    description = normalize_event_description(request.form.get('description'))
+    date = (request.form.get('date') or '').strip()
+    time = (request.form.get('time') or '').strip()
+    location = (request.form.get('location') or '').strip()
+
+    if not title or not description or not date or not time or not location:
+        flash('Preencha todos os campos obrigatorios do evento.')
+        return redirect(url_for('eventos'))
+
+    event.title = title[:100]
+    event.description = description
+    event.location = location[:100]
+    event.event_date = f"{date} às {time}"
+
+    sync_event_feed_post(event, old_title, old_location, old_event_date, old_description)
     db.session.commit()
     return redirect(url_for('eventos'))
 

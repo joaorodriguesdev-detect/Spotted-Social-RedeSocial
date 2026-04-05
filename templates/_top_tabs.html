@@ -1,0 +1,11 @@
+<nav class="border-b twitter-border">
+    {% set is_feed_tab = request.path == '/feed' %}
+    {% set is_eventos_tab = request.path.startswith('/eventos') %}
+    <div class="max-w-[600px] mx-auto flex items-center px-4">
+        <div class="flex w-full">
+            <a href="/feed" class="top-tab flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition text-sm {% if is_feed_tab %}top-tab-active{% endif %}">Feed</a>
+            <a href="/eventos" class="top-tab flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition text-sm {% if is_eventos_tab %}top-tab-active{% endif %}">Eventos</a>
+        </div>
+    </div>
+</nav>
+

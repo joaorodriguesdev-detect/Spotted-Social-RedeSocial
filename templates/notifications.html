@@ -21,16 +21,36 @@
     <div class="max-w-2xl mx-auto pt-8 px-4 pb-24">
         <div id="notifications-list" class="space-y-4">
             {% for n in notifications %}
-            <div class="notif-item bg-white p-4 rounded-2xl border flex items-center justify-between shadow-sm hover:bg-gray-50 transition">
+            {% set sender_label = n.sender_name if n.sender_name else 'usuário' %}
+            {% set is_follow_notification = n.action_type == 'começou a te seguir' %}
+            {% if is_follow_notification %}
+            <a href="{{ url_for('perfil_por_remetente', sender_name=sender_label) }}" class="notif-item bg-white p-4 rounded-2xl border flex items-center justify-between shadow-sm hover:bg-gray-50 transition hover:border-indigo-300">
                 <div class="flex items-center space-x-4">
                     <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl uppercase">
-                        {{ n.sender_name[0] }}
+                        {{ sender_label[0] }}
                     </div>
                     <div>
                         <p class="text-sm">
-                            <span class="font-bold">@{{ n.sender_name }}</span> {{ n.action_type }}
+                            <span class="font-bold">@{{ sender_label }}</span> {{ n.action_type }}
                         </p>
-                        <p class="text-[10px] text-gray-400 font-bold mt-1">
+                        <p class="text-[10px] text-secondary font-bold mt-1">
+                            {{ n.timestamp | post_time }}
+                        </p>
+                    </div>
+                </div>
+                <span class="text-indigo-600 hover:text-indigo-800"><i class="fa-solid fa-chevron-right"></i></span>
+            </a>
+            {% else %}
+            <div class="notif-item bg-white p-4 rounded-2xl border flex items-center justify-between shadow-sm hover:bg-gray-50 transition">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl uppercase">
+                        {{ sender_label[0] }}
+                    </div>
+                    <div>
+                        <p class="text-sm">
+                            <span class="font-bold">@{{ sender_label }}</span> {{ n.action_type }}
+                        </p>
+                        <p class="text-[10px] text-secondary font-bold mt-1">
                             {{ n.timestamp | post_time }}
                         </p>
                     </div>
@@ -39,10 +59,11 @@
                 <a href="/feed#post-{{ n.post_id }}" class="text-indigo-600 hover:text-indigo-800"><i class="fa-solid fa-chevron-right"></i></a>
                 {% endif %}
             </div>
+            {% endif %}
             {% else %}
             <div class="notif-empty text-center py-20">
-                <i class="fa-regular fa-bell-slash text-5xl text-gray-200 mb-4"></i>
-                <p class="text-gray-400 font-medium">Nenhuma notificação por enquanto.</p>
+                <i class="fa-regular fa-bell-slash text-5xl text-secondary/40 mb-4"></i>
+                <p class="text-secondary font-medium">Nenhuma notificação por enquanto.</p>
             </div>
             {% endfor %}
         </div>

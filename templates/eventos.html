@@ -13,28 +13,112 @@
         body.dark-mode .bg-white { background-color: #16181c !important; }
         .text-secondary { color: #536471; }
         body.dark-mode .text-secondary { color: #71767b; }
-        .tab-active { border-bottom: 4px solid #4f46e5; color: #0f1419; font-weight: 700; }
-        body.dark-mode .tab-active { color: #ffffff; }
         #modal-evento { display: none; }
         #modal-evento.active { display: flex; }
+        #modal-editar-evento { display: none; }
+        #modal-editar-evento.active { display: flex; }
         .preview-img-event { display: none; width: 100%; max-height: 200px; object-fit: cover; border-radius: 0.75rem; margin-bottom: 1rem; border: 1px solid #4f46e5; }
-        
+
+        .event-card {
+            border: 1px solid #dbe2f0;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 2px 14px rgba(15, 23, 42, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .event-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        }
+        .event-media {
+            width: 100%;
+            height: 12rem;
+            object-fit: cover;
+        }
+        .event-title {
+            font-size: 1.1rem;
+            line-height: 1.3;
+            font-weight: 900;
+            letter-spacing: -0.01em;
+        }
+        .event-description {
+            font-size: 0.87rem;
+            line-height: 1.45;
+            color: #1f2937;
+        }
+        .event-toggle-btn {
+            font-size: 0.76rem;
+            font-weight: 800;
+        }
+        .event-meta-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.55rem;
+            border-radius: 999px;
+            background-color: #eef2ff;
+            color: #4338ca;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .event-author-link {
+            color: #4f46e5;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .event-author-link:hover {
+            color: #4338ca;
+        }
+        .event-form-error {
+            display: none;
+            margin-top: 0.25rem;
+            color: #ef4444;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .event-form-error.visible {
+            display: block;
+        }
+
         /* Estilo para truncar descrição */
         .desc-container { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; transition: all 0.3s ease; }
         .desc-expanded { -webkit-line-clamp: unset !important; display: block !important; }
+
+        body.dark-mode .event-card {
+            border-color: #2f3336;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+        }
+        body.dark-mode .event-card:hover {
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.5);
+        }
+        body.dark-mode .event-meta-chip {
+            background-color: rgba(79, 70, 229, 0.22);
+            color: #a5b4fc;
+        }
+        body.dark-mode .event-author-link {
+            color: #a5b4fc;
+        }
+        body.dark-mode .event-author-link:hover {
+            color: #c7d2fe;
+        }
+        body.dark-mode .event-description {
+            color: #d1d5db;
+        }
+
+        @media (max-width: 430px) {
+            .event-title {
+                font-size: 1rem;
+            }
+            .event-description {
+                font-size: 0.83rem;
+            }
+        }
     </style>
 {% endblock %}
 
 {% block content %}
 
-    <nav class="border-b twitter-border">
-        <div class="max-w-[600px] mx-auto flex justify-between items-center px-4">
-            <div class="flex w-full">
-                <a href="/feed" class="flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition text-secondary font-medium text-sm">Feed</a>
-                <a href="/eventos" class="flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition tab-active text-sm">Eventos</a>
-            </div>
-        </div>
-    </nav>
+    {% include "_top_tabs.html" %}
 
     <div class="max-w-[600px] mx-auto p-4 pb-24 text-center">
         <div class="mb-6">
@@ -46,35 +130,61 @@
 
         <div class="space-y-4 text-left">
             {% for event in events %}
-            <div class="bg-white rounded-2xl border twitter-border shadow-sm overflow-hidden transition hover:shadow-md">
+            <div class="event-card bg-white relative">
                 {% if event.media_url %}
                 <div class="w-full h-48 overflow-hidden">
-                    <img src="{{ url_for('static', filename='uploads/' + event.media_url) }}" class="w-full h-full object-cover">
+                    <img src="{{ url_for('static', filename='uploads/' + event.media_url) }}" class="event-media">
                 </div>
                 {% endif %}
                 <div class="p-5">
+                    {% set event_date_parts = event.event_date.split(' às ') %}
+                    {% set raw_event_date = event_date_parts[0] if event_date_parts|length > 0 else event.event_date %}
+                    {% set parsed_event_date = raw_event_date.split('-') %}
+                    {% set event_date_label = raw_event_date %}
+                    {% if parsed_event_date|length == 3 %}
+                        {% set event_date_label = parsed_event_date[2] ~ '/' ~ parsed_event_date[1] ~ '/' ~ parsed_event_date[0] %}
+                    {% endif %}
                     <div class="flex justify-between items-start mb-2">
-                        <h3 class="text-lg font-black text-indigo-500 leading-tight">{{ event.title }}</h3>
+                        <h3 class="event-title text-indigo-500">{{ event.title }}</h3>
                         {% if event.user_id == session.get('user_id') or session.get('is_admin') %}
-                        <a href="/excluir_evento/{{ event.id }}" class="text-gray-400 hover:text-red-500 transition-colors p-1"><i class="fa-solid fa-trash-can text-xs"></i></a>
+                        <a href="/excluir_evento/{{ event.id }}" data-confirm-delete="true" data-confirm-message="Tem certeza que deseja excluir este evento?" class="text-gray-400 hover:text-red-500 transition-colors p-1" title="Excluir evento"><i class="fa-solid fa-trash-can text-xs"></i></a>
                         {% endif %}
                     </div>
                     
-                    <div id="desc-{{ event.id }}" class="desc-container text-[13px] opacity-90 leading-relaxed whitespace-pre-wrap mb-1">
-                        {{ event.description }}
+                    <div id="desc-{{ event.id }}" class="event-description desc-container whitespace-pre-line break-words mb-1">
+                        {{ event.description | trim }}
                     </div>
-                    <button onclick="toggleDescription({{ event.id }}, this)" class="text-indigo-500 text-[10px] font-bold mb-3 hover:underline focus:outline-none">
-                        Mostrar descrição
+                    <button data-desc-toggle="{{ event.id }}" onclick="toggleDescription({{ event.id }}, this)" class="event-toggle-btn hidden text-indigo-500 mb-3 hover:underline focus:outline-none">
+                        Ver mais
                     </button>
 
-                    <div class="flex flex-col space-y-1.5 pt-3 border-t twitter-border text-[11px] font-bold text-secondary">
-                        <div class="flex items-center"><i class="fa-regular fa-calendar-check mr-2 text-indigo-500 text-sm"></i> {{ event.event_date }}</div>
-                        <div class="flex items-center"><i class="fa-solid fa-location-dot mr-2 text-indigo-500 text-sm"></i> {{ event.location }}</div>
-                        <a href="/perfil/{{ event.creator.username }}" class="flex items-center text-indigo-500 hover:text-indigo-700 transition-colors">
-                            <i class="fa-regular fa-circle-user mr-2 text-sm"></i> Criado por @{{ event.creator.username }}
+                    <div class="flex flex-wrap gap-2 pt-3 border-t twitter-border">
+                        <span class="event-meta-chip"><i class="fa-regular fa-calendar-check text-[12px]"></i>{{ event_date_label }}</span>
+                        <span class="event-meta-chip"><i class="fa-solid fa-location-dot text-[12px]"></i>{{ event.location }}</span>
+                    </div>
+                    <div class="mt-3">
+                        <a href="/perfil/{{ event.creator.username }}" class="event-author-link inline-flex items-center transition-colors">
+                            <i class="fa-regular fa-circle-user mr-2 text-[13px]"></i>Criado por @{{ event.creator.username }}
                         </a>
                     </div>
                 </div>
+                {% if event.user_id == session.get('user_id') %}
+                {% set date_parts = event.event_date.split(' às ') %}
+                <button
+                    type="button"
+                    data-edit-event="true"
+                    data-event-id="{{ event.id }}"
+                    data-event-title="{{ event.title|e }}"
+                    data-event-description="{{ event.description|e }}"
+                    data-event-date="{{ date_parts[0]|default('')|e }}"
+                    data-event-time="{{ date_parts[1]|default('')|e }}"
+                    data-event-location="{{ event.location|e }}"
+                    class="absolute bottom-3 right-3 bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center shadow-md hover:bg-indigo-700 transition"
+                    title="Editar evento"
+                >
+                    <i class="fa-solid fa-pen text-[11px]"></i>
+                </button>
+                {% endif %}
             </div>
             {% else %}
             <div class="text-center py-20">
@@ -87,26 +197,39 @@
         </div>
     </div>
 
-    <div id="modal-evento" class="fixed inset-0 bg-black/70 z-[200] items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-md rounded-[2rem] overflow-hidden shadow-2xl p-6">
+    <div id="modal-evento" class="fixed inset-0 bg-black/70 z-[200] items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white w-full max-w-md rounded-[2rem] overflow-hidden shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-5">
                 <h3 class="font-black text-lg dark:text-white">Criar Evento</h3>
                 <button onclick="closeEventModal()" class="text-gray-400 hover:text-gray-600 transition-transform hover:rotate-90"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
-            <form action="/criar_evento" method="POST" enctype="multipart/form-data" class="space-y-3">
-                <input type="text" name="title" placeholder="Título impactante" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
-                
+            <form id="create-event-form" action="/criar_evento" method="POST" enctype="multipart/form-data" class="space-y-3" novalidate>
+                <div>
+                    <input id="event-title-input" type="text" name="title" placeholder="Título impactante" maxlength="100" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                    <p id="event-title-error" class="event-form-error" aria-live="polite"></p>
+                </div>
+
                 <div class="relative">
                     <textarea id="event-desc-input" name="description" placeholder="O que vai rolar?" maxlength="500" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white h-24 resize-none" required></textarea>
                     <div id="char-counter" class="absolute bottom-2 right-3 text-[9px] font-bold text-gray-400">0 / 500</div>
+                    <p id="event-description-error" class="event-form-error" aria-live="polite"></p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="date" name="date" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
-                    <input type="time" name="time" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                    <div>
+                        <input id="event-date-input" type="date" name="date" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                        <p id="event-date-error" class="event-form-error" aria-live="polite"></p>
+                    </div>
+                    <div>
+                        <input id="event-time-input" type="time" name="time" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                        <p id="event-time-error" class="event-form-error" aria-live="polite"></p>
+                    </div>
                 </div>
-                <input type="text" name="location" placeholder="Localização" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
-                
+                <div>
+                    <input id="event-location-input" type="text" name="location" placeholder="Localização" maxlength="100" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                    <p id="event-location-error" class="event-form-error" aria-live="polite"></p>
+                </div>
+
                 <div id="preview-container" class="relative">
                     <img id="event-image-preview" src="#" class="preview-img-event">
                     <button type="button" id="remove-preview" onclick="removeImagePreview()" class="hidden absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center shadow-lg"><i class="fa-solid fa-xmark text-[8px]"></i></button>
@@ -123,6 +246,41 @@
         </div>
     </div>
 
+    <div id="modal-editar-evento" class="fixed inset-0 bg-black/70 z-[210] items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white w-full max-w-md rounded-[2rem] overflow-hidden shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-5">
+                <h3 class="font-black text-lg dark:text-white">Editar Evento</h3>
+                <button type="button" onclick="closeEditEventModal()" class="text-gray-400 hover:text-gray-600 transition-transform hover:rotate-90"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="edit-event-form" method="POST" class="space-y-3">
+                <div>
+                    <input id="edit-event-title" type="text" name="title" placeholder="Título impactante" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                    <p id="edit-event-title-error" class="event-form-error" aria-live="polite"></p>
+                </div>
+                <div>
+                    <textarea id="edit-event-description" name="description" placeholder="O que vai rolar?" maxlength="500" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white h-24 resize-none" required></textarea>
+                    <p id="edit-event-description-error" class="event-form-error" aria-live="polite"></p>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <input id="edit-event-date" type="date" name="date" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                        <p id="edit-event-date-error" class="event-form-error" aria-live="polite"></p>
+                    </div>
+                    <div>
+                        <input id="edit-event-time" type="time" name="time" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                        <p id="edit-event-time-error" class="event-form-error" aria-live="polite"></p>
+                    </div>
+                </div>
+                <div>
+                    <input id="edit-event-location" type="text" name="location" placeholder="Localização" class="w-full border twitter-border rounded-xl p-3 text-xs outline-none bg-gray-50 dark:bg-black/20 text-gray-900 dark:text-white" required>
+                    <p id="edit-event-location-error" class="event-form-error" aria-live="polite"></p>
+                </div>
+                <p class="text-[10px] text-secondary">A imagem de capa não pode ser alterada nesta edição.</p>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-black py-3 rounded-xl hover:bg-indigo-700 transition shadow-xl active:scale-95 text-xs">Salvar Alterações</button>
+            </form>
+        </div>
+    </div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -130,22 +288,184 @@
         // Contador de caracteres
         const descInput = document.getElementById('event-desc-input');
         const counter = document.getElementById('char-counter');
-        
+        const eventForm = document.getElementById('create-event-form');
+        const editEventForm = document.getElementById('edit-event-form');
+        const createEventModal = document.getElementById('modal-evento');
+        const editEventModal = document.getElementById('modal-editar-evento');
+        const titleInput = document.getElementById('event-title-input');
+        const dateInput = document.getElementById('event-date-input');
+        const timeInput = document.getElementById('event-time-input');
+        const locationInput = document.getElementById('event-location-input');
+        const editTitleInput = document.getElementById('edit-event-title');
+        const editDescriptionInput = document.getElementById('edit-event-description');
+        const editDateInput = document.getElementById('edit-event-date');
+        const editTimeInput = document.getElementById('edit-event-time');
+        const editLocationInput = document.getElementById('edit-event-location');
+
+        function setFieldError(inputEl, errorId, message) {
+            const errorEl = document.getElementById(errorId);
+            if (!inputEl || !errorEl) return;
+            if (message) {
+                errorEl.textContent = message;
+                errorEl.classList.add('visible');
+                inputEl.classList.add('border-red-400');
+            } else {
+                errorEl.textContent = '';
+                errorEl.classList.remove('visible');
+                inputEl.classList.remove('border-red-400');
+            }
+        }
+
+        function validateCreateEventForm() {
+            let isValid = true;
+
+            const titleValue = titleInput ? titleInput.value.trim() : '';
+            const descriptionValue = descInput ? descInput.value.trim() : '';
+            const dateValue = dateInput ? dateInput.value : '';
+            const timeValue = timeInput ? timeInput.value : '';
+            const locationValue = locationInput ? locationInput.value.trim() : '';
+
+            if (!titleValue) {
+                setFieldError(titleInput, 'event-title-error', 'Informe um título para o evento.');
+                isValid = false;
+            } else {
+                setFieldError(titleInput, 'event-title-error', '');
+            }
+
+            if (!descriptionValue) {
+                setFieldError(descInput, 'event-description-error', 'Descreva o que vai acontecer no evento.');
+                isValid = false;
+            } else {
+                setFieldError(descInput, 'event-description-error', '');
+            }
+
+            if (!dateValue) {
+                setFieldError(dateInput, 'event-date-error', 'Selecione uma data.');
+                isValid = false;
+            } else {
+                setFieldError(dateInput, 'event-date-error', '');
+            }
+
+            if (!timeValue) {
+                setFieldError(timeInput, 'event-time-error', 'Selecione um horário.');
+                isValid = false;
+            } else {
+                setFieldError(timeInput, 'event-time-error', '');
+            }
+
+            if (!locationValue) {
+                setFieldError(locationInput, 'event-location-error', 'Informe o local do evento.');
+                isValid = false;
+            } else {
+                setFieldError(locationInput, 'event-location-error', '');
+            }
+
+            return isValid;
+        }
+
+        function validateEditEventForm() {
+            let isValid = true;
+
+            const titleValue = editTitleInput ? editTitleInput.value.trim() : '';
+            const descriptionValue = editDescriptionInput ? editDescriptionInput.value.trim() : '';
+            const dateValue = editDateInput ? editDateInput.value : '';
+            const timeValue = editTimeInput ? editTimeInput.value : '';
+            const locationValue = editLocationInput ? editLocationInput.value.trim() : '';
+
+            if (!titleValue) {
+                setFieldError(editTitleInput, 'edit-event-title-error', 'Informe um título para o evento.');
+                isValid = false;
+            } else {
+                setFieldError(editTitleInput, 'edit-event-title-error', '');
+            }
+
+            if (!descriptionValue) {
+                setFieldError(editDescriptionInput, 'edit-event-description-error', 'Descreva o que vai acontecer no evento.');
+                isValid = false;
+            } else {
+                setFieldError(editDescriptionInput, 'edit-event-description-error', '');
+            }
+
+            if (!dateValue) {
+                setFieldError(editDateInput, 'edit-event-date-error', 'Selecione uma data.');
+                isValid = false;
+            } else {
+                setFieldError(editDateInput, 'edit-event-date-error', '');
+            }
+
+            if (!timeValue) {
+                setFieldError(editTimeInput, 'edit-event-time-error', 'Selecione um horário.');
+                isValid = false;
+            } else {
+                setFieldError(editTimeInput, 'edit-event-time-error', '');
+            }
+
+            if (!locationValue) {
+                setFieldError(editLocationInput, 'edit-event-location-error', 'Informe o local do evento.');
+                isValid = false;
+            } else {
+                setFieldError(editLocationInput, 'edit-event-location-error', '');
+            }
+
+            return isValid;
+        }
+
         descInput.addEventListener('input', () => {
             counter.innerText = `${descInput.value.length} / 500`;
         });
+
+        if (eventForm && descInput) {
+            eventForm.addEventListener('submit', (event) => {
+                const isValid = validateCreateEventForm();
+                if (!isValid) {
+                    event.preventDefault();
+                    return;
+                }
+                // Remove excesso de linhas em branco e espaços nas extremidades.
+                const normalized = descInput.value
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\n{3,}/g, '\n\n')
+                    .trim();
+                descInput.value = normalized;
+            });
+
+            titleInput && titleInput.addEventListener('input', validateCreateEventForm);
+            descInput.addEventListener('input', validateCreateEventForm);
+            dateInput && dateInput.addEventListener('change', validateCreateEventForm);
+            timeInput && timeInput.addEventListener('change', validateCreateEventForm);
+            locationInput && locationInput.addEventListener('input', validateCreateEventForm);
+        }
 
         // Função Mostrar/Recolher
         function toggleDescription(id, btn) {
             const container = document.getElementById('desc-' + id);
             if (container.classList.contains('desc-expanded')) {
                 container.classList.remove('desc-expanded');
-                btn.innerText = "Mostrar descrição";
+                btn.innerText = "Ver mais";
             } else {
                 container.classList.add('desc-expanded');
-                btn.innerText = "Recolher descrição";
+                btn.innerText = "Ver menos";
             }
         }
+
+        function initDescriptionToggles() {
+            const descBlocks = document.querySelectorAll('[id^="desc-"]');
+            descBlocks.forEach((block) => {
+                const id = block.id.replace('desc-', '');
+                const toggleBtn = document.querySelector(`[data-desc-toggle="${id}"]`);
+                if (!toggleBtn) return;
+
+                // Show toggle only when content exceeds the clamped height.
+                if (block.scrollHeight > block.clientHeight + 4) {
+                    toggleBtn.classList.remove('hidden');
+                    toggleBtn.innerText = 'Ver mais';
+                } else {
+                    toggleBtn.classList.add('hidden');
+                }
+            });
+        }
+
+        window.addEventListener('load', initDescriptionToggles);
 
         function previewEventImage(input) {
             const preview = document.getElementById('event-image-preview');
@@ -174,6 +494,76 @@
         function closeEventModal() {
             document.getElementById('modal-evento').classList.remove('active');
             removeImagePreview();
+        }
+
+        function openEditEventModal(eventId, title, description, date, time, location) {
+            const modal = document.getElementById('modal-editar-evento');
+            const form = document.getElementById('edit-event-form');
+            if (!modal || !form) return;
+
+            form.setAttribute('action', `/editar_evento/${eventId}`);
+            document.getElementById('edit-event-title').value = title || '';
+            document.getElementById('edit-event-description').value = description || '';
+            document.getElementById('edit-event-date').value = date || '';
+            document.getElementById('edit-event-time').value = time || '';
+            document.getElementById('edit-event-location').value = location || '';
+            modal.classList.add('active');
+        }
+
+        function closeEditEventModal() {
+            const modal = document.getElementById('modal-editar-evento');
+            if (modal) modal.classList.remove('active');
+        }
+
+        if (createEventModal) {
+            createEventModal.addEventListener('click', (event) => {
+                if (event.target === createEventModal) {
+                    closeEventModal();
+                }
+            });
+        }
+
+        if (editEventModal) {
+            editEventModal.addEventListener('click', (event) => {
+                if (event.target === editEventModal) {
+                    closeEditEventModal();
+                }
+            });
+        }
+
+        document.addEventListener('click', (event) => {
+            const trigger = event.target.closest('[data-edit-event="true"]');
+            if (!trigger) return;
+            event.preventDefault();
+            openEditEventModal(
+                trigger.getAttribute('data-event-id') || '',
+                trigger.getAttribute('data-event-title') || '',
+                trigger.getAttribute('data-event-description') || '',
+                trigger.getAttribute('data-event-date') || '',
+                trigger.getAttribute('data-event-time') || '',
+                trigger.getAttribute('data-event-location') || ''
+            );
+        });
+
+        if (editEventForm) {
+            editEventForm.addEventListener('submit', (event) => {
+                const isValid = validateEditEventForm();
+                if (!isValid) {
+                    event.preventDefault();
+                    return;
+                }
+                if (!editDescriptionInput) return;
+                editDescriptionInput.value = editDescriptionInput.value
+                    .replace(/\r\n/g, '\n')
+                    .replace(/\n{3,}/g, '\n\n')
+                    .trim();
+            });
+
+            editTitleInput && editTitleInput.addEventListener('input', validateEditEventForm);
+            editDescriptionInput && editDescriptionInput.addEventListener('input', validateEditEventForm);
+            editDateInput && editDateInput.addEventListener('change', validateEditEventForm);
+            editTimeInput && editTimeInput.addEventListener('change', validateEditEventForm);
+            editLocationInput && editLocationInput.addEventListener('input', validateEditEventForm);
         }
 
     </script>

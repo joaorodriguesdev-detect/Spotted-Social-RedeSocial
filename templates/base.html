@@ -11,16 +11,48 @@
         @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
         .insta-font { font-family: 'Lobster', cursive; }
 
-        /* --- TEMA PADRÃO (BRANCO) --- */
-        body { background-color: #ffffff; color: #0f1419; transition: background 0.3s, color 0.3s; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        nav { background-color: rgba(255, 255, 255, 0.8); border-color: #eff3f4; }
+        /* --- TEMA PADRÃO (CLARO) --- */
+        body { background-color: #f5f8ff; color: #0f172a; transition: background 0.3s, color 0.3s; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        nav { background-color: rgba(255, 255, 255, 0.88); border-color: #dbe2f0; }
         nav h1 { color: #4f46e5; }
-        #theme-icon { color: #0f1419; }
-        .twitter-border { border-color: #eff3f4; }
-        .search-bg { background-color: #eff3f4; color: #0f1419; }
-        .bottom-nav { background-color: rgba(255, 255, 255, 0.9); border-color: #eff3f4; }
-        .text-main { color: #0f1419; }
-        .text-secondary { color: #536471; }
+        #theme-icon { color: #0f172a; }
+        .twitter-border { border-color: #dbe2f0; }
+        .search-bg { background-color: #e9efff; color: #0f172a; }
+        .bottom-nav { background-color: rgba(255, 255, 255, 0.94); border-color: #dbe2f0; }
+        .text-main { color: #0f172a; }
+        .text-secondary { color: #5b6b82; }
+
+        /* Shared form controls */
+        .form-field {
+            background-color: #f8faff;
+            color: #0f172a;
+            border: 1px solid #dbe2f0;
+            transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+        }
+        .form-field::placeholder { color: #7c8ba1; }
+        .form-field:focus {
+            border-color: rgba(79, 70, 229, 0.55);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.18);
+            outline: none;
+        }
+        .form-field[aria-invalid="true"] {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.16);
+        }
+        .form-error { color: #ef4444; }
+
+        .interactive-control {
+            cursor: pointer;
+            transition: transform 0.15s ease, filter 0.2s ease, background-color 0.2s ease;
+        }
+        .interactive-control:hover { filter: brightness(0.98); }
+        .interactive-control:active { transform: scale(0.98); }
+        .interactive-control:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+            filter: none;
+            transform: none;
+        }
 
         /* --- TEMA BLACK --- */
         body.dark-mode { background-color: #000000; color: #e7e9ea; }
@@ -33,13 +65,142 @@
         body.dark-mode .text-main { color: #ffffff; }
         body.dark-mode .text-secondary { color: #71767b; }
 
+        body.dark-mode .form-field {
+            background-color: #0f1115;
+            color: #e7e9ea;
+            border-color: #2f3336;
+        }
+        body.dark-mode .form-field::placeholder { color: #71767b; }
+        body.dark-mode .form-field:focus {
+            border-color: rgba(165, 180, 252, 0.6);
+            box-shadow: 0 0 0 2px rgba(165, 180, 252, 0.2);
+        }
+        body.dark-mode .form-field[aria-invalid="true"] {
+            border-color: #f87171;
+            box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.2);
+        }
+        body.dark-mode .form-error { color: #f87171; }
+        body.dark-mode .interactive-control:hover { filter: brightness(1.08); }
+
         .preview-img { display: none; max-height: 300px; width: 100%; object-fit: cover; border-radius: 1rem; margin-top: 1rem; border: 1px solid #2f3336; }
         
         .twitter-card { border-bottom: 1px solid; border-color: inherit; transition: background 0.2s; }
-        body:not(.dark-mode) .twitter-card { background-color: #ffffff; border-color: #eff3f4; }
-        body:not(.dark-mode) .twitter-card:hover { background-color: #f7f7f7; }
+        body:not(.dark-mode) .twitter-card { background-color: #ffffff; border-color: #dbe2f0; }
+        body:not(.dark-mode) .twitter-card:hover { background-color: #f8faff; }
         body.dark-mode .twitter-card { background-color: #000000; border-color: #2f3336; }
         body.dark-mode .twitter-card:hover { background-color: rgba(255, 255, 255, 0.03); }
+
+        .top-tab { color: #5b6b82; font-weight: 500; border-bottom: 2px solid transparent; }
+        .top-tab-active { color: #0f172a; font-weight: 700; border-bottom-color: #4f46e5; }
+        body.dark-mode .top-tab { color: #71767b; }
+        body.dark-mode .top-tab-active { color: #ffffff; }
+
+        .profile-context-menu {
+            background-color: #ffffff;
+            border: 1px solid #dbe2f0;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+        }
+        .profile-menu-link { color: #0f172a; }
+        .profile-menu-link:hover,
+        .profile-menu-link:focus-visible { background-color: #eef2ff; }
+        .profile-menu-link-danger { color: #dc2626; }
+        .profile-menu-link-danger:hover,
+        .profile-menu-link-danger:focus-visible { background-color: #fef2f2; }
+
+        body.dark-mode .profile-context-menu {
+            background-color: #16181c;
+            border-color: #2f3336;
+            box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+        }
+        body.dark-mode .profile-menu-link { color: #e7e9ea; }
+        body.dark-mode .profile-menu-link:hover,
+        body.dark-mode .profile-menu-link:focus-visible { background-color: rgba(255, 255, 255, 0.06); }
+        body.dark-mode .profile-menu-link-danger { color: #f87171; }
+        body.dark-mode .profile-menu-link-danger:hover,
+        body.dark-mode .profile-menu-link-danger:focus-visible { background-color: rgba(239, 68, 68, 0.16); }
+
+        .event-card {
+            border: 1px solid #dbe2f0;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 2px 14px rgba(15, 23, 42, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .event-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        }
+        .event-media {
+            width: 100%;
+            height: 12rem;
+            object-fit: cover;
+        }
+        .event-title {
+            font-size: 1.1rem;
+            line-height: 1.3;
+            font-weight: 900;
+            letter-spacing: -0.01em;
+        }
+        .event-description {
+            font-size: 0.87rem;
+            line-height: 1.45;
+            color: #1f2937;
+        }
+        .event-toggle-btn {
+            font-size: 0.76rem;
+            font-weight: 800;
+        }
+        .event-meta-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.55rem;
+            border-radius: 999px;
+            background-color: #eef2ff;
+            color: #4338ca;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .event-author-link {
+            color: #4f46e5;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .event-author-link:hover {
+            color: #4338ca;
+        }
+        .desc-container { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; transition: all 0.3s ease; }
+        .desc-expanded { -webkit-line-clamp: unset !important; display: block !important; }
+
+        body.dark-mode .event-card {
+            border-color: #2f3336;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+        }
+        body.dark-mode .event-card:hover {
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.5);
+        }
+        body.dark-mode .event-meta-chip {
+            background-color: rgba(79, 70, 229, 0.22);
+            color: #a5b4fc;
+        }
+        body.dark-mode .event-author-link {
+            color: #a5b4fc;
+        }
+        body.dark-mode .event-author-link:hover {
+            color: #c7d2fe;
+        }
+        body.dark-mode .event-description {
+            color: #d1d5db;
+        }
+
+        @media (max-width: 430px) {
+            .event-title {
+                font-size: 1rem;
+            }
+            .event-description {
+                font-size: 0.83rem;
+            }
+        }
     </style>
     {% block head_extra %}{% endblock %}
 </head>
@@ -70,32 +231,52 @@
 
     {% if not hide_chrome|default(false) %}
     <div class="fixed bottom-0 left-0 right-0 border-t bottom-nav py-2 px-4 z-[100] backdrop-blur-md transition-all">
+        {% set current_path = request.path %}
         <div class="max-w-[600px] mx-auto flex justify-between items-center">
-            <a href="/feed" class="w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 text-main"><i class="fa-solid fa-house"></i></a>
+            <a href="/feed" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path == '/feed' %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-house"></i>{% if current_path == '/feed' %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
-            <a href="/search" class="w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 text-main"><i class="fa-solid fa-magnifying-glass"></i></a>
+            <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
-            <a href="/notificacoes" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 text-main">
+            <a href="/notificacoes" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/notificacoes') %}text-indigo-500{% else %}text-main{% endif %}">
                 <i class="fa-regular fa-bell"></i>
                 {% if unread_count and unread_count > 0 %}
                     <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ unread_count }}</span>
                 {% endif %}
+                {% if current_path.startswith('/notificacoes') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}
             </a>
 
             {% if session.get('user_id') %}
-            <a href="/perfil/{{ session['username'] }}" class="w-7 h-7 rounded-full border twitter-border flex items-center justify-center overflow-hidden">
-                {% if session.get('profile_pic') %}
-                    <img src="{{ url_for('static', filename='uploads/' + session.get('profile_pic')) }}" class="w-full h-full object-cover">
-                {% else %}
-                    <span class="text-[10px] text-main font-bold">{{ session.get('username')[0].upper() }}</span>
-                {% endif %}
-            </a>
+            <div class="relative">
+                <button type="button" id="profile-menu-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-context-menu" class="relative w-10 h-10 rounded-full border twitter-border flex items-center justify-center overflow-hidden transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent">
+                    {% if session.get('profile_pic') %}
+                        <img src="{{ url_for('static', filename='uploads/' + session.get('profile_pic')) }}" class="w-full h-full object-cover" alt="Foto do perfil">
+                    {% else %}
+                        <span class="text-[10px] text-main font-bold">{{ session.get('username')[0].upper() }}</span>
+                    {% endif %}
+                    {% if current_path.startswith('/perfil/') %}<span class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}
+                </button>
+                <div id="profile-context-menu" role="menu" aria-labelledby="profile-menu-trigger" class="profile-context-menu hidden absolute bottom-11 right-0 min-w-[148px] rounded-xl py-1 z-[180] transition-all duration-150">
+                    <a href="/perfil/{{ session['username'] }}" role="menuitem" class="profile-menu-link block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition">Perfil</a>
+                    <a href="{{ url_for('logout') }}" role="menuitem" class="profile-menu-link-danger block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition">Sair</a>
+                </div>
+            </div>
             {% else %}
             <a href="/" class="w-9 h-9 flex items-center justify-center text-main text-lg"><i class="fa-solid fa-right-from-bracket"></i></a>
             {% endif %}
         </div>
     </div>
     {% endif %}
+
+    <div id="delete-confirm-modal" class="hidden fixed inset-0 z-[250] bg-black/60 items-center justify-center p-4 overflow-y-auto">
+        <div class="w-full max-w-sm rounded-2xl bg-white dark:bg-[#16181c] border twitter-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-sm font-black text-main">Confirmar exclusão</h3>
+            <p id="delete-confirm-text" class="mt-2 text-xs text-secondary">Tem certeza que deseja excluir este item?</p>
+            <div class="mt-4 flex items-center justify-end gap-2">
+                <button type="button" id="delete-cancel-btn" class="px-3 py-2 rounded-lg text-xs font-bold bg-gray-100 dark:bg-white/10 text-main hover:bg-gray-200 dark:hover:bg-white/20 transition">Cancelar</button>
+                <a id="delete-confirm-btn" href="#" class="px-3 py-2 rounded-lg text-xs font-bold bg-red-500 text-white hover:bg-red-600 transition">Excluir</a>
+            </div>
+        </div>
+    </div>
 
     <script>
         const themeBtn = document.getElementById('theme-btn');
@@ -118,6 +299,159 @@
         }
         }
     </script>
+    <script>
+        const profileMenuTrigger = document.getElementById('profile-menu-trigger');
+        const profileContextMenu = document.getElementById('profile-context-menu');
+        const profileMenuItems = profileContextMenu ? Array.from(profileContextMenu.querySelectorAll('[role="menuitem"]')) : [];
+
+        function closeProfileMenu(restoreFocus = false) {
+            if (!profileContextMenu || !profileMenuTrigger) return;
+            profileContextMenu.classList.add('hidden');
+            profileMenuTrigger.setAttribute('aria-expanded', 'false');
+            if (restoreFocus) {
+                profileMenuTrigger.focus();
+            }
+        }
+
+        function openProfileMenu(focusIndex = null) {
+            if (!profileContextMenu || !profileMenuTrigger) return;
+            profileContextMenu.classList.remove('hidden');
+            profileMenuTrigger.setAttribute('aria-expanded', 'true');
+            if (focusIndex !== null && profileMenuItems[focusIndex]) {
+                profileMenuItems[focusIndex].focus();
+            }
+        }
+
+        function focusMenuItem(nextIndex) {
+            if (!profileMenuItems.length) return;
+            const size = profileMenuItems.length;
+            const normalized = ((nextIndex % size) + size) % size;
+            profileMenuItems[normalized].focus();
+        }
+
+        function toggleProfileMenu(event) {
+            if (!profileContextMenu || !profileMenuTrigger) return;
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const isHidden = profileContextMenu.classList.contains('hidden');
+            if (isHidden) {
+                openProfileMenu();
+            } else {
+                closeProfileMenu();
+            }
+        }
+
+        if (profileMenuTrigger) {
+            profileMenuTrigger.addEventListener('click', toggleProfileMenu);
+            profileMenuTrigger.addEventListener('keydown', (event) => {
+                if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openProfileMenu(0);
+                    return;
+                }
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    openProfileMenu(profileMenuItems.length - 1);
+                }
+            });
+        }
+
+        if (profileContextMenu) {
+            profileContextMenu.addEventListener('keydown', (event) => {
+                if (!profileMenuItems.length) return;
+                const currentIndex = profileMenuItems.indexOf(document.activeElement);
+
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeProfileMenu(true);
+                    return;
+                }
+
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    focusMenuItem(currentIndex + 1);
+                    return;
+                }
+
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    focusMenuItem(currentIndex - 1);
+                    return;
+                }
+
+                if (event.key === 'Home') {
+                    event.preventDefault();
+                    focusMenuItem(0);
+                    return;
+                }
+
+                if (event.key === 'End') {
+                    event.preventDefault();
+                    focusMenuItem(profileMenuItems.length - 1);
+                }
+            });
+
+            profileContextMenu.addEventListener('click', () => {
+                closeProfileMenu();
+            });
+        }
+
+        document.addEventListener('click', (event) => {
+            if (!profileContextMenu || !profileMenuTrigger) return;
+            if (profileContextMenu.classList.contains('hidden')) return;
+            if (profileMenuTrigger.contains(event.target) || profileContextMenu.contains(event.target)) return;
+            closeProfileMenu();
+        });
+
+        const deleteModal = document.getElementById('delete-confirm-modal');
+        const deleteConfirmText = document.getElementById('delete-confirm-text');
+        const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+        const deleteCancelBtn = document.getElementById('delete-cancel-btn');
+
+        function openDeleteModal(targetUrl, customMessage) {
+            if (!deleteModal || !deleteConfirmBtn) return;
+            deleteConfirmBtn.setAttribute('href', targetUrl);
+            deleteConfirmText.textContent = customMessage || 'Tem certeza de que deseja excluir este item?';
+            deleteModal.classList.remove('hidden');
+            deleteModal.classList.add('flex');
+        }
+
+        function closeDeleteModal() {
+            if (!deleteModal) return;
+            deleteModal.classList.add('hidden');
+            deleteModal.classList.remove('flex');
+        }
+
+        if (deleteCancelBtn) {
+            deleteCancelBtn.addEventListener('click', closeDeleteModal);
+        }
+
+        if (deleteModal) {
+            deleteModal.addEventListener('click', (event) => {
+                if (event.target === deleteModal) {
+                    closeDeleteModal();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                closeProfileMenu(true);
+                closeDeleteModal();
+            }
+        });
+
+        // Event delegation keeps delete modal working for cards loaded dynamically in infinite feed.
+        document.addEventListener('click', (event) => {
+            const trigger = event.target.closest('[data-confirm-delete="true"]');
+            if (!trigger) return;
+            event.preventDefault();
+            openDeleteModal(trigger.getAttribute('href'), trigger.getAttribute('data-confirm-message'));
+        });
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
+

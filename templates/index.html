@@ -1,20 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <nav class="border-b twitter-border">
-        <div class="max-w-[600px] mx-auto flex justify-between items-center px-4">
-             <div class="flex w-full">
-                <a href="/feed" class="flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition {% if not searching %}tab-active{% endif %} text-sm">Feed</a>
-                <a href="/eventos" class="flex-1 py-4 text-center hover:bg-gray-100 dark:hover:bg-white/5 transition text-secondary font-medium text-sm">Eventos</a>
-            </div>
-        </div>
-    </nav>
+    {% include "_top_tabs.html" %}
 
     <div id="search-container" class="{% if not searching %}hidden{% endif %} max-w-[600px] mx-auto px-4 py-3 border-b twitter-border transition-all">
         <form action="/search" method="GET" class="relative">
             <input type="text" name="query" id="search-input" value="{{ query if query else '' }}"
                    placeholder="Buscar no Spotted"
-                   class="w-full search-bg border-none rounded-full py-2 px-10 outline-none focus:ring-1 ring-indigo-500 text-[14px] transition-all">
+                   class="form-field w-full rounded-full py-2 px-10 outline-none text-[14px] transition-all">
             <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
         </form>
     </div>
@@ -22,7 +15,11 @@
     <div class="max-w-[600px] mx-auto pb-24 min-h-screen transition-all">
         {% if searching %}
             <div class="p-4">
-                <h2 class="text-lg font-bold text-main mb-4">Resultados para "{{ query }}"</h2>
+                {% if query %}
+                    <h2 class="text-lg font-bold text-main mb-4">Resultados para "{{ query }}"</h2>
+                {% else %}
+                    <h2 class="text-lg font-bold text-main mb-4">Busque por usuários para encontrar perfis.</h2>
+                {% endif %}
                 {% if search_results %}
                     <div class="grid gap-3">
                         {% for u in search_results %}
@@ -31,7 +28,7 @@
                                 <p class="text-[14px] text-main font-bold">{{ u.name }}</p>
                                 <p class="text-[12px] text-secondary">@{{ u.username }}</p>
                             </div>
-                            <a href="{{ url_for('perfil', username=u.username) }}" class="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs font-bold">Ver</a>
+                            <a href="{{ url_for('perfil', username=u.username) }}" class="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-700 transition">Ver</a>
                         </div>
                         {% endfor %}
                     </div>
@@ -41,7 +38,7 @@
             </div>
         {% else %}
             <div class="px-4 py-3 border-b twitter-border">
-                <form action="/postar" method="POST" enctype="multipart/form-data">
+                <form id="feed-post-form" action="/postar" method="POST" enctype="multipart/form-data" novalidate>
                     <div class="flex space-x-3">
                         <div class="w-10 h-10 rounded-full bg-indigo-600 flex-shrink-0 flex items-center justify-center font-bold text-white overflow-hidden text-lg">
                             {% if session.get('profile_pic') %}
@@ -51,7 +48,8 @@
                             {% endif %}
                         </div>
                         <div class="w-full">
-                            <textarea name="content" maxlength="280" class="w-full bg-transparent text-[17px] outline-none resize-none placeholder-gray-500 text-main" placeholder="O que está acontecendo?" rows="2" required></textarea>
+                            <textarea id="feed-post-content" name="content" maxlength="280" class="form-field w-full text-[17px] resize-none text-main rounded-2xl px-3 py-2" placeholder="O que está acontecendo?" rows="2" required></textarea>
+                            <p id="feed-post-error" class="form-error hidden mt-1 text-[11px] font-semibold">Digite algo para postar.</p>
                             <img id="image-preview" class="preview-img">
                             <div class="flex justify-between items-center pt-2">
                                 <div class="relative text-indigo-500 cursor-pointer p-2 hover:bg-indigo-500/10 rounded-full">
@@ -59,8 +57,8 @@
                                     <input type="file" name="file" id="file-input" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*">
                                 </div>
                                 <div class="flex space-x-2">
-                                    <button type="submit" name="anon_mode" value="true" class="bg-gray-200 dark:bg-white/10 text-main font-bold px-4 py-1.5 rounded-full text-[12px]">Spottar ( Anônimo )</button>
-                                    <button type="submit" name="anon_mode" value="false" class="bg-indigo-500 text-white font-bold px-4 py-1.5 rounded-full text-[12px]">Spottar</button>
+                                    <button type="submit" name="anon_mode" value="true" class="interactive-control bg-gray-200 dark:bg-white/10 text-main font-bold px-4 py-1.5 rounded-full text-[12px] hover:bg-gray-300 dark:hover:bg-white/20 transition">Spottar ( Anônimo )</button>
+                                    <button type="submit" name="anon_mode" value="false" class="interactive-control bg-indigo-500 text-white font-bold px-4 py-1.5 rounded-full text-[12px] hover:bg-indigo-600 transition">Spottar</button>
                                 </div>
                             </div>
                         </div>
@@ -68,161 +66,58 @@
                 </form>
             </div>
 
-            {% for post in posts %}
-            <div id="post-{{ post.id }}" class="twitter-card transition">
-                <div class="flex space-x-3 p-4">
-                    <div class="w-9 h-9 rounded-full bg-indigo-600 flex-shrink-0 flex items-center justify-center text-white font-bold uppercase overflow-hidden text-base">
-                        {% if post.is_anonymous %}
-                            ?
-                        {% elif post.author and post.author.profile_pic %}
-                            <img src="{{ url_for('static', filename='uploads/' + post.author.profile_pic) }}" class="w-full h-full object-cover">
-                        {% else %}
-                            {{ post.author.username[0].upper() if post.author else '?' }}
-                        {% endif %}
-                    </div>
-                    <div class="w-full">
-                        <div class="flex justify-between items-baseline">
-                            <div class="flex flex-col">
-                                {% if post.is_anonymous %}
-                                    <span class="font-bold text-main text-[14px]">Anônimo</span>
-                                    <div class="flex items-center space-x-1 text-[12px] text-secondary">
-                                        <span>@SpottedAnonimo</span>
-                                        <span>&middot;</span>
-                                        <span>{{ post.timestamp | post_time }}</span>
-                                    </div>
-                                {% else %}
-                                    <div class="flex items-center space-x-2">
-                                        <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
-                                            <span class="font-bold text-main text-[14px]">{{ post.author.name }}</span>
-                                        </a>
-                                        {% if post.author.is_admin %}
-                                            <i class="fa-solid fa-circle-check text-blue-500 text-[12px]" title="Verificado"></i>
-                                        {% endif %}
-                                        {% if post.author.university %}
-                                            <span class="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
-                                                {{ post.author.university }}
-                                            </span>
-                                        {% endif %}
-                                        <span class="text-secondary text-[12px]">{{ post.timestamp | post_time }}</span>
-                                    </div>
-                                    <div class="flex items-center space-x-1 text-[12px] text-secondary">
-                                        <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
-                                            <span>@{{ post.author.username }}</span>
-                                        </a>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            {% if (session.get('user_id') == post.user_id and post.user_id) or session.get('is_admin') %}
-                            <a href="/excluir_post/{{ post.id }}" class="text-secondary hover:text-red-500 transition-colors p-1"><i class="fa-solid fa-trash-can text-xs"></i></a>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="mt-2 text-main text-[14px] leading-normal break-words text-left">
-                            {% if "📢 NOVO EVENTO:" in post.content %}
-                                <span class="text-yellow-500 font-black text-[11px] uppercase tracking-widest block mb-2 text-left">EVENTO</span>
-                                
-                                {% set lines = post.content.split('\n') %}
-                                <div class="space-y-1 mb-3 text-[13px] border-l-2 border-yellow-500/30 pl-3 text-left">
-                                    <p class="font-bold text-[15px] text-main">{{ lines[0].replace('📢 NOVO EVENTO: ', '') }}</p>
-                                    <p class="text-secondary flex items-center"><i class="fa-solid fa-location-dot w-4 mr-1 text-[11px]"></i> {{ lines[1].replace('📍 Local: ', '') }}</p>
-                                    <p class="text-secondary flex items-center"><i class="fa-regular fa-calendar w-4 mr-1 text-[11px]"></i> {{ lines[2].replace('📅 Data: ', '') }}</p>
-                                    <p class="text-indigo-500 flex items-center font-bold italic mt-3">{{ lines[-1] | mention | safe }}</p>
-                                </div>
-
-                                {% if lines|length > 4 %}
-                                    <div class="mt-2 text-left">
-                                        <div id="post-desc-{{ post.id }}" class="text-[14px] opacity-90 leading-relaxed whitespace-pre-wrap text-left hidden">
-                                            {{ lines[4:-2]|join('\n') | mention | safe }}
-                                        </div>
-                                        <button onclick="togglePostDesc({{ post.id }}, this)" class="text-indigo-500 text-[12px] font-bold mt-1 hover:underline">Mostrar descrição</button>
-                                    </div>
-                                {% endif %}
-                            {% else %}
-                                {{ post.content | mention | safe }}
-                            {% endif %}
-                        </div>
-
-                        {% if post.media_url %}
-                        <div class="mt-3 rounded-2xl border twitter-border overflow-hidden">
-                            <img src="{{ url_for('static', filename='uploads/' + post.media_url) }}" class="w-full object-cover max-h-[512px]">
-                        </div>
-                        {% endif %}
-
-                        <div class="flex justify-start space-x-8 mt-3 text-secondary">
-                            <a href="/like/{{ post.id }}" onclick="ajaxLike(event, this)" class="flex items-center group hover:text-red-500 transition-colors">
-                                <i class="fa-regular fa-heart mr-1 text-[15px]"></i>
-                                <span class="text-[12px] like-count">{{ post.likes }}</span>
-                            </a>
-                            <div onclick="document.getElementById('in-{{post.id}}').focus()" class="flex items-center group hover:text-indigo-500 cursor-pointer transition-colors">
-                                <i class="fa-regular fa-comment mr-1 text-[15px]"></i>
-                                <span class="text-[12px]">{{ post.comments|length }}</span>
-                            </div>
-                        </div>
-
-                        <div class="mt-3">
-                            <div id="comments-container-{{ post.id }}">
-                                {% for comment in post.comments[:2] %}
-                                <div class="text-[13px] mb-1">
-                                    {% if comment.username == 'Anônimo' %}
-                                        <span class="font-bold text-main">Anônimo</span>
-                                    {% else %}
-                                        <a href="/perfil/{{ comment.username }}" class="hover:underline">
-                                            <span class="font-bold text-main">{{ comment.username }}</span>
-                                        </a>
-                                    {% endif %}
-                                    <span class="text-main ml-1">{{ comment.content | mention | safe }}</span>
-                                    <span class="text-secondary text-[11px] ml-1">&middot; {{ comment.timestamp | post_time }}</span>
-                                </div>
-                                {% endfor %}
-
-                                {% if post.comments|length > 2 %}
-                                <button onclick="showComments({{ post.id }}, this)" class="text-indigo-500 text-[11px] font-bold hover:underline mb-2">
-                                    Ver todos os {{ post.comments|length }} comentários
-                                </button>
-                                <div id="extra-comments-{{ post.id }}" class="hidden">
-                                    {% for comment in post.comments[2:] %}
-                                    <div class="text-[13px] mb-1">
-                                        {% if comment.username == 'Anônimo' %}
-                                            <span class="font-bold text-main">Anônimo</span>
-                                        {% else %}
-                                            <a href="/perfil/{{ comment.username }}" class="hover:underline">
-                                                <span class="font-bold text-main">{{ comment.username }}</span>
-                                            </a>
-                                        {% endif %}
-                                        <span class="text-main ml-1">{{ comment.content | mention | safe }}</span>
-                                        <span class="text-secondary text-[11px] ml-1">&middot; {{ comment.timestamp | post_time }}</span>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                            </div>
-
-                            <form action="/comentar/{{ post.id }}" method="POST" onsubmit="ajaxComment(event, this, {{post.id}})" class="mt-2 flex items-center space-x-2">
-                                <input id="in-{{post.id}}" name="comment_content"
-                                       class="flex-grow bg-gray-100 dark:bg-white/10 text-[13px] rounded-full py-1.5 px-4 outline-none focus:ring-1 ring-indigo-500 text-main"
-                                       placeholder="Postar sua resposta" required>
-                                <button type="submit" class="text-indigo-500 font-bold text-[12px] px-2">Enviar</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+            <div id="feed-posts-container">
+                {% include "_feed_posts.html" %}
             </div>
-            {% endfor %}
+            <div id="feed-loading" class="hidden text-center text-secondary text-xs py-4">Carregando...</div>
+            <div id="feed-sentinel" class="h-2"></div>
         {% endif %}
     </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+    function setInlineError(inputEl, errorEl, message) {
+        if (!inputEl || !errorEl) return;
+        if (message) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+            inputEl.setAttribute('aria-invalid', 'true');
+        } else {
+            errorEl.textContent = '';
+            errorEl.classList.add('hidden');
+            inputEl.removeAttribute('aria-invalid');
+        }
+    }
+
     function togglePostDesc(postId, btn) {
         const p = document.getElementById('post-desc-' + postId);
-        if (p.classList.contains('hidden')) {
-            p.classList.remove('hidden');
-            btn.innerText = "Recolher descrição";
+        if (p.classList.contains('desc-expanded')) {
+            p.classList.remove('desc-expanded');
+            btn.innerText = "Ver mais";
         } else {
-            p.classList.add('hidden');
-            btn.innerText = "Mostrar descrição";
+            p.classList.add('desc-expanded');
+            btn.innerText = "Ver menos";
         }
+    }
+
+    function initFeedEventDescriptionToggles(scope) {
+        const root = scope || document;
+        const buttons = root.querySelectorAll('[data-feed-desc-toggle]');
+        buttons.forEach((btn) => {
+            const postId = btn.getAttribute('data-feed-desc-toggle');
+            const block = document.getElementById('post-desc-' + postId);
+            if (!block) return;
+
+            if (block.scrollHeight > block.clientHeight + 4) {
+                btn.classList.remove('hidden');
+                if (!block.classList.contains('desc-expanded')) {
+                    btn.innerText = 'Ver mais';
+                }
+            } else {
+                btn.classList.add('hidden');
+            }
+        });
     }
 
 
@@ -250,8 +145,17 @@
     function ajaxComment(event, form, postId) {
         event.preventDefault();
         const formData = new FormData(form);
-        const input = form.querySelector('input');
-        const content = input.value;
+        const input = form.querySelector('input[name="comment_content"]');
+        const errorEl = form.parentElement ? form.parentElement.querySelector('[data-comment-error]') : null;
+        const content = (input ? input.value : '').trim();
+
+        if (!content) {
+            setInlineError(input, errorEl, 'Digite um comentário antes de enviar.');
+            if (input) input.focus();
+            return;
+        }
+        formData.set('comment_content', content);
+        setInlineError(input, errorEl, '');
 
         fetch(form.action, {
             method: 'POST',
@@ -274,6 +178,28 @@
 
                 container.appendChild(newComment);
                 input.value = '';
+                setInlineError(input, errorEl, '');
+            }
+        });
+    }
+
+    const feedPostForm = document.getElementById('feed-post-form');
+    const feedPostContent = document.getElementById('feed-post-content');
+    const feedPostError = document.getElementById('feed-post-error');
+    if (feedPostForm && feedPostContent && feedPostError) {
+        feedPostForm.addEventListener('submit', (event) => {
+            if (!feedPostContent.value.trim()) {
+                event.preventDefault();
+                setInlineError(feedPostContent, feedPostError, 'Digite algo para postar.');
+                feedPostContent.focus();
+                return;
+            }
+            setInlineError(feedPostContent, feedPostError, '');
+        });
+
+        feedPostContent.addEventListener('input', () => {
+            if (feedPostContent.value.trim()) {
+                setInlineError(feedPostContent, feedPostError, '');
             }
         });
     }
@@ -290,6 +216,98 @@
                     imgPreview.style.display = 'block';
                 }
                 reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    const isSearching = {{ searching|default(false)|tojson }};
+    let hasMore = {{ has_more|default(false)|tojson }};
+    let nextCursorTs = {{ next_cursor_ts|default(None)|tojson }};
+    let nextCursorId = {{ next_cursor_id|default(None)|tojson }};
+    let isLoading = false;
+
+    const feedContainer = document.getElementById('feed-posts-container');
+    const feedLoading = document.getElementById('feed-loading');
+    const feedSentinel = document.getElementById('feed-sentinel');
+    let feedObserver = null;
+    let debounceTimer = null;
+    let lastLoadTriggerAt = 0;
+    const LOAD_DEBOUNCE_MS = 120;
+    const LOAD_THROTTLE_MS = 350;
+
+    async function loadMoreFeed() {
+        if (isSearching || isLoading || !hasMore || !feedContainer) return;
+        isLoading = true;
+        if (feedLoading) feedLoading.classList.remove('hidden');
+
+        try {
+            const params = new URLSearchParams();
+            if (nextCursorTs) params.set('cursor_ts', nextCursorTs);
+            if (nextCursorId) params.set('cursor_id', String(nextCursorId));
+            const response = await fetch(`/feed/more?${params.toString()}`);
+            if (!response.ok) throw new Error('Falha ao carregar feed');
+
+            const data = await response.json();
+            if (data.html) {
+                feedContainer.insertAdjacentHTML('beforeend', data.html);
+                initFeedEventDescriptionToggles(feedContainer);
+            }
+
+            hasMore = Boolean(data.has_more);
+            nextCursorTs = data.next_cursor_ts;
+            nextCursorId = data.next_cursor_id;
+
+            if (!hasMore && feedObserver) {
+                feedObserver.disconnect();
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            isLoading = false;
+            if (feedLoading) feedLoading.classList.add('hidden');
+        }
+    }
+
+    function scheduleLoadMoreFeed() {
+        if (isSearching || isLoading || !hasMore || !feedContainer) return;
+
+        const now = Date.now();
+        if (now - lastLoadTriggerAt < LOAD_THROTTLE_MS) {
+            return;
+        }
+        lastLoadTriggerAt = now;
+
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+        }
+        debounceTimer = setTimeout(loadMoreFeed, LOAD_DEBOUNCE_MS);
+    }
+
+    function isNearPageBottom() {
+        const threshold = 420;
+        const doc = document.documentElement;
+        return window.innerHeight + window.scrollY >= doc.scrollHeight - threshold;
+    }
+
+    if (!isSearching && feedSentinel) {
+        initFeedEventDescriptionToggles(document);
+
+        feedObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                scheduleLoadMoreFeed();
+            }
+        }, { rootMargin: '300px 0px' });
+        feedObserver.observe(feedSentinel);
+
+        window.addEventListener('scroll', () => {
+            if (isNearPageBottom()) {
+                scheduleLoadMoreFeed();
+            }
+        }, { passive: true });
+
+        window.addEventListener('load', () => {
+            if (isNearPageBottom()) {
+                scheduleLoadMoreFeed();
             }
         });
     }

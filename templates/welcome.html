@@ -7,6 +7,18 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
         .insta-font { font-family: 'Lobster', cursive; }
+
+        .welcome-subtitle { color: #5b6b82; }
+        .welcome-card { background-color: #ffffff; border-color: #dbe2f0; color: #0f172a; }
+        .welcome-input { background-color: #f8faff; border-color: #dbe2f0; color: #0f172a; }
+        .welcome-divider { color: #7c8ba1; }
+        .welcome-footer { color: #8fa0ba; }
+
+        body.dark-mode .welcome-subtitle { color: #94a3b8; }
+        body.dark-mode .welcome-card { background-color: #16181c; border-color: #2f3336; color: #e7e9ea; }
+        body.dark-mode .welcome-input { background-color: #0f1115; border-color: #2f3336; color: #e7e9ea; }
+        body.dark-mode .welcome-divider { color: #71767b; }
+        body.dark-mode .welcome-footer { color: #71767b; }
     </style>
 {% endblock %}
 
@@ -15,13 +27,13 @@
     <div class="flex-grow container max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center p-6 md:space-x-12 min-h-screen">
         <div class="hidden md:block md:w-1/2">
             <h1 class="text-7xl insta-font text-indigo-600 mb-6 tracking-tight text-center md:text-left">Spotted</h1>
-            <p class="text-2xl text-gray-500 leading-tight pr-10">Compartilhe segredos e momentos da sua universidade com total liberdade.</p>
+            <p class="text-2xl welcome-subtitle leading-tight pr-10">Compartilhe segredos e momentos da sua universidade com total liberdade.</p>
         </div>
 
         <div class="max-w-[350px] w-full space-y-4">
-            <div class="bg-white p-8 border border-gray-300 rounded-sm text-center shadow-sm">
+            <div class="welcome-card p-8 border rounded-2xl text-center shadow-sm">
                 <h1 class="text-5xl insta-font text-indigo-600 mb-4 md:hidden">Spotted</h1>
-                <p class="text-sm text-gray-500 mb-8 md:hidden">Compartilhe segredos e momentos da sua universidade com total liberdade.</p>
+                <p class="text-sm welcome-subtitle mb-8 md:hidden">Compartilhe segredos e momentos da sua universidade com total liberdade.</p>
 
                 {% with messages = get_flashed_messages() %}
                   {% if messages %}
@@ -34,55 +46,170 @@
                 {% endwith %}
 
                 <form action="/login" method="POST" class="space-y-2">
-                    <input type="text" name="username" placeholder="Usuário" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm focus:outline-none text-xs">
-                    <input type="password" name="password" placeholder="Senha" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm focus:outline-none text-xs">
+                    <input type="text" name="username" placeholder="Usuário" required class="welcome-input w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-xs transition">
+                    <input type="password" name="password" placeholder="Senha" required class="welcome-input w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-xs transition">
                     <button type="submit" class="w-full bg-blue-500 text-white py-1.5 rounded-md font-bold text-sm hover:bg-blue-600 transition mt-2">Entrar</button>
                 </form>
 
                 <div class="my-6">
-                     <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Bem-vindo(a)</p>
+                     <p class="text-xs welcome-divider font-bold uppercase tracking-widest">Bem-vindo(a)</p>
                 </div>
-            </div>
 
-            <div class="bg-white p-6 border border-gray-300 rounded-sm text-center shadow-sm">
-                <p class="text-sm text-gray-700">Não tem uma conta? <button onclick="document.getElementById('modal-registro').classList.remove('hidden')" class="text-blue-500 font-bold">Cadastre-se</button></p>
+                <div class="mx-auto my-4 h-px w-16 bg-indigo-200/70"></div>
+                <p class="text-sm text-main">Não tem uma conta? <button onclick="document.getElementById('modal-registro').classList.remove('hidden')" class="text-blue-500 font-bold hover:text-blue-600 transition">Cadastre-se</button></p>
             </div>
         </div>
     </div>
 
     <footer class="w-full py-8 text-center mt-auto">
-        <p class="text-gray-400 text-[10px] sm:text-xs font-semibold tracking-wide uppercase">
+        <p class="welcome-footer text-[10px] sm:text-xs font-semibold tracking-wide uppercase">
             Spotted Social &copy; 2026. Todos os direitos reservados.
         </p>
     </footer>
 
-    <div id="modal-registro" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-        <div class="bg-white rounded-xl w-full max-w-[350px] p-8 relative shadow-2xl">
-            <button onclick="document.getElementById('modal-registro').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 text-2xl hover:text-gray-600">&times;</button>
+    <div id="modal-registro" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm overflow-y-auto">
+        <div class="welcome-card rounded-xl w-full max-w-[350px] p-8 relative shadow-2xl border max-h-[90vh] overflow-y-auto">
+            <button onclick="document.getElementById('modal-registro').classList.add('hidden')" class="absolute top-4 right-4 welcome-divider text-2xl hover:text-main transition">&times;</button>
             <h1 class="text-4xl insta-font text-indigo-600 text-center mb-6">Cadastre-se</h1>
-            <form action="/registro" method="POST" class="space-y-3">
-                <input type="text" name="name" placeholder="Seu Nome Completo" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm text-xs focus:outline-none">
-                
-                <input type="text" name="username" placeholder="Crie seu @usuário (sem espaços)" 
-                       pattern="^\S+$" title="Não é permitido espaços no usuário"
-                       required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm text-xs focus:outline-none">
+            <form id="registro-form" action="/registro" method="POST" class="space-y-3" novalidate>
+                <div>
+                    <input id="reg-name" type="text" name="name" placeholder="Seu Nome Completo" required minlength="2" maxlength="80" class="welcome-input w-full p-2 border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition">
+                    <p id="reg-name-error" class="hidden mt-1 text-[11px] text-red-500 font-semibold" aria-live="polite"></p>
+                </div>
 
-                <select name="university" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm text-xs focus:outline-none text-gray-500">
-                    <option value="" disabled selected>Sua Universidade</option>
-                    <option value="UFPR">UFPR (Federal)</option>
-                    <option value="UTFPR">UTFPR</option>
-                    <option value="PUCPR">PUCPR</option>
-                    <option value="UP">UP (Positivo)</option>
-                    <option value="UTP">UTP (Tuiuti)</option>
-                    <option value="UniCuritiba">UniCuritiba</option>
-                    <option value="FAE">FAE</option>
-                    <option value="Outra">Outra</option>
-                </select>
+                <div>
+                    <input id="reg-username" type="text" name="username" placeholder="Crie seu @usuário (sem espaços)"
+                           pattern="^\S+$" title="Não é permitido espaços no usuário"
+                           required minlength="3" maxlength="80" class="welcome-input w-full p-2 border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition">
+                    <p id="reg-username-error" class="hidden mt-1 text-[11px] text-red-500 font-semibold" aria-live="polite"></p>
+                </div>
 
-                <input type="password" name="password" placeholder="Senha" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm text-xs focus:outline-none">
-                <p class="text-[9px] text-gray-400 text-center leading-tight">* Mínimo 8 caracteres e um símbolo especial (!@#$).</p>
-                <button type="submit" class="w-full bg-blue-500 text-white py-1.5 rounded-md font-bold text-sm hover:bg-blue-600 shadow-md">Criar Conta</button>
+                <div>
+                    <select id="reg-university" name="university" required class="welcome-input w-full p-2 border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 welcome-subtitle">
+                        <option value="" disabled selected>Sua Universidade</option>
+                        <option value="UFPR">UFPR (Federal)</option>
+                        <option value="UTFPR">UTFPR</option>
+                        <option value="PUCPR">PUCPR</option>
+                        <option value="UP">UP (Positivo)</option>
+                        <option value="UTP">UTP (Tuiuti)</option>
+                        <option value="UniCuritiba">UniCuritiba</option>
+                        <option value="FAE">FAE</option>
+                        <option value="Outra">Outra</option>
+                    </select>
+                    <p id="reg-university-error" class="hidden mt-1 text-[11px] text-red-500 font-semibold" aria-live="polite"></p>
+                </div>
+
+                <div>
+                    <input id="reg-password" type="password" name="password" placeholder="Senha" required minlength="8" class="welcome-input w-full p-2 border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition">
+                    <p id="reg-password-error" class="hidden mt-1 text-[11px] text-red-500 font-semibold" aria-live="polite"></p>
+                </div>
+                <p class="text-[9px] welcome-divider text-center leading-tight">* Mínimo 8 caracteres e um símbolo especial (!@#$).</p>
+                <button type="submit" class="w-full bg-blue-500 text-white py-1.5 rounded-md font-bold text-sm hover:bg-blue-600 shadow-md transition">Criar Conta</button>
             </form>
         </div>
     </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    const registroForm = document.getElementById('registro-form');
+    const registroModal = document.getElementById('modal-registro');
+
+    if (registroModal) {
+        registroModal.addEventListener('click', (event) => {
+            if (event.target === registroModal) {
+                registroModal.classList.add('hidden');
+            }
+        });
+    }
+
+    if (registroForm) {
+        const fields = {
+            name: {
+                input: document.getElementById('reg-name'),
+                error: document.getElementById('reg-name-error'),
+                validate: (value) => {
+                    const v = value.trim();
+                    if (!v) return 'Informe seu nome completo.';
+                    if (v.length < 2) return 'Seu nome precisa ter pelo menos 2 caracteres.';
+                    if (v.length > 80) return 'Seu nome pode ter no máximo 80 caracteres.';
+                    return '';
+                }
+            },
+            username: {
+                input: document.getElementById('reg-username'),
+                error: document.getElementById('reg-username-error'),
+                validate: (value) => {
+                    const v = value.trim();
+                    if (!v) return 'Escolha um usuário.';
+                    if (v.includes(' ')) return 'O usuário não pode conter espaços.';
+                    if (v.length < 3) return 'O usuário precisa ter pelo menos 3 caracteres.';
+                    if (v.length > 80) return 'O usuário pode ter no máximo 80 caracteres.';
+                    return '';
+                }
+            },
+            university: {
+                input: document.getElementById('reg-university'),
+                error: document.getElementById('reg-university-error'),
+                validate: (value) => value ? '' : 'Selecione sua universidade.'
+            },
+            password: {
+                input: document.getElementById('reg-password'),
+                error: document.getElementById('reg-password-error'),
+                validate: (value) => {
+                    if (!value) return 'Informe uma senha.';
+                    if (value.length < 8) return 'A senha precisa ter no mínimo 8 caracteres.';
+                    if (!/[!@#$%^&*()]/.test(value)) return 'Use ao menos um símbolo especial (!@#$%^&*()).';
+                    return '';
+                }
+            }
+        };
+
+        function renderError(fieldKey, message) {
+            const field = fields[fieldKey];
+            if (!field || !field.error || !field.input) return;
+
+            if (message) {
+                field.error.textContent = message;
+                field.error.classList.remove('hidden');
+                field.input.classList.add('border-red-400');
+            } else {
+                field.error.textContent = '';
+                field.error.classList.add('hidden');
+                field.input.classList.remove('border-red-400');
+            }
+        }
+
+        function validateField(fieldKey) {
+            const field = fields[fieldKey];
+            if (!field || !field.input) return true;
+            const message = field.validate(field.input.value);
+            renderError(fieldKey, message);
+            return !message;
+        }
+
+        Object.keys(fields).forEach((key) => {
+            const field = fields[key];
+            if (!field.input) return;
+            field.input.addEventListener('input', () => validateField(key));
+            field.input.addEventListener('change', () => validateField(key));
+        });
+
+        registroForm.addEventListener('submit', (event) => {
+            let firstInvalid = null;
+            Object.keys(fields).forEach((key) => {
+                const valid = validateField(key);
+                if (!valid && !firstInvalid) {
+                    firstInvalid = fields[key].input;
+                }
+            });
+
+            if (firstInvalid) {
+                event.preventDefault();
+                firstInvalid.focus();
+            }
+        });
+    }
+</script>
+{% endblock %}
+
