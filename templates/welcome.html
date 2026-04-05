@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Spotted - Conecte-se</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
+        .insta-font { font-family: 'Lobster', cursive; }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col items-center min-h-screen font-sans">
+
+    <div class="flex-grow container max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-center p-6 md:space-x-12">
+        <div class="hidden md:block md:w-1/2">
+            <h1 class="text-7xl insta-font text-indigo-600 mb-6 tracking-tight text-center md:text-left">Spotted</h1>
+            <p class="text-2xl text-gray-500 leading-tight pr-10">Compartilhe segredos e momentos da sua universidade com total liberdade.</p>
+        </div>
+
+        <div class="max-w-[350px] w-full space-y-4">
+            <div class="bg-white p-8 border border-gray-300 rounded-sm text-center shadow-sm">
+                <h1 class="text-5xl insta-font text-indigo-600 mb-4 md:hidden">Spotted</h1>
+                <p class="text-sm text-gray-500 mb-8 md:hidden">Compartilhe segredos e momentos da sua universidade com total liberdade.</p>
+
+                {% with messages = get_flashed_messages() %}
+                  {% if messages %}
+                    {% for message in messages %}
+                      <div class="bg-red-50 text-red-600 text-[11px] font-bold p-2 mb-4 border border-red-100 rounded italic">
+                        {{ message }}
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+
+                <form action="/login" method="POST" class="space-y-2">
+                    <input type="text" name="username" placeholder="Usuário" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm focus:outline-none text-xs">
+                    <input type="password" name="password" placeholder="Senha" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm focus:outline-none text-xs">
+                    <button type="submit" class="w-full bg-blue-500 text-white py-1.5 rounded-md font-bold text-sm hover:bg-blue-600 transition mt-2">Entrar</button>
+                </form>
+
+                <div class="my-6">
+                     <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Bem-vindo(a)</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 border border-gray-300 rounded-sm text-center shadow-sm">
+                <p class="text-sm text-gray-700">Não tem uma conta? <button onclick="document.getElementById('modal-registro').classList.remove('hidden')" class="text-blue-500 font-bold">Cadastre-se</button></p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="w-full py-8 text-center mt-auto">
+        <p class="text-gray-400 text-[10px] sm:text-xs font-semibold tracking-wide uppercase">
+            Spotted Social &copy; 2026. Todos os direitos reservados.
+        </p>
+    </footer>
+
+    <div id="modal-registro" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-xl w-full max-w-[350px] p-8 relative shadow-2xl">
+            <button onclick="document.getElementById('modal-registro').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 text-2xl hover:text-gray-600">&times;</button>
+            <h1 class="text-4xl insta-font text-indigo-600 text-center mb-6">Cadastre-se</h1>
+            <form action="/registro" method="POST" class="space-y-3">
+                <input type="text" name="name" placeholder="Seu Nome Completo" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm text-xs focus:outline-none">
+                
+                <input type="text" name="username" placeholder="Crie seu @usuário (sem espaços)" 
+                       pattern="^\S+$" title="Não é permitido espaços no usuário"
+                       required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm text-xs focus:outline-none">
+
+                <select name="university" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm text-xs focus:outline-none text-gray-500">
+                    <option value="" disabled selected>Sua Universidade</option>
+                    <option value="UFPR">UFPR (Federal)</option>
+                    <option value="UTFPR">UTFPR</option>
+                    <option value="PUCPR">PUCPR</option>
+                    <option value="UP">UP (Positivo)</option>
+                    <option value="UTP">UTP (Tuiuti)</option>
+                    <option value="UniCuritiba">UniCuritiba</option>
+                    <option value="FAE">FAE</option>
+                    <option value="Outra">Outra</option>
+                </select>
+
+                <input type="password" name="password" placeholder="Senha" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-sm text-xs focus:outline-none">
+                <p class="text-[9px] text-gray-400 text-center leading-tight">* Mínimo 8 caracteres e um símbolo especial (!@#$).</p>
+                <button type="submit" class="w-full bg-blue-500 text-white py-1.5 rounded-md font-bold text-sm hover:bg-blue-600 shadow-md">Criar Conta</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

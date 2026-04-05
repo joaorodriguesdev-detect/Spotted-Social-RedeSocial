@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>{% block title %}Spotted{% endblock %}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
+        .insta-font { font-family: 'Lobster', cursive; }
+
+        /* --- TEMA PADRÃO (BRANCO) --- */
+        body { background-color: #ffffff; color: #0f1419; transition: background 0.3s, color 0.3s; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        nav { background-color: rgba(255, 255, 255, 0.8); border-color: #eff3f4; }
+        nav h1 { color: #4f46e5; }
+        #theme-icon { color: #0f1419; }
+        .twitter-border { border-color: #eff3f4; }
+        .search-bg { background-color: #eff3f4; color: #0f1419; }
+        .bottom-nav { background-color: rgba(255, 255, 255, 0.9); border-color: #eff3f4; }
+        .text-main { color: #0f1419; }
+        .text-secondary { color: #536471; }
+
+        /* --- TEMA BLACK --- */
+        body.dark-mode { background-color: #000000; color: #e7e9ea; }
+        body.dark-mode nav { background-color: rgba(0, 0, 0, 0.8); border-color: #2f3336; }
+        body.dark-mode nav h1 { color: #ffffff; }
+        body.dark-mode #theme-icon { color: #ffffff; }
+        body.dark-mode .twitter-border { border-color: #2f3336; }
+        body.dark-mode .search-bg { background-color: #202327; color: #ffffff; }
+        body.dark-mode .bottom-nav { background-color: rgba(0, 0, 0, 0.9); border-color: #2f3336; }
+        body.dark-mode .text-main { color: #ffffff; }
+        body.dark-mode .text-secondary { color: #71767b; }
+
+        .preview-img { display: none; max-height: 300px; width: 100%; object-fit: cover; border-radius: 1rem; margin-top: 1rem; border: 1px solid #2f3336; }
+        
+        .twitter-card { border-bottom: 1px solid; border-color: inherit; transition: background 0.2s; }
+        body:not(.dark-mode) .twitter-card { background-color: #ffffff; border-color: #eff3f4; }
+        body:not(.dark-mode) .twitter-card:hover { background-color: #f7f7f7; }
+        body.dark-mode .twitter-card { background-color: #000000; border-color: #2f3336; }
+        body.dark-mode .twitter-card:hover { background-color: rgba(255, 255, 255, 0.03); }
+    </style>
+</head>
+<body class="min-h-screen">
+    <script>
+        // Define Dark como padrão se não houver preferência salva
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || !savedTheme) {
+            document.body.classList.add('dark-mode');
+        }
+    </script>
+
+    <nav class="backdrop-blur-md border-b sticky top-0 z-[100] py-3 px-4 transition-all">
+        <div class="max-w-5xl mx-auto flex justify-between items-center relative">
+            <div class="w-10"></div> 
+            <h1 class="text-xl insta-font cursor-pointer absolute left-1/2 -translate-x-1/2" onclick="window.location.href='/feed'">Spotted</h1>
+            <button onclick="toggleTheme()" class="text-lg p-2 hover:bg-gray-200 dark:hover:bg-gray-800 active:scale-90 rounded-full transition-all" id="theme-btn">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <div class="fixed bottom-0 left-0 right-0 border-t bottom-nav py-2 px-6 z-[100] backdrop-blur-md transition-all">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <a href="/feed" class="text-lg hover:text-indigo-500 text-main"><i class="fa-solid fa-house"></i></a>
+            
+            <a href="/notificacoes" class="relative text-lg hover:text-indigo-500 text-main">
+                <i class="fa-regular fa-bell"></i>
+                {% if unread_count and unread_count > 0 %}
+                    <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ unread_count }}</span>
+                {% endif %}
+            </a>
+
+            {% if session.get('user_id') %}
+            <a href="/perfil/{{ session['username'] }}" class="w-7 h-7 rounded-full border twitter-border flex items-center justify-center overflow-hidden">
+                {% if session.get('profile_pic') %}
+                    <img src="{{ url_for('static', filename='uploads/' + session.get('profile_pic')) }}" class="w-full h-full object-cover">
+                {% else %}
+                    <span class="text-[10px] text-main font-bold">{{ session.get('username')[0].upper() }}</span>
+                {% endif %}
+            </a>
+            {% else %}
+            <a href="/logout" class="text-red-500 text-lg"><i class="fa-solid fa-right-from-bracket"></i></a>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        const themeBtn = document.getElementById('theme-btn');
+        function syncIcon() {
+            const icon = themeBtn.querySelector('i');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
+        }
+        syncIcon();
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            syncIcon();
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
