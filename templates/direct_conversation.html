@@ -176,7 +176,7 @@
                 {% if is_group_chat %}
                 <p class="conversation-sender-label">@{{ participant_usernames[2] if participant_usernames|length > 2 else target_username }}</p>
                 {% endif %}
-                <button type="button" class="conversation-media-btn" data-media-preview="true" data-media-full="https://picsum.photos/1200/700?blur=1" aria-label="Abrir preview da imagem">
+               <!-- <button type="button" class="conversation-media-btn" data-media-preview="true" data-media-full="https://picsum.photos/1200/700?blur=1" aria-label="Abrir preview da imagem">
                     <img src="https://picsum.photos/640/360?blur=1" alt="Preview de midia da conversa" class="conversation-media-thumb">
                 </button>
                 <p class="mt-2">Mock de midia compartilhada no chat.</p>
@@ -223,7 +223,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div>-->
 
         <div class="conversation-typing-row mb-3 flex items-center gap-2 hidden" aria-live="polite">
             <span class="conversation-presence-dot" aria-hidden="true"></span>
