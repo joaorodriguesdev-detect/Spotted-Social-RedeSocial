@@ -110,6 +110,15 @@
             border: 1px solid #dbe2f0;
             box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
         }
+        /* When the menu is moved to document.body we mark it with data-__moved-to-body="1".
+           Ensure it uses viewport-fixed positioning and a very high z-index so it is
+           never clipped by ancestor stacking contexts. */
+        .profile-context-menu[data-__moved-to-body="1"] {
+            position: fixed !important;
+            z-index: 99999 !important;
+            left: auto !important;
+            top: auto !important;
+        }
         .profile-menu-link { color: #0f172a; }
         .profile-menu-link:hover,
         .profile-menu-link:focus-visible { background-color: #eef2ff; }
@@ -480,6 +489,21 @@
             if (profileContextMenu.classList.contains('hidden')) return;
             if (profileMenuTrigger.contains(event.target) || profileContextMenu.contains(event.target)) return;
             closeProfileMenu();
+        });
+
+        // Fallback delegated listener: if for any reason the direct listener on the
+        // trigger wasn't attached (race or DOM modifications), handle clicks that
+        // originate on an element matching #profile-menu-trigger and toggle the menu.
+        document.addEventListener('click', (event) => {
+            try {
+                const clickedTrigger = event.target.closest && event.target.closest('#profile-menu-trigger');
+                if (clickedTrigger) {
+                    // Let the existing handler run (it will stop propagation). Call toggle as fallback.
+                    toggleProfileMenu(event);
+                }
+            } catch (e) {
+                // ignore
+            }
         });
 
         const deleteModal = document.getElementById('delete-confirm-modal');
