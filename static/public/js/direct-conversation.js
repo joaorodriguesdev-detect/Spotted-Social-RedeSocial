@@ -14,6 +14,44 @@
     let pinnedMessageId = null;
     let typingEmitTimeout = null;
     let markReadTimer = null;
+    // Track pending fetch controllers so we can abort long-running requests when
+    // the user navigates away (prevents infinite loading in some browsers/hosts).
+    const pendingFetchControllers = new Set();
+
+    function dcFetch(url, options) {
+        options = options || {};
+        const controller = new AbortController();
+        options.signal = controller.signal;
+        pendingFetchControllers.add(controller);
+        // Ensure the controller is removed when the fetch settles
+        return fetch(url, options).finally(function () {
+            pendingFetchControllers.delete(controller);
+        });
+    }
+
+    // Abort any pending requests when the user is unloading/navigating away.
+    window.addEventListener('beforeunload', function () {
+        pendingFetchControllers.forEach(function (c) { try { c.abort(); } catch (e) {} });
+        pendingFetchControllers.clear();
+    });
+
+    // If the user clicks a normal same-origin anchor, abort pending requests
+    // immediately (capture phase) so the browser can navigate without waiting
+    // for in-flight fetches to complete.
+    document.addEventListener('click', function (ev) {
+        try {
+            const a = ev.target.closest && ev.target.closest('a');
+            if (!a || !a.href) return;
+            const url = new URL(a.href, window.location.href);
+            if (url.origin !== window.location.origin) return;
+            // allow links that use target=_blank to proceed without aborting
+            if (a.target && a.target.toLowerCase() === '_blank') return;
+            pendingFetchControllers.forEach(function (c) { try { c.abort(); } catch (e) {} });
+            pendingFetchControllers.clear();
+        } catch (e) {
+            // ignore
+        }
+    }, true);
 
     // UI-only behavior: open conversation already positioned at latest message.
     scrollArea.scrollTop = scrollArea.scrollHeight;
@@ -194,7 +232,7 @@
 
     function requestPinMessage(nextMessageId) {
         if (!conversationId) return Promise.resolve();
-        return fetch('/api/direct/conversations/' + conversationId + '/pin', {
+        return dcFetch('/api/direct/conversations/' + conversationId + '/pin', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message_id: nextMessageId })
@@ -254,7 +292,7 @@
             window.clearTimeout(markReadTimer);
         }
         markReadTimer = window.setTimeout(function () {
-            fetch('/api/direct/conversations/' + conversationId + '/read', {
+            dcFetch('/api/direct/conversations/' + conversationId + '/read', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             }).catch(function () {
@@ -267,7 +305,7 @@
         if (!conversationId) return;
 
         function loadLatestMessages() {
-            return fetch('/api/direct/conversations/' + conversationId + '/messages')
+            return dcFetch('/api/direct/conversations/' + conversationId + '/messages')
             .then(function (response) { return response.ok ? response.json() : null; })
             .then(function (payload) {
                 if (!payload || !Array.isArray(payload.messages)) return;
@@ -286,7 +324,7 @@
 
         window.setInterval(function () {
             if (document.visibilityState !== 'visible') return;
-            fetch('/api/direct/conversations/' + conversationId + '/messages')
+            dcFetch('/api/direct/conversations/' + conversationId + '/messages')
                 .then(function (response) { return response.ok ? response.json() : null; })
                 .then(function (payload) {
                     if (!payload || !Array.isArray(payload.messages)) return;
@@ -820,14 +858,14 @@
 
         function removeMemberFromGroup(username) {
             if (!conversationId) return;
-            fetch('/api/direct/conversations/' + conversationId + '/members/' + encodeURIComponent(username), {
+            dcFetch('/api/direct/conversations/' + conversationId + '/members/' + encodeURIComponent(username), {
                 method: 'DELETE'
             });
         }
 
         function leaveGroup() {
             if (!conversationId) return;
-            fetch('/api/direct/conversations/' + conversationId + '/leave', {
+            dcFetch('/api/direct/conversations/' + conversationId + '/leave', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             }).then(function (response) {
@@ -877,7 +915,7 @@
 
         function loadMembersFromApi() {
             if (!conversationId) return;
-            fetch('/api/direct/conversations/' + conversationId + '/members')
+            dcFetch('/api/direct/conversations/' + conversationId + '/members')
                 .then(function (response) { return response.ok ? response.json() : null; })
                 .then(function (payload) {
                     if (!payload || !Array.isArray(payload.members)) return;
@@ -993,7 +1031,7 @@
                 toggleAdmin.addEventListener('click', function () {
                     if (!conversationId) return;
                     const nextIsAdmin = !adminMembers.has(username);
-                    fetch('/api/direct/conversations/' + conversationId + '/members/' + encodeURIComponent(username) + '/admin', {
+                    dcFetch('/api/direct/conversations/' + conversationId + '/members/' + encodeURIComponent(username) + '/admin', {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ is_admin: nextIsAdmin })
@@ -1045,7 +1083,7 @@
             const normalized = normalizeUsername(addMemberInput.value);
             if (!normalized) return;
             if (!conversationId) return;
-            fetch('/api/direct/conversations/' + conversationId + '/members', {
+            dcFetch('/api/direct/conversations/' + conversationId + '/members', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: normalized })
@@ -1058,7 +1096,7 @@
             const nextName = groupNameInput ? groupNameInput.value : '';
             if (!conversationId) return;
 
-            fetch('/api/direct/conversations/' + conversationId + '/group', {
+            dcFetch('/api/direct/conversations/' + conversationId + '/group', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1473,7 +1511,7 @@
                 const localContent = bubble.getAttribute('data-local-content') || bubble.getAttribute('data-reply-preview') || '';
                 if (!localContent) return;
                 // Attempt resend
-                fetch('/api/direct/conversations/' + conversationId + '/messages', {
+                dcFetch('/api/direct/conversations/' + conversationId + '/messages', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ content: localContent })
@@ -1537,7 +1575,7 @@
             const payload = {
                 content: messageText
             };
-            fetch('/api/direct/conversations/' + conversationId + '/messages', {
+            dcFetch('/api/direct/conversations/' + conversationId + '/messages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

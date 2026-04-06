@@ -111,13 +111,12 @@
             box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
         }
         /* When the menu is moved to document.body we mark it with data-__moved-to-body="1".
-           Ensure it uses viewport-fixed positioning and a very high z-index so it is
-           never clipped by ancestor stacking contexts. */
+           Use fixed positioning and very high z-index so it is not clipped by ancestor stacking contexts.
+           Do NOT force left/top in CSS — the script computes explicit left/top coordinates so the menu
+           can be placed precisely next to the trigger. */
         .profile-context-menu[data-__moved-to-body="1"] {
             position: fixed !important;
             z-index: 99999 !important;
-            left: auto !important;
-            top: auto !important;
         }
         .profile-menu-link { color: #0f172a; }
         .profile-menu-link:hover,
@@ -342,6 +341,28 @@
             profileContextMenu.style.bottom = '';
             // also clear any forced position (we may set 'fixed' when opening)
             profileContextMenu.style.position = '';
+            // If we previously moved the menu to document.body to avoid stacking
+            // context clipping, restore it to its original parent when closing so
+            // mobile/absolute anchoring keeps working.
+            try {
+                if (profileContextMenu.dataset && profileContextMenu.dataset.__movedToBody) {
+                    const origParent = profileContextMenu.__origParent;
+                    const origNext = profileContextMenu.__origNext;
+                    if (origParent) {
+                        if (origNext && origNext.parentNode === origParent) {
+                            origParent.insertBefore(profileContextMenu, origNext);
+                        } else {
+                            origParent.appendChild(profileContextMenu);
+                        }
+                    }
+                    // clean up temporary markers
+                    delete profileContextMenu.__origParent;
+                    delete profileContextMenu.__origNext;
+                    delete profileContextMenu.dataset.__movedToBody;
+                }
+            } catch (e) {
+                // ignore restore failures
+            }
             if (restoreFocus) {
                 profileMenuTrigger.focus();
             }
