@@ -20,6 +20,8 @@
   - `/criar_evento` creates an `Event` and mirrors it into the feed as a `Post` using `build_event_post_content(...)` which uses the marker `"📢 NOVO EVENTO:"`.
   - `/editar_evento` updates `Event` and attempts to `sync_event_feed_post(...)` to keep the mirrored feed post consistent.
 
+- Server-side static group configuration: `app.py` defines `GROUP_CHAT_PARTICIPANTS` and `GROUP_CHAT_ADMINS` dicts. When a conversation slug matches those entries, `ensure_group_conversation(...)` will create/sync the conversation and its members/admins at import/runtime. This enforces server-controlled membership for specific group slugs.
+
 ## Real-time / Direct Chat
 - Uses `Flask-SocketIO` for presence, typing, and message broadcast events. Socket handlers live in `app.py` and use session auth.
 - Conversations can be 1:1 (DM) or group (is_group flag). Group membership and admin flags are stored in `ConversationMember`.
@@ -35,6 +37,9 @@
   - `DATABASE_URL` — override DB connection (default `sqlite:///spotted.db`).
   - `SECRET_KEY` — session and security secret (default hardcoded fallback present in `app.py`).
   - `FEED_PAGE_SIZE` — controls page size; allowed values are `6`, `8`, `12` (other values fallback to `8`).
+
+  - `DIRECT_MAINTENANCE` — when set (`1`, `true`, `yes`, `on`) non-admin users are prevented from accessing Direct pages and `/api/direct` endpoints; admins keep access for testing.
+  - Uploads / limits: `app.py` sets `UPLOAD_FOLDER` (`static/uploads`) and `MAX_CONTENT_LENGTH` (16MB). Be aware uploads are saved directly and there is no extension/content-type whitelist in the current code.
 
 ## Project Conventions That Matter
 - Session contract used across templates/routes: `user_id`, `username`, `name`, `is_admin`, `profile_pic`.
@@ -59,7 +64,15 @@ These are items found during review that need attention before production use:
 
 - Rate limiting & brute-force protections: login and APIs do not implement rate limiting. Add a rate limiter (Flask-Limiter) to protect sensitive endpoints.
 
-- No automated tests found in repository root. Add unit/integration tests (pytest) for key flows (auth, posting, event creation, direct messages).
+- Ad-hoc migration / fix scripts present: `migrar.py` and `corrigir_vazios.py` are included in the repo to perform SQLite DDL/cleanup. Both reference a hardcoded `DB_PATH` (`/home/SpottedSocial/...`) and should be inspected/edited before running on your machine. Prefer using a disposable DB or proper migration tooling instead.
+
+- A basic end-to-end test exists at `tests/run_direct_all_read_test.py` which exercises the Direct "all read" flow using Flask's `test_client` and Flask-SocketIO's `test_client`. Run it from the repository root with:
+
+  ```powershell
+  python -u tests/run_direct_all_read_test.py
+  ```
+
+  Note: the script talks to the local SQLite DB (`instance/spotted.db`) and will create test users/conversations — back up or use a disposable DB when running.
 
 ## UX / Content Suggestions (minor)
 - Mutual-follow restriction message: server returns a Portuguese error when adding a group member if users are not following each other. The user-facing text can be improved. Suggested replacement (more friendly):
@@ -86,6 +99,14 @@ These are items found during review that need attention before production use:
   python -m py_compile app.py
   ```
 
+- Run the provided end-to-end Direct test (works against `instance/spotted.db`):
+
+  ```powershell
+  python -u tests/run_direct_all_read_test.py
+  ```
+
+- Migration helpers (ad-hoc): `migrar.py` and `corrigir_vazios.py` exist to apply DDL and fix nulls for SQLite. They contain a `DB_PATH` constant that points at `/home/SpottedSocial/...` by default - edit this path before running on your environment. Prefer running these against a copy of the DB.
+
 ## Recommended Immediate Improvements (actionable checklist)
 1. Replace hardcoded admin seeding with environment-driven value or document the default admin behavior clearly and rotate the password before production.
 2. Add DB migrations (Alembic / Flask-Migrate) and remove/replace runtime `ALTER TABLE` patterns.
@@ -101,6 +122,8 @@ These are items found during review that need attention before production use:
 - When changing event text format, update both event writer and any event parsing/render logic (feed mirror uses marker `NOVO EVENTO:`).
 - Keep route/template pairs in sync; this codebase is tightly coupled by context variables.
 - If moving/renaming public assets, update `url_for('public_files', filename=...)` references in templates.
+
+- Change safety: the ad-hoc scripts (`migrar.py`, `corrigir_vazios.py`) and the tests in `tests/` will modify the SQLite DB (`instance/spotted.db`). Always work on a copy or disposable DB and update hardcoded `DB_PATH` constants in those scripts before running.
 
 If you want, I can open a PR with a small set of changes: (a) update the mutual-follow error message in `app.py`, (b) add a minimal ALLOWED_EXTENSIONS check for uploads, and (c) add documentation to `README.md` describing env vars and the seeded admin note. Tell me which items you'd like implemented and I'll apply them.
 
