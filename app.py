@@ -1087,11 +1087,25 @@ def emit_presence_for_user(user, is_online):
         socketio.emit('direct:presence', payload, room=conversation_room_name(membership.conversation_id))
 
 
-def create_notification(user_id, sender_name, action_type, post_id=None, category='general'):
+def create_notification(user_id, sender_name, action_type, post_id=None, category='general', commit=True):
+    """Create a Notification and emit a realtime event.
+
+    When `commit` is False the function will add the object and flush so callers
+    can batch multiple notifications and commit once. Returns the Notification
+    instance on success or None on failure. Non-fatal: exceptions are swallowed
+    to avoid breaking callers.
+    """
     try:
         notif = Notification(user_id=user_id, sender_name=sender_name, action_type=action_type, post_id=post_id, category=category)
         db.session.add(notif)
-        db.session.commit()
+        # If caller requests batching, flush to populate `id` but don't commit yet.
+        if commit:
+            db.session.commit()
+        else:
+            # Flush ensures notif.id and other defaults (timestamp) are available
+            # for the realtime payload without committing the transaction.
+            db.session.flush()
+
         payload = {
             'id': notif.id,
             'user_id': notif.user_id,
@@ -1103,11 +1117,18 @@ def create_notification(user_id, sender_name, action_type, post_id=None, categor
             'timestamp': notif.timestamp.isoformat() if notif.timestamp else None
         }
         # Emit to the specific user's personal room
-        socketio.emit('notification:new', payload, room=f'user:{user_id}')
+        try:
+            socketio.emit('notification:new', payload, room=f'user:{user_id}')
+        except Exception:
+            # Don't fail the whole flow if emit fails
+            pass
         return notif
     except Exception:
         # Non-fatal: swallow errors to avoid breaking callers
-        db.session.rollback()
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         return None
 
 
@@ -1601,6 +1622,8 @@ def api_direct_send_message(conversation_id):
     if len(content) > 500:
         return jsonify({'error': 'mensagem muito longa'}), 400
 
+    import time
+    t0 = time.time()
     message = DirectChatMessage(conversation_id=conversation_id, sender_id=current_user_id, content=content)
     db.session.add(message)
     db.session.flush()
@@ -1611,16 +1634,69 @@ def api_direct_send_message(conversation_id):
         ConversationMember.conversation_id == conversation_id,
         ConversationMember.user_id != current_user_id
     ).all()
+
+    # Batch notifications to avoid commit per-recipient (performance improvement)
+    pending_notifs = []
     for recipient in recipients:
-        # create and emit realtime notification for each recipient
-        create_notification(user_id=recipient.user_id, sender_name=sender_label, action_type='enviou uma mensagem no DM', category='direct')
+        pending_notifs.append(Notification(
+            user_id=recipient.user_id,
+            sender_name=sender_label,
+            action_type='enviou uma mensagem no DM',
+            category='direct'
+        ))
+        db.session.add(pending_notifs[-1])
 
     sender_membership = get_membership(conversation_id, current_user_id)
     if sender_membership:
         sender_membership.last_read_message_id = message.id
-    db.session.commit()
+
+    db_commit_start = time.time()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Failed to commit direct message and notifications')
+        return jsonify({'error': 'falha ao enviar mensagem'}), 500
+    db_commit_end = time.time()
+
     serialized = serialize_direct_message(message, current_user_id)
-    socketio.emit('direct:message', serialize_direct_message_broadcast(message), room=conversation_room_name(conversation_id))
+
+    # Emit message and notifications asynchronously so the request doesn't block on socket I/O
+    try:
+        # Broadcast message to conversation room in background
+        def _emit_message(payload, room):
+            try:
+                socketio.emit('direct:message', payload, room=room)
+            except Exception:
+                app.logger.exception('Failed to emit direct:message')
+
+        socketio.start_background_task(_emit_message, serialize_direct_message_broadcast(message), conversation_room_name(conversation_id))
+
+        # Emit notification:new for each created notification in background
+        def _emit_notifications(notifs):
+            for n in notifs:
+                try:
+                    payload = {
+                        'id': n.id,
+                        'user_id': n.user_id,
+                        'sender_name': n.sender_name,
+                        'action_type': n.action_type,
+                        'post_id': n.post_id,
+                        'is_read': n.is_read,
+                        'category': n.category,
+                        'timestamp': n.timestamp.isoformat() if n.timestamp else None
+                    }
+                    socketio.emit('notification:new', payload, room=f'user:{n.user_id}')
+                except Exception:
+                    app.logger.exception('Failed to emit notification for user %s', getattr(n, 'user_id', None))
+
+        socketio.start_background_task(_emit_notifications, pending_notifs)
+    except Exception:
+        app.logger.exception('Failed to start background emit tasks')
+
+    socketio_emit_end = time.time()
+    t1 = time.time()
+    app.logger.info(f"[PERF] POST /api/direct/conversations/{conversation_id}/messages total: {(t1-t0)*1000:.1f}ms | commit: {(db_commit_end-db_commit_start)*1000:.1f}ms | socketio-bg: {(socketio_emit_end-db_commit_end)*1000:.1f}ms")
     return jsonify({'message': serialized}), 201
 
 
@@ -1769,12 +1845,20 @@ def api_direct_leave_group(conversation_id):
 
     db.session.commit()
     emit_group_members_updated(conversation_id)
-    # Notify remaining members that this user left
+    # Notify remaining members that this user left (batch notifications)
     try:
         leaving_user = User.query.get(current_user_id)
         for m in other_members:
-            create_notification(user_id=m.user_id, sender_name=leaving_user.username if leaving_user else '', action_type='saiu do grupo', category='group')
+            # Add notifications to the session without committing each time
+            create_notification(user_id=m.user_id, sender_name=leaving_user.username if leaving_user else '', action_type='saiu do grupo', category='group', commit=False)
+        # commit the pending notifications
+        db.session.commit()
     except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        # Non-fatal: ignore notification failures
         pass
     return jsonify({'ok': True, 'redirect_url': url_for('direct')})
 
@@ -1822,6 +1906,8 @@ def direct_conversation(username):
         flash('Conta administradora do sistema nao possui acesso ao Direct.')
         return redirect(url_for('feed'))
 
+    import time
+    t0 = time.time()
     clean_username = (username or '').strip().lower()
     if not clean_username:
         return redirect(url_for('direct'))
@@ -1882,7 +1968,7 @@ def direct_conversation(username):
         })
 
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
-    return render_template(
+    resp = render_template(
         'direct_conversation.html',
         unread_count=unread,
         conversation_id=conversation.id,
@@ -1895,7 +1981,9 @@ def direct_conversation(username):
         participant_usernames=participant_usernames,
         participant_cards=participant_cards
     )
-
+    t1 = time.time()
+    print(f"[PERF] /direct/conversa/{{username}} total: {{(t1-t0)*1000:.1f}}ms")
+    return resp
 
 @socketio.on('connect')
 def handle_socket_connect():

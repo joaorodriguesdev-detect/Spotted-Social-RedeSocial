@@ -104,3 +104,14 @@ These are items found during review that need attention before production use:
 
 If you want, I can open a PR with a small set of changes: (a) update the mutual-follow error message in `app.py`, (b) add a minimal ALLOWED_EXTENSIONS check for uploads, and (c) add documentation to `README.md` describing env vars and the seeded admin note. Tell me which items you'd like implemented and I'll apply them.
 
+## README and repository documentation
+
+I added recommendations for a small README for developer onboarding. A `README.md` should include:
+
+- Project description and quick start (how to run locally with `python app.py`).
+- Important environment variables (`DATABASE_URL`, `SECRET_KEY`, `FEED_PAGE_SIZE`) and recommended defaults.
+- Note about the seeded admin user: at import-time the app may create an `admin` account with a hardcoded password (present in `app.py`). This is convenient for local testing but MUST be changed or disabled in any production deployment. Rotate the password and/or read it from `ADMIN_PASSWORD` environment variable.
+- Security checklist: allowed file extensions for uploads, CSRF protection, session cookie hardening, SocketIO CORS restrictions, and rate limiting.
+
+I have created a `README.md` in the repository root with a concise developer quick-start and security notes. Use it as the canonical onboarding doc and expand as you add CI/migrations/tests.
+

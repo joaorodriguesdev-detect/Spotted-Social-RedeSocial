@@ -3,5 +3,3 @@ instance/
 tests
 *.pyc
 .env
-AGENTS.md
-requirements.txt

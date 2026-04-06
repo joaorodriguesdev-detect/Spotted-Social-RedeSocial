@@ -306,6 +306,23 @@
         });
         socket.on('direct:message', function (payload) {
             if (!payload || payload.conversation_id !== conversationId) return;
+            // If this is a message we just sent optimistically, remove the optimistic placeholder
+            try {
+                const isMine = Number(payload.sender_id) === Number(currentUserId);
+                if (isMine) {
+                    // match placeholder by local content (best-effort)
+                    const placeholder = scrollArea.querySelector('.conversation-bubble[data-local-content="' + (payload.content || '').replace(/"/g, '\\"') + '"]');
+                    if (placeholder) {
+                        const row = placeholder.closest('.conversation-row');
+                        if (row) row.remove();
+                        const tempId = placeholder.getAttribute('data-message-id');
+                        if (tempId) renderedMessageIds.delete(String(tempId));
+                    }
+                }
+            } catch (e) {
+                // ignore matching errors
+            }
+
             appendRealtimeMessage(payload);
             const isIncoming = Number(payload.sender_id) !== Number(currentUserId);
             if (isIncoming && document.visibilityState === 'visible') {
@@ -1432,6 +1449,63 @@
             return { row: row, status: status };
         }
 
+        // Mark an outgoing bubble as failed and attach a retry button
+        function markOutgoingAsFailed(bubble) {
+            if (!bubble) return;
+            bubble.classList.add('conversation-bubble--error');
+            const status = bubble.querySelector('.conversation-status');
+            if (status) status.textContent = (status.textContent || '').replace('enviando', 'falha');
+
+            // If retry button already exists, skip
+            if (bubble.querySelector('.conversation-retry-btn')) return;
+
+            const retry = document.createElement('button');
+            retry.type = 'button';
+            retry.className = 'conversation-retry-btn';
+            retry.setAttribute('aria-label', 'Tentar novamente');
+            retry.textContent = 'Reenviar';
+
+            retry.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                // disable button to avoid double clicks
+                retry.disabled = true;
+                const localContent = bubble.getAttribute('data-local-content') || bubble.getAttribute('data-reply-preview') || '';
+                if (!localContent) return;
+                // Attempt resend
+                fetch('/api/direct/conversations/' + conversationId + '/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: localContent })
+                }).then(function (response) {
+                    return response.ok ? response.json() : null;
+                }).then(function (data) {
+                    // On success, remove the optimistic bubble and append confirmed message or let socket handle it
+                    try {
+                        const row = bubble.closest('.conversation-row');
+                        if (row) row.remove();
+                        const tempId = bubble.getAttribute('data-message-id');
+                        if (tempId) renderedMessageIds.delete(String(tempId));
+                    } catch (e) {
+                        // ignore
+                    }
+                    if (data && data.message && !(socket && socket.connected)) {
+                        appendRealtimeMessage(data.message);
+                    }
+                }).catch(function () {
+                    // re-enable retry to allow further attempts
+                    retry.disabled = false;
+                });
+            });
+
+            // Place retry button next to status
+            if (status && status.parentNode) {
+                status.parentNode.appendChild(retry);
+            } else {
+                bubble.appendChild(retry);
+            }
+        }
+
         function scheduleStatusProgress(statusNode) {
             window.setTimeout(function () {
                 statusNode.textContent = statusNode.textContent.replace('enviando', 'entregue');
@@ -1446,6 +1520,20 @@
             const messageText = messageInput.value.trim();
             if (!messageText) return;
 
+            // Optimistic UI: render outgoing row immediately so user sees instant feedback
+            const outgoing = createOutgoingMessageRow(messageText, activeReplyContext);
+            const outgoingRow = outgoing.row;
+            const outgoingStatus = outgoing.status;
+            const bubble = outgoingRow.querySelector('.conversation-bubble');
+            const localId = bubble.getAttribute('data-message-id');
+            // tag with local content so we can match and remove it when server confirms
+            bubble.setAttribute('data-local-content', messageText);
+            scrollArea.appendChild(outgoingRow);
+            scrollArea.scrollTop = scrollArea.scrollHeight;
+            scheduleStatusProgress(outgoingStatus);
+            // prevent duplicate rendering by marking temporary id as rendered
+            renderedMessageIds.add(String(localId));
+
             const payload = {
                 content: messageText
             };
@@ -1456,12 +1544,31 @@
             }).then(function (response) {
                 return response.ok ? response.json() : null;
             }).then(function (data) {
-                if (!data || !data.message) return;
+                if (!data || !data.message) {
+                    // treat as failure
+                    try { markOutgoingAsFailed(bubble); } catch (e) { /* ignore */ }
+                    return;
+                }
+                // If socket is not connected, append the confirmed message directly and remove optimistic placeholder
+                const incoming = data.message;
                 if (!socket || !socket.connected) {
-                    appendRealtimeMessage(data.message);
+                    // remove optimistic placeholder matching the content if still present
+                    try {
+                        const placeholder = scrollArea.querySelector('.conversation-bubble[data-local-content="' + incoming.content.replace(/"/g, '\\"') + '"]');
+                        if (placeholder) {
+                            const row = placeholder.closest('.conversation-row');
+                            if (row) row.remove();
+                            const tempId = placeholder.getAttribute('data-message-id');
+                            if (tempId) renderedMessageIds.delete(String(tempId));
+                        }
+                    } catch (e) {
+                        // ignore matching errors
+                    }
+                    appendRealtimeMessage(incoming);
                 }
             }).catch(function () {
-                // Keep UX stable if request fails.
+                // Mark the optimistic row as failed and show retry UI
+                try { markOutgoingAsFailed(bubble); } catch (e) { /* ignore */ }
             });
 
             emitTyping(false);

@@ -19,6 +19,13 @@
         .twitter-border { border-color: #dbe2f0; }
         .search-bg { background-color: #e9efff; color: #0f172a; }
         .bottom-nav { background-color: rgba(255, 255, 255, 0.94); border-color: #dbe2f0; }
+        /* Safety: ensure bottom chrome remains visible above conversation shell/modal styles
+           Some page-specific CSS (direct/conversation) introduces fixed/stacked elements
+           that can accidentally overlap the global bottom chrome. Force a higher z-index
+           and allow pointer events so the profile menu and logout remain accessible. */
+        .bottom-nav { z-index: 1100 !important; pointer-events: auto !important; }
+        #profile-menu-trigger { z-index: 1110; }
+        #profile-context-menu { z-index: 1111; }
         .text-main { color: #0f172a; }
         .text-secondary { color: #5b6b82; }
 
@@ -316,8 +323,16 @@
 
         function closeProfileMenu(restoreFocus = false) {
             if (!profileContextMenu || !profileMenuTrigger) return;
+            console.debug('[profile-menu] closeProfileMenu called');
             profileContextMenu.classList.add('hidden');
             profileMenuTrigger.setAttribute('aria-expanded', 'false');
+            // clear any inline positioning overrides so mobile layout keeps working
+            profileContextMenu.style.left = '';
+            profileContextMenu.style.top = '';
+            profileContextMenu.style.right = '';
+            profileContextMenu.style.bottom = '';
+            // also clear any forced position (we may set 'fixed' when opening)
+            profileContextMenu.style.position = '';
             if (restoreFocus) {
                 profileMenuTrigger.focus();
             }
@@ -325,8 +340,57 @@
 
         function openProfileMenu(focusIndex = null) {
             if (!profileContextMenu || !profileMenuTrigger) return;
+            console.debug('[profile-menu] openProfileMenu called');
+            // Ensure the menu is attached to <body> to avoid stacking/positioning issues
+            try {
+                if (!profileContextMenu.dataset.__movedToBody) {
+                    profileContextMenu.__origParent = profileContextMenu.parentElement;
+                    profileContextMenu.__origNext = profileContextMenu.nextElementSibling;
+                    document.body.appendChild(profileContextMenu);
+                    profileContextMenu.dataset.__movedToBody = '1';
+                    console.debug('[profile-menu] moved menu to body to avoid ancestor stacking contexts');
+                }
+            } catch (e) {
+                console.warn('[profile-menu] failed to move menu to body', e);
+            }
             profileContextMenu.classList.remove('hidden');
             profileMenuTrigger.setAttribute('aria-expanded', 'true');
+
+            // Position menu smartly on wider viewports (desktop): open above the avatar and align to its right edge.
+            try {
+                if (window.innerWidth > 640) {
+                    // When using viewport coordinates, ensure the menu is positioned relative to the
+                    // viewport (not the nearest positioned ancestor). Some layouts add `position: relative`
+                    // to the bottom chrome which would break getBoundingClientRect()-based placement.
+                    profileContextMenu.style.position = 'fixed';
+                    // Remove bottom/right anchors so we can measure natural size
+                    profileContextMenu.style.right = 'auto';
+                    profileContextMenu.style.bottom = 'auto';
+                    const triggerRect = profileMenuTrigger.getBoundingClientRect();
+                    const menuRect = profileContextMenu.getBoundingClientRect();
+                    // Align right edge of menu to trigger's right edge, shift into viewport if needed
+                    let left = triggerRect.right - menuRect.width;
+                    left = Math.max(8, Math.min(left, window.innerWidth - menuRect.width - 8));
+                    let top = triggerRect.top - menuRect.height - 8;
+                    if (top < 8) {
+                        // fallback to placing below trigger if not enough space above
+                        top = triggerRect.bottom + 8;
+                    }
+                    profileContextMenu.style.left = left + 'px';
+                    profileContextMenu.style.top = top + 'px';
+                } else {
+                    // Mobile: restore default bottom/right positioning
+                    profileContextMenu.style.left = '';
+                    profileContextMenu.style.top = '';
+                    profileContextMenu.style.right = '';
+                    profileContextMenu.style.bottom = '';
+                    // ensure we go back to absolute positioning used by CSS so it anchors to the bottom nav
+                    profileContextMenu.style.position = '';
+                }
+            } catch (e) {
+                // ignore positioning errors and fall back to CSS defaults
+            }
+
             if (focusIndex !== null && profileMenuItems[focusIndex]) {
                 profileMenuItems[focusIndex].focus();
             }
@@ -345,6 +409,7 @@
                 event.preventDefault();
                 event.stopPropagation();
             }
+            console.debug('[profile-menu] toggleProfileMenu');
             const isHidden = profileContextMenu.classList.contains('hidden');
             if (isHidden) {
                 openProfileMenu();
@@ -354,6 +419,7 @@
         }
 
         if (profileMenuTrigger) {
+            console.debug('[profile-menu] attaching listeners to trigger');
             profileMenuTrigger.addEventListener('click', toggleProfileMenu);
             profileMenuTrigger.addEventListener('keydown', (event) => {
                 if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
@@ -369,6 +435,7 @@
         }
 
         if (profileContextMenu) {
+            console.debug('[profile-menu] profileContextMenu exists; attaching listeners');
             profileContextMenu.addEventListener('keydown', (event) => {
                 if (!profileMenuItems.length) return;
                 const currentIndex = profileMenuItems.indexOf(document.activeElement);

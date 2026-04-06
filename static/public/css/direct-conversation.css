@@ -575,7 +575,7 @@
 }
 
 .conversation-sender-label {
-    margin-bottom: 0.22rem;
+    margin-bottom: 0.18rem;
     font-size: 11px;
     font-weight: 800;
     color: #4f46e5;
@@ -592,33 +592,63 @@
 }
 
 .conversation-bubble {
-    max-width: 80%;
-    min-width: 118px;
-    padding: 0.7rem 0.82rem;
-    border-radius: 1.08rem;
-    border: 1px solid #dbe2f0;
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-    line-height: 1.42;
-    /* Polimento: sombra mais suave, borda mais arredondada, padding maior */
-    border-radius: 1.35rem;
-    box-shadow: 0 2px 12px 0 rgba(91,92,241,0.07), 0 1.5px 6px 0 rgba(15,23,42,0.06);
-    padding: 0.92rem 1.25rem;
+    max-width: 82%;
+    min-width: 90px;
+    /* slightly tighter padding so long lines wrap more naturally */
+    padding: 0.48rem 0.8rem;
+    margin: 0.32rem 0;
+    border-radius: 1.05rem;
+    border: 1px solid #e6edf7;
+    line-height: 1.40;
+    transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.2, 1), box-shadow 0.18s ease;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+/* Error state for outgoing messages that failed to send */
+.conversation-bubble--error {
+    position: relative;
+    outline: 2px solid rgba(220, 38, 38, 0.12);
+    box-shadow: 0 6px 18px rgba(220, 38, 38, 0.06);
+    transform: translateY(-1px);
+}
+
+.conversation-error-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: 0.5rem;
+    color: #fff;
+    font-size: 12px;
+    opacity: 0.95;
+}
+
+.conversation-retry-btn {
+    border: 0;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    padding: 0.18rem 0.36rem;
+    border-radius: 0.45rem;
+    font-size: 12px;
+    font-weight: 700;
+    margin-left: 0.45rem;
+    cursor: pointer;
+}
+
+.conversation-bubble--error .conversation-status {
+    color: #fee2e2;
 }
 
 .conversation-bubble-in {
-    background: #ffffff;
-    border-top-left-radius: 0.35rem;
-    /* Polimento: leve gradiente para bolha recebida */
-    background: linear-gradient(120deg, #fff 80%, #f4f6fb 100%);
+    background: linear-gradient(120deg, #ffffff 82%, #f7f9ff 100%);
+    border-top-left-radius: 0.36rem;
+    border-color: #e6edf7;
 }
 
 .conversation-bubble-out {
-    background: linear-gradient(120deg, var(--conversation-accent) 80%, var(--conversation-accent-strong) 100%);
+    background: linear-gradient(120deg, var(--conversation-accent) 82%, var(--conversation-accent-strong) 100%);
     border-color: var(--conversation-accent-strong);
-    border-top-right-radius: 0.35rem;
-    /* Polimento: gradiente mais marcante para bolha enviada */
-    background: linear-gradient(120deg, var(--conversation-accent) 80%, var(--conversation-accent-strong) 100%);
-    box-shadow: 0 2px 16px 0 rgba(91,92,241,0.13), 0 1.5px 8px 0 rgba(15,23,42,0.09);
+    border-top-right-radius: 0.36rem;
+    box-shadow: 0 6px 20px rgba(91,92,241,0.10), 0 1.5px 8px rgba(15,23,42,0.06);
 }
 
 .conversation-bubble--pinned {
@@ -630,6 +660,8 @@
     border-style: dashed;
     box-shadow: none;
     max-width: 95%;
+    padding: 0.64rem 0.8rem;
+    border-radius: 1rem;
 }
 
 .conversation-bubble-action {
@@ -641,7 +673,8 @@
     padding: 0;
     display: inline-flex;
     align-items: center;
-    line-height: 1.1;
+    line-height: 1.18;
+    margin-top: 0.18rem;
 }
 
 .conversation-bubble-action:hover {
@@ -659,10 +692,10 @@
     font-size: 12px;
     font-weight: 700;
     padding: 0;
-    margin-left: 0.55rem;
+    margin-left: 0.45rem;
     display: inline-flex;
     align-items: center;
-    opacity: 0.9;
+    opacity: 0.92;
 }
 
 .conversation-bubble-pin:hover {
@@ -687,8 +720,9 @@
 }
 
 .conversation-status {
-    opacity: 0.9;
+    opacity: 0.95;
     font-weight: 600;
+    font-size: 12px;
 }
 
 .conversation-reactions {
