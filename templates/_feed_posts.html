@@ -89,8 +89,13 @@
             {% endif %}
 
             <div class="flex justify-start space-x-8 mt-3 text-secondary">
-                <a href="/like/{{ post.id }}" onclick="ajaxLike(event, this)" class="interactive-control flex items-center group hover:text-red-500 transition-colors">
-                    <i class="fa-regular fa-heart mr-1 text-[15px]"></i>
+                {# Like button acts like a checkbox: filled heart when liked by current user #}
+                <a href="/like/{{ post.id }}" onclick="ajaxLike(event, this)" class="interactive-control flex items-center group transition-colors {% if post.liked_by_me %}text-red-500{% endif %}">
+                    {% if post.liked_by_me %}
+                        <i class="fa-solid fa-heart mr-1 text-[15px]"></i>
+                    {% else %}
+                        <i class="fa-regular fa-heart mr-1 text-[15px]"></i>
+                    {% endif %}
                     <span class="text-[12px] like-count">{{ post.likes }}</span>
                 </a>
                 <div onclick="document.getElementById('in-{{post.id}}').focus()" class="interactive-control flex items-center group hover:text-indigo-500 cursor-pointer transition-colors">
@@ -109,6 +114,9 @@
                             <a href="/perfil/{{ comment.username }}" class="hover:underline">
                                 <span class="font-bold text-main">{{ comment.username }}</span>
                             </a>
+                            {% if is_verified_platform_account(comment.username) %}
+                                <i class="fa-solid fa-circle-check text-blue-500 text-[11px] ml-1" title="Conta verificada"></i>
+                            {% endif %}
                         {% endif %}
                         <span class="text-main ml-1">{{ comment.content | mention | safe }}</span>
                         <span class="text-secondary text-[11px] ml-1">&middot; {{ comment.timestamp | post_time }}</span>
@@ -128,6 +136,9 @@
                                 <a href="/perfil/{{ comment.username }}" class="hover:underline">
                                     <span class="font-bold text-main">{{ comment.username }}</span>
                                 </a>
+                                {% if is_verified_platform_account(comment.username) %}
+                                    <i class="fa-solid fa-circle-check text-blue-500 text-[11px] ml-1" title="Conta verificada"></i>
+                                {% endif %}
                             {% endif %}
                             <span class="text-main ml-1">{{ comment.content | mention | safe }}</span>
                             <span class="text-secondary text-[11px] ml-1">&middot; {{ comment.timestamp | post_time }}</span>

@@ -237,11 +237,18 @@
 
             <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
+            <a href="/direct" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}">
+                <i class="fa-regular fa-paper-plane"></i>
+                {% if direct_unread_count and direct_unread_count > 0 %}
+                    <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
+                {% endif %}
+                {% if current_path.startswith('/direct') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}
+            </a>
+
             <a href="/notificacoes" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/notificacoes') %}text-indigo-500{% else %}text-main{% endif %}">
                 <i class="fa-regular fa-bell"></i>
-                {% if unread_count and unread_count > 0 %}
-                    <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ unread_count }}</span>
-                {% endif %}
+                <!-- Always render the badge element so client-side JS can update it in realtime. Hidden when count is zero. -->
+                <span id="notif-unread-badge" class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold" {% if not (unread_count and unread_count > 0) %}style="display:none"{% endif %}>{{ unread_count if unread_count and unread_count > 0 else '' }}</span>
                 {% if current_path.startswith('/notificacoes') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}
             </a>
 
@@ -450,6 +457,65 @@
             event.preventDefault();
             openDeleteModal(trigger.getAttribute('href'), trigger.getAttribute('data-confirm-message'));
         });
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Notification realtime client: join user's personal room is handled server-side using session in the socket connect handler.
+        window.__NOTIF_STATE__ = { unread_count: {{ unread_count|default(0) }} };
+
+        try {
+            const socket = io();
+            socket.on('connect', () => {
+                // connected
+            });
+
+            socket.on('notification:new', (payload) => {
+                try {
+                    const badge = document.getElementById('notif-unread-badge');
+                    if (!badge) return;
+                    // Only increment if the notification is unread
+                    const isRead = !!payload.is_read;
+                    let current = parseInt(badge.textContent) || 0;
+                    if (!isRead) current = current + 1;
+                    if (current <= 0) {
+                        badge.style.display = 'none';
+                        badge.textContent = '';
+                    } else {
+                        badge.style.display = 'flex';
+                        badge.textContent = current > 99 ? '99+' : String(current);
+                    }
+                    // Optionally show a small visual hint (console for now)
+                    // Developers can replace with a toast / in-page insertion later.
+                    console.log('Nova notificacao recebida', payload);
+                } catch (e) {
+                    console.error('Failed to handle notification:new', e);
+                }
+            });
+
+            // When server notifies that notifications were marked as read, update badge accordingly
+            socket.on('notification:marked-read', (payload) => {
+                try {
+                    const badge = document.getElementById('notif-unread-badge');
+                    if (!badge) return;
+                    // If payload contains unread_count use it, else decrement by 1
+                    if (typeof payload.unread_count === 'number') {
+                        const c = payload.unread_count;
+                        if (c <= 0) {
+                            badge.style.display = 'none'; badge.textContent = '';
+                        } else { badge.style.display = 'flex'; badge.textContent = c > 99 ? '99+' : String(c); }
+                        return;
+                    }
+                    let current = parseInt(badge.textContent) || 0;
+                    current = Math.max(0, current - 1);
+                    if (current <= 0) { badge.style.display = 'none'; badge.textContent = ''; } else { badge.style.display = 'flex'; badge.textContent = current > 99 ? '99+' : String(current); }
+                } catch (e) {
+                    console.error('Failed to handle notification:marked-read', e);
+                }
+            });
+        } catch (e) {
+            // socket.io client may not be available in some contexts; fail silently
+            console.warn('Realtime notifications disabled:', e);
+        }
     </script>
     {% block scripts %}{% endblock %}
 </body>

@@ -50,11 +50,15 @@
                     {% if me and me.id == user.id %}
                         <button onclick="toggleModal()" class="interactive-control bg-[#4f46e5] hover:bg-[#4338ca] text-white px-6 py-1.5 rounded-xl text-xs font-bold transition mt-2 md:mt-0">Editar perfil</button>
                     {% elif me and me.id != user.id and not user.is_admin %}
-                        <a href="/seguir/{{ user.username }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg mt-2 md:mt-0">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
+                        <div class="flex items-center gap-2 mt-2 md:mt-0">
+                            <a href="{{ url_for('seguir', username=user.username) }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
+                            <a href="{{ url_for('direct_conversation', username=user.username) }}" class="interactive-control border twitter-border text-main px-6 py-1.5 rounded-xl text-xs font-bold">Enviar mensagem</a>
+                        </div>
                     {% endif %}
                 </div>
                 <div class="mb-6">
                     <p class="font-bold text-sm text-secondary">@{{ user.username }}</p>
+                    {% if user.created_at %}<p class="text-xs font-semibold text-secondary mt-2 mb-1">Entrou em {{ user.created_at|joined_month_year }}</p>{% endif %}
                     {% if user.university %}<p class="text-xs font-black text-indigo-600 uppercase mt-2 mb-2 tracking-widest flex items-center justify-center md:justify-start"><i class="fa-solid fa-graduation-cap mr-2"></i> {{ user.university }}</p>{% endif %}
                     <p class="text-sm whitespace-pre-wrap break-words leading-relaxed mt-4">{% if user.bio %}{{ user.bio }}{% else %}Sem biografia.{% endif %}</p>
                 </div>

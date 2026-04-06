@@ -1,5 +1,6 @@
 __pycache__/
 instance/
+tests
 *.pyc
 .env
 AGENTS.md

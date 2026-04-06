@@ -1,8 +1,68 @@
 import sqlite3
 import os
 
-# Caminho exato do seu banco de dados
 DB_PATH = '/home/SpottedSocial/spottedsocial/instance/spotted.db'
+
+
+def run_ddl(cursor, command):
+    try:
+        cursor.execute(command)
+        print(f"SUCESSO: {command.splitlines()[0]}")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e).lower():
+            print("PULADO: Coluna ja existe.")
+        else:
+            print(f"AVISO: {e}")
+
+
+def create_direct_tables(cursor):
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS conversation (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug VARCHAR(80) UNIQUE,
+            title VARCHAR(80),
+            is_group BOOLEAN NOT NULL DEFAULT 0,
+            group_photo VARCHAR(200),
+            created_at DATETIME
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS conversation_member (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            is_admin BOOLEAN NOT NULL DEFAULT 0,
+            joined_at DATETIME,
+            UNIQUE(conversation_id, user_id),
+            FOREIGN KEY(conversation_id) REFERENCES conversation(id),
+            FOREIGN KEY(user_id) REFERENCES user(id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS direct_chat_message (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            sender_id INTEGER NOT NULL,
+            content VARCHAR(500) NOT NULL,
+            media_url VARCHAR(200),
+            created_at DATETIME,
+            FOREIGN KEY(conversation_id) REFERENCES conversation(id),
+            FOREIGN KEY(sender_id) REFERENCES user(id)
+        )
+    ''')
+
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_conversation_member_user ON conversation_member(user_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_direct_chat_message_conv ON direct_chat_message(conversation_id, id DESC)')
+    try:
+        cursor.execute('ALTER TABLE conversation_member ADD COLUMN last_read_message_id INTEGER')
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute('ALTER TABLE conversation ADD COLUMN pinned_message_id INTEGER')
+    except sqlite3.OperationalError:
+        pass
 
 def migrate():
     print(f"--- Iniciando Migração no Banco: {DB_PATH} ---")
@@ -24,15 +84,8 @@ def migrate():
         ]
 
         for cmd in commands:
-            try:
-                cursor.execute(cmd)
-                conn.commit()
-                print(f"SUCESSO: {cmd}")
-            except sqlite3.OperationalError as e:
-                if "duplicate column name" in str(e).lower():
-                    print(f"PULADO: Coluna já existe.")
-                else:
-                    print(f"AVISO: {e}")
+            run_ddl(cursor, cmd)
+        conn.commit()
 
         # 2. Corrigir usuários antigos (preencher Nome e Universidade vazios)
         print("Limpando 'bugs' de usuários antigos...")
@@ -57,6 +110,11 @@ def migrate():
         ''')
         conn.commit()
         print("SUCESSO: Tabela de eventos pronta.")
+
+        # 4. Criar tabelas do novo Direct/Grupo
+        create_direct_tables(cursor)
+        conn.commit()
+        print("SUCESSO: Tabelas do Direct prontas.")
 
         conn.close()
         print("\n--- TUDO PRONTO! MIGRACAO FINALIZADA ---")

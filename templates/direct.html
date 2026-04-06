@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}DM | Spotted{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('public_files', filename='css/direct.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="direct-shell max-w-[600px] mx-auto min-h-screen pb-24" data-show-preview="false">
+    <div class="direct-header px-4 py-3 border-b twitter-border flex items-center justify-between">
+        <div>
+            <h2 class="text-main font-black text-lg leading-tight">DM</h2>
+            <p id="direct-conversations-count" class="text-secondary text-[11px] mt-0.5">{{ conversations|length }} conversas</p>
+        </div>
+        <button id="direct-new-message-trigger" type="button" class="direct-compose-btn interactive-control h-9 rounded-full border twitter-border text-main px-3 text-xs font-bold inline-flex items-center gap-1.5" aria-label="Nova mensagem">
+            <i class="fa-regular fa-pen-to-square"></i>
+            Nova
+        </button>
+    </div>
+
+    <div class="direct-search-area px-4 py-3 border-b twitter-border">
+        <form id="direct-search-form" method="GET" action="{{ url_for('direct') }}" class="relative">
+            <input id="direct-filter-input" type="hidden" name="filter" value="{{ current_filter or 'all' }}">
+            <label for="direct-search-input" class="sr-only">Buscar conversa</label>
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-xs"></i>
+            <input id="direct-search-input" name="q" value="{{ search_query or '' }}" type="text" class="form-field w-full rounded-full py-2 pl-9 pr-3 text-sm" placeholder="Buscar conversa">
+        </form>
+        <div class="direct-filters mt-3 flex items-center gap-2">
+            <a href="{{ url_for('direct', filter='all', q=search_query or '') }}" data-filter="all" class="dm-pill px-3 py-1.5 rounded-full text-xs font-bold {{ 'dm-pill-active' if (current_filter or 'all') == 'all' else 'text-main' }}">Todas</a>
+            <a href="{{ url_for('direct', filter='unread', q=search_query or '') }}" data-filter="unread" class="dm-pill px-3 py-1.5 rounded-full text-xs font-bold {{ 'dm-pill-active' if (current_filter or 'all') == 'unread' else 'text-main' }}">Nao lidas</a>
+        </div>
+    </div>
+
+    <div class="px-4 pt-3">
+        <p class="text-secondary text-[11px] font-bold uppercase tracking-wide">Conversas recentes</p>
+    </div>
+
+    <div id="direct-list" class="direct-list px-2 py-2">
+        {% if conversations %}
+            {% for convo in conversations %}
+            <a href="{{ url_for('direct_conversation', username=convo.direct_key) }}" class="dm-card-link block no-underline">
+                <div class="dm-card rounded-xl p-3 mb-2">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <div class="dm-avatar w-11 h-11 rounded-full bg-indigo-600/90 text-white flex items-center justify-center font-bold overflow-hidden">
+                                {% if convo.avatar_pic %}
+                                <img src="{{ url_for('static', filename='uploads/' + convo.avatar_pic) }}" class="w-full h-full object-cover" alt="Avatar da conversa {{ convo.title }}">
+                                {% else %}
+                                {{ convo.avatar_text }}
+                                {% endif %}
+                            </div>
+                            <span class="dm-online-dot dm-status-dot dm-status-dot--offline absolute -right-0.5 -bottom-0.5"></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-main font-bold text-sm truncate">
+                                    {% if convo.is_group %}
+                                    Grupo: {{ convo.title }}
+                                    {% else %}
+                                    {{ convo.title }}
+                                    {% endif %}
+                                </p>
+                                <div class="flex items-center gap-2">
+                                    {% if convo.unread_count and convo.unread_count > 0 %}
+                                    <span class="dm-unread-badge">{{ convo.unread_count if convo.unread_count < 100 else '99+' }}</span>
+                                    {% endif %}
+                                    <span class="text-secondary text-[11px]">{{ convo.time|post_time if convo.time else '' }}</span>
+                                </div>
+                            </div>
+                            <p class="text-secondary text-xs truncate">{{ convo.preview }}</p>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        {% else %}
+            <div class="dm-empty-card rounded-2xl p-6 text-center text-secondary text-sm mx-2">
+                Nenhuma conversa ativa por enquanto.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div id="direct-new-modal" class="fixed inset-0 z-[70] hidden" aria-hidden="true">
+    <div id="direct-new-modal-backdrop" class="absolute inset-0 bg-black/55"></div>
+    <div class="relative h-full w-full flex items-start justify-center p-4 sm:pt-16">
+        <div class="direct-modal-surface w-full max-w-md rounded-2xl border twitter-border shadow-xl">
+            <div class="px-4 py-3 border-b twitter-border flex items-center justify-between gap-3">
+                <h3 class="text-main font-bold text-base">Nova mensagem</h3>
+                <div class="flex items-center gap-2">
+                    <button id="direct-create-group-toggle" type="button" class="interactive-control h-8 rounded-full border twitter-border text-main px-3 text-[11px] font-bold" aria-label="Criar grupo">
+                        Criar grupo
+                    </button>
+                    <button id="direct-new-modal-close" type="button" class="interactive-control text-secondary hover:text-main" aria-label="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="p-4">
+                <div id="direct-group-create-panel" class="hidden mb-3 p-3 rounded-xl border twitter-border">
+                    <label for="direct-group-name" class="text-secondary text-xs font-bold">Nome do grupo</label>
+                    <input id="direct-group-name" type="text" class="form-field w-full rounded-xl py-2.5 px-3 text-sm mt-2" maxlength="80" placeholder="Ex: Trabalho de BD">
+                    <p id="direct-group-selected-info" class="text-secondary text-xs mt-2">Selecione participantes abaixo.</p>
+                    <div id="direct-group-selected-list" class="direct-group-selected-list mt-2"></div>
+                    <button id="direct-group-create-submit" type="button" class="interactive-control mt-3 h-9 rounded-full border twitter-border text-main px-4 text-xs font-bold">
+                        Criar grupo
+                    </button>
+                </div>
+                <label for="direct-new-user-search" class="sr-only">Buscar usuario</label>
+                <input id="direct-new-user-search" type="text" class="form-field w-full rounded-xl py-2.5 px-3 text-sm" placeholder="Buscar usuario por @username">
+                <p id="direct-new-user-mode-hint" class="text-secondary text-xs mt-2">Digite ao menos 2 caracteres para buscar e iniciar conversa.</p>
+                <div id="direct-new-user-results" class="direct-user-results-scroll mt-3 max-h-72 overflow-auto divide-y twitter-border rounded-xl border twitter-border"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('public_files', filename='js/direct-inbox.js') }}"></script>
+{% endblock %}

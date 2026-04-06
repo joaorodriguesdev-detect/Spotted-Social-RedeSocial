@@ -55,13 +55,32 @@ function showComments(postId, btn) {
 
 function ajaxLike(event, element) {
     event.preventDefault();
-    fetch(element.href).then((response) => {
+    // Mark request as AJAX to get JSON response from the server
+    fetch(element.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } }).then((response) => {
         if (!response.ok) return;
+        return response.json();
+    }).then((data) => {
+        if (!data) return;
         const span = element.querySelector('.like-count');
-        const count = parseInt(span.innerText, 10);
-        span.innerText = count + 1;
-        element.classList.add('text-red-500');
-        element.querySelector('i').classList.replace('fa-regular', 'fa-solid');
+        if (typeof data.likes === 'number' && span) {
+            span.innerText = String(data.likes);
+        }
+
+        const icon = element.querySelector('i');
+        if (!icon) return;
+
+        if (data.liked) {
+            element.classList.add('text-red-500');
+            icon.classList.remove('fa-regular');
+            icon.classList.add('fa-solid');
+        } else {
+            element.classList.remove('text-red-500');
+            icon.classList.remove('fa-solid');
+            icon.classList.add('fa-regular');
+        }
+    }).catch((err) => {
+        // network or parse error - ignore silently for now
+        console.error('Like failed', err);
     });
 }
 
@@ -89,11 +108,16 @@ function ajaxComment(event, form, postId) {
         const newComment = document.createElement('div');
         newComment.className = 'text-[13px] mb-1';
         const username = (window.__INDEX_PAGE__ && window.__INDEX_PAGE__.username) || '';
+        const isAdmin = Boolean(window.__INDEX_PAGE__ && window.__INDEX_PAGE__.is_admin);
+        const verifiedBadge = isAdmin
+            ? '<i class="fa-solid fa-circle-check text-blue-500 text-[11px] ml-1" title="Conta verificada"></i>'
+            : '';
 
         newComment.innerHTML = `
             <a href="/perfil/${username}" class="hover:underline">
                 <span class="font-bold text-main">${username}</span>
             </a>
+            ${verifiedBadge}
             <span class="text-main ml-1">${content}</span>
             <span class="text-secondary text-[11px] ml-1">&middot; agora</span>
         `;
