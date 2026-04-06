@@ -52,7 +52,8 @@
                     {% elif me and me.id != user.id and not user.is_admin %}
                         <div class="flex items-center gap-2 mt-2 md:mt-0">
                             <a href="{{ url_for('seguir', username=user.username) }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
-                            <a href="{{ url_for('direct_conversation', username=user.username) }}" class="interactive-control border twitter-border text-main px-6 py-1.5 rounded-xl text-xs font-bold">Enviar mensagem</a>
+                            <!-- Direct temporarily disabled until messaging is fixed -->
+                            <button type="button" title="Direct desativado temporariamente" aria-disabled="true" disabled class="interactive-control border twitter-border text-main px-6 py-1.5 rounded-xl text-xs font-bold opacity-50 cursor-not-allowed">Enviar mensagem</button>
                         </div>
                     {% endif %}
                 </div>

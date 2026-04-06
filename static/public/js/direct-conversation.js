@@ -337,8 +337,27 @@
         }, 5000);
 
         if (typeof window.io !== 'function') return;
-        // Force polling transport so this client works on hosts that don't allow WebSocket upgrades
-        socket = window.io({ transports: ['polling'] });
+        // On some hosting providers (eg. pythonanywhere) long-polling socket.io
+        // clients can hold worker requests open and block other synchronous
+        // requests (POSTs to send messages). To avoid this class of failure we
+        // disable realtime socket initialization when running on those hosts
+        // and fall back to our regular short-polling GET above.
+        try {
+            var host = window.location && window.location.hostname ? window.location.hostname : '';
+            var shouldDisableRealtime = typeof host === 'string' && host.endsWith('pythonanywhere.com');
+        } catch (e) {
+            var shouldDisableRealtime = false;
+        }
+
+        if (!shouldDisableRealtime) {
+            // Let socket.io pick the best transport (do not force polling).
+            socket = window.io();
+        } else {
+            // Keep socket as null so the client will use the periodic dcFetch polling
+            // already scheduled above. This avoids holding long-lived XHRs on
+            // hosts that cannot safely handle them.
+            socket = null;
+        }
         socket.on('connect', function () {
             socket.emit('direct:join', { conversation_id: conversationId });
         });

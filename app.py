@@ -1036,6 +1036,45 @@ def is_direct_blocked_for_system_admin():
     return bool(session.get('is_admin'))
 
 
+def is_direct_temporarily_disabled_for_users():
+    """Return True when Direct is globally disabled via the DIRECT_MAINTENANCE
+    environment variable and the current session user is NOT an admin.
+
+    Set DIRECT_MAINTENANCE=1 (or true/yes/on) in the environment to enable the
+    temporary redirect/block for normal users while preserving admin access so
+    developers can still test.
+    """
+    try:
+        raw = os.environ.get('DIRECT_MAINTENANCE', '')
+        if isinstance(raw, str) and raw.strip().lower() in {'1', 'true', 'yes', 'on'}:
+            return not bool(session.get('is_admin'))
+    except Exception:
+        pass
+    return False
+
+
+@app.before_request
+def block_direct_when_maintenance():
+    """If DIRECT_MAINTENANCE is enabled, prevent non-admin users from
+    accessing Direct pages and APIs. API calls under /api/direct will receive
+    a 403 JSON response; browser page requests to /direct will be redirected
+    to the feed with a maintenance flash message.
+    """
+    try:
+        if not is_direct_temporarily_disabled_for_users():
+            return None
+    except Exception:
+        return None
+
+    # Only apply to Direct-related HTTP endpoints
+    path = (request.path or '')
+    if path.startswith('/api/direct'):
+        return jsonify({'error': 'direct temporariamente desativado'}), 403
+    if path.startswith('/direct'):
+        flash('Direct temporariamente desativado. Voltaremos em breve.')
+        return redirect(url_for('feed'))
+
+
 def conversation_room_name(conversation_id):
     return f'conversation:{conversation_id}'
 
@@ -1988,7 +2027,7 @@ def direct_conversation(username):
 @socketio.on('connect')
 def handle_socket_connect():
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin():
+    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
         return False
 
     online_user_connections[user_id] = online_user_connections.get(user_id, 0) + 1
@@ -2020,7 +2059,7 @@ def handle_socket_disconnect():
 @socketio.on('direct:join')
 def handle_direct_join(payload):
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin():
+    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
         emit('direct:error', {'error': 'acesso negado'})
         return
 
@@ -2056,7 +2095,7 @@ def handle_direct_leave(payload):
 @socketio.on('direct:typing')
 def handle_direct_typing(payload):
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin():
+    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
         return
 
     data = payload or {}
@@ -2094,7 +2133,7 @@ def get_message_reaction_summary(message_id):
 @socketio.on('direct:react')
 def handle_direct_react(payload):
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin():
+    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
         emit('direct:error', {'error': 'acesso negado'})
         return
 
