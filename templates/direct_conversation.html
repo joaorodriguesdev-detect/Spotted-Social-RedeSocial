@@ -89,11 +89,11 @@
         {% endif %}
 
         <div class="conversation-row mb-3 flex" data-group-content="mensagem">
-            <div class="conversation-bubble conversation-bubble-in text-main text-sm" data-message-id="m1" data-author="@{{ target_username }}" data-reply-preview="Oi! Esta tela e apenas UI por enquanto 😊">
+            <div class="conversation-bubble conversation-bubble-in text-main text-sm" data-message-id="m1" data-author="@{{ target_username }}" data-reply-preview="Olá o sistema de chat está em testes ainda!!">
                 {% if is_group_chat %}
                 <p class="conversation-sender-label">@{{ participant_usernames[0] if participant_usernames else target_username }}</p>
                 {% endif %}
-                Oi! Esta tela e apenas UI por enquanto 😊
+                Olá o sistema de chat está em testes ainda!!
                 <span class="block mt-1 text-[10px] text-secondary">10:12</span>
                 <button type="button" class="conversation-bubble-action" data-reply-trigger>Responder</button>
                 <button type="button" class="conversation-bubble-pin" data-pin-trigger aria-label="Fixar mensagem"><i class="fa-solid fa-thumbtack"></i></button>
