@@ -54,6 +54,9 @@
             transform: none;
         }
 
+        /* Make bottom-nav icons easier to tap on small touch screens */
+        .bottom-nav a { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 6px; }
+
         /* --- TEMA BLACK --- */
         body.dark-mode { background-color: #000000; color: #e7e9ea; }
         body.dark-mode nav { background-color: rgba(0, 0, 0, 0.8); border-color: #2f3336; }
@@ -463,8 +466,10 @@
         // Notification realtime client: join user's personal room is handled server-side using session in the socket connect handler.
         window.__NOTIF_STATE__ = { unread_count: {{ unread_count|default(0) }} };
 
-        try {
-            const socket = io();
+            try {
+                // Force polling transport so environments that disallow WebSocket (uWSGI/PythonAnywhere)
+                // will work (Socket.IO will fall back to xhr-polling).
+                const socket = io({ transports: ['polling'] });
             socket.on('connect', () => {
                 // connected
             });

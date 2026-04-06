@@ -19,7 +19,14 @@ app.config['PUBLIC_FOLDER'] = os.path.join(app.root_path, 'static', 'public')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins='*', async_mode='threading')
+# Use explicit settings to force polling mode on hosts that disallow WebSocket upgrades
+# (PythonAnywhere/uWSGI blocks WebSocket upgrade attempts and raises "Cannot obtain socket").
+socketio = SocketIO(app,
+                    cors_allowed_origins="*",
+                    async_mode='threading',
+                    engineio_logger=False,
+                    logger=False,
+                    allow_upgrades=False)  # Isso impede o erro de 'Cannot obtain socket'
 
 online_user_connections = {}
 

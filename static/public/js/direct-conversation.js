@@ -299,7 +299,8 @@
         }, 5000);
 
         if (typeof window.io !== 'function') return;
-        socket = window.io();
+        // Force polling transport so this client works on hosts that don't allow WebSocket upgrades
+        socket = window.io({ transports: ['polling'] });
         socket.on('connect', function () {
             socket.emit('direct:join', { conversation_id: conversationId });
         });

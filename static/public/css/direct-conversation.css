@@ -10,6 +10,30 @@
     --conversation-scroll-thumb-hover: rgba(91, 92, 241, 0.78);
 }
 
+/* Small touch / accessibility improvements for mobile */
+@media (max-width: 430px) {
+    :root {
+        /* slightly more room for composer controls and safe-area on small phones */
+        --direct-composer-h: 84px;
+    }
+
+    /* make composer controls larger and easier to tap */
+    .conversation-composer { padding-top: 0.5rem; padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+    .conversation-composer .conversation-media-btn,
+    .conversation-composer .conversation-send-button,
+    .conversation-composer input,
+    .conversation-composer textarea { min-height: 44px; }
+
+    /* Slightly reduce bubble padding and font-size for very narrow screens */
+    .conversation-bubble { padding: 0.56rem 0.64rem; font-size: 13px; }
+
+    /* Increase hit-area of quick action icons inside bubbles */
+    .conversation-reaction-trigger, .conversation-bubble-pin, .conversation-bubble-action { min-width: 36px; min-height: 36px; }
+
+    /* Ensure the shell fills narrow screens cleanly */
+    .conversation-shell { left: 0; transform: none; width: 100%; }
+}
+
 @supports (height: 100dvh) {
     :root {
         --direct-vh: 100dvh;
@@ -37,6 +61,11 @@
     z-index: 21;
     backdrop-filter: blur(8px);
     background: rgba(255, 255, 255, 0.82);
+    /* Polimento: fundo mais opaco, borda e sombra sutil */
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1.5px solid #e0e7ef;
+    box-shadow: 0 2px 8px 0 rgba(91,92,241,0.04);
+    backdrop-filter: blur(12px);
 }
 
 .conversation-presence-dot {
@@ -570,17 +599,26 @@
     border: 1px solid #dbe2f0;
     box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
     line-height: 1.42;
+    /* Polimento: sombra mais suave, borda mais arredondada, padding maior */
+    border-radius: 1.35rem;
+    box-shadow: 0 2px 12px 0 rgba(91,92,241,0.07), 0 1.5px 6px 0 rgba(15,23,42,0.06);
+    padding: 0.92rem 1.25rem;
 }
 
 .conversation-bubble-in {
     background: #ffffff;
     border-top-left-radius: 0.35rem;
+    /* Polimento: leve gradiente para bolha recebida */
+    background: linear-gradient(120deg, #fff 80%, #f4f6fb 100%);
 }
 
 .conversation-bubble-out {
-    background: linear-gradient(135deg, var(--conversation-accent) 0%, var(--conversation-accent-strong) 100%);
+    background: linear-gradient(120deg, var(--conversation-accent) 80%, var(--conversation-accent-strong) 100%);
     border-color: var(--conversation-accent-strong);
     border-top-right-radius: 0.35rem;
+    /* Polimento: gradiente mais marcante para bolha enviada */
+    background: linear-gradient(120deg, var(--conversation-accent) 80%, var(--conversation-accent-strong) 100%);
+    box-shadow: 0 2px 16px 0 rgba(91,92,241,0.13), 0 1.5px 8px 0 rgba(15,23,42,0.09);
 }
 
 .conversation-bubble--pinned {
@@ -863,6 +901,8 @@
     background: rgba(255, 255, 255, 0.98);
     box-shadow: 0 16px 36px rgba(15, 23, 42, 0.28);
     overflow: hidden;
+    border-color: #2f3336;
+    background: rgba(22, 24, 28, 0.98);
 }
 
 .conversation-panel-header {
@@ -872,6 +912,7 @@
     gap: 0.5rem;
     padding: 0.75rem 0.85rem;
     border-bottom: 1px solid #dbe2f0;
+    border-bottom-color: #2f3336;
 }
 
 .conversation-panel-header-actions {
@@ -891,10 +932,13 @@
     align-items: center;
     justify-content: center;
     font-size: 13px;
+    border-color: #2f3336;
+    background: #0f1115;
+    color: #a5b4fc;
 }
 
 .conversation-panel-edit-trigger:hover {
-    background: #eef2ff;
+    background: #1d2025;
 }
 
 .conversation-panel-title {
@@ -910,6 +954,9 @@
     height: 30px;
     border-radius: 999px;
     color: #475569;
+    border-color: #2f3336;
+    background: #0f1115;
+    color: #cbd5e1;
 }
 
 .conversation-panel-body {
@@ -1026,12 +1073,15 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.4rem;
+    border-color: #2f3336;
+    background: #0f1115;
 }
 
 .conversation-admin-member-name {
     font-size: 13px;
     font-weight: 700;
     color: #0f172a;
+    color: #e7e9ea;
 }
 
 .conversation-admin-member-actions {
@@ -1049,6 +1099,9 @@
     font-size: 10px;
     font-weight: 700;
     padding: 0.16rem 0.46rem;
+    border-color: #2f3336;
+    background: #16181c;
+    color: #cbd5e1;
 }
 
 .conversation-admin-remove {
@@ -1119,6 +1172,10 @@
     backdrop-filter: blur(8px);
     background: rgba(255, 255, 255, 0.82);
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    /* Polimento: fundo levemente diferente e sombra superior */
+    background: #f8f9fd;
+    box-shadow: 0 -2px 8px 0 rgba(91,92,241,0.04);
+    border-top: 1.5px solid #e0e7ef;
 }
 
 .conversation-reply-preview {
