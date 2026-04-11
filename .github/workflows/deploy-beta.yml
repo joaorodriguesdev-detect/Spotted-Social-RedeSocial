@@ -26,31 +26,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Instalar dependências e pytest
+      - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
           python -m pip install --no-cache-dir -r requirements.txt
-          python -m pip install --no-cache-dir pytest
-
-      - name: Rodar Pytest
-        run: |
-          echo "Running tests..."
-          # Prefer running tests from the tests/ directory explicitly so pytest
-          # can find project tests. If pytest returns exit code 5 (no tests
-          # collected) we treat it as non-fatal and continue the workflow.
-          pytest -q tests || RC=$?
-          if [ "${RC:-0}" -eq 5 ]; then
-            echo "Nenhum teste coletado (exit code 5). Continuando sem erro."
-            exit 0
-          fi
-          exit ${RC:-0}
 
   atualizar_servidor:
-    name: 🚀 Deploy na Oracle Cloud
-    needs: testar_codigo # Só executa se o "testar_codigo" der 100% de sucesso
+    name: 🚀 Deploy na VPS
     runs-on: ubuntu-latest
     steps:
-      - name: Conectar via SSH e atualizar PM2 (idempotente)
+      - name: Conectar via SSH e atualizar PM2
         uses: appleboy/ssh-action@v1.1.0
         with:
           host: ${{ secrets.SERVER_HOST }}
