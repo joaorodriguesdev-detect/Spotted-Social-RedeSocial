@@ -50,7 +50,9 @@ jobs:
             echo "Preparing deploy check for $APP_DIR (process $PM2_PROCESS)"
             cd "$APP_DIR"
             echo "Fetching latest from origin/beta"
+            git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
             git fetch --all --prune
+            git remote set-url origin "https://github.com/${{ github.repository }}.git"
 
             # Prepare temporary test workspace with the target branch contents
             TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t deploy-test)
