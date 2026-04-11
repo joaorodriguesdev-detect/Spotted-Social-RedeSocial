@@ -17,11 +17,20 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['PUBLIC_FOLDER'] = os.path.join(app.root_path, 'static', 'public')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+# Feature flag: enable/disable the Direct (messaging) system entirely.
+# Set DIRECT_ENABLED=0|false|no|off in the environment to disable messaging.
+raw_direct_enabled = os.environ.get('DIRECT_ENABLED', 'true')
+# Normalize to a simple boolean True/False (user requested a simple true/false flag)
+try:
+    app.config['DIRECT_ENABLED'] = str(raw_direct_enabled).strip().lower() in {'1', 'true', 'yes', 'on'}
+except Exception:
+    app.config['DIRECT_ENABLED'] = True
 
 db = SQLAlchemy(app)
 # Use explicit settings to force polling mode on hosts that disallow WebSocket upgrades
 # (PythonAnywhere/uWSGI blocks WebSocket upgrade attempts and raises "Cannot obtain socket").
 socketio = SocketIO(app,
+
                     cors_allowed_origins="*",
                     async_mode='threading',
                     engineio_logger=False,
@@ -133,7 +142,7 @@ def parse_event_datetime(date_value, time_value):
         event_date = datetime.strptime(clean_date, '%Y-%m-%d').date()
         event_time = datetime.strptime(clean_time, '%H:%M').time()
     except ValueError:
-        return None, 'Data ou horario invalido.'
+        return None, 'Data ou horário invalido.'
 
     combined = datetime.combine(event_date, event_time)
     if combined < br_time():
@@ -510,6 +519,8 @@ def api_direct_users():
 
     q = (request.args.get('q') or '').strip().lower().replace('@', '')
     current_user_id = session.get('user_id')
+    current_user = User.query.get(current_user_id)
+
     query = User.query.filter(
         User.id != current_user_id,
         User.is_admin.is_(False)
@@ -523,7 +534,22 @@ def api_direct_users():
             )
         )
 
-    users = query.order_by(User.username.asc()).limit(20).all()
+    # Apply mutual-follow filter at the database level so the LIMIT applies to
+    # already-filtered results. This prevents returning non-mutual users when
+    # the current user follows nobody.
+    users = []
+    if current_user:
+        try:
+            mutual_a = select([1]).where(and_(followers.c.follower_id == current_user_id, followers.c.followed_id == User.id)).exists()
+            mutual_b = select([1]).where(and_(followers.c.follower_id == User.id, followers.c.followed_id == current_user_id)).exists()
+            users = query.filter(mutual_a, mutual_b).order_by(User.username.asc()).limit(20).all()
+        except Exception:
+            # Fallback to previous Python-level filtering in case the SQL EXISTS
+            # expression isn't supported in this environment/version.
+            users = query.order_by(User.username.asc()).limit(50).all()
+            users = [user for user in users if users_follow_each_other(current_user, user)]
+    else:
+        users = []
 
     return jsonify({'users': [
         {
@@ -1053,6 +1079,19 @@ def is_direct_temporarily_disabled_for_users():
     return False
 
 
+def is_direct_globally_disabled():
+    """Return True when the entire Direct/messaging system is disabled.
+
+    The configuration `app.config['DIRECT_ENABLED']` holds a simple boolean
+    (True = enabled, False = disabled). This helper returns True when the
+    system should be considered disabled.
+    """
+    try:
+        return not bool(app.config.get('DIRECT_ENABLED', True))
+    except Exception:
+        return False
+
+
 @app.before_request
 def block_direct_when_maintenance():
     """If DIRECT_MAINTENANCE is enabled, prevent non-admin users from
@@ -1060,13 +1099,26 @@ def block_direct_when_maintenance():
     a 403 JSON response; browser page requests to /direct will be redirected
     to the feed with a maintenance flash message.
     """
+    # If the entire Direct system is turned off via DIRECT_ENABLED, block all users
+    try:
+        if is_direct_globally_disabled():
+            path = (request.path or '')
+            if path.startswith('/api/direct'):
+                return jsonify({'error': 'direct desativado'}), 403
+            if path.startswith('/direct'):
+                flash('Direct desativado.')
+                return redirect(url_for('feed'))
+    except Exception:
+        # If our feature-flag check fails, fall back to normal behavior
+        pass
+
     try:
         if not is_direct_temporarily_disabled_for_users():
             return None
     except Exception:
         return None
 
-    # Only apply to Direct-related HTTP endpoints
+    # Only apply to Direct-related HTTP endpoints (temporary maintenance mode)
     path = (request.path or '')
     if path.startswith('/api/direct'):
         return jsonify({'error': 'direct temporariamente desativado'}), 403
@@ -1387,10 +1439,37 @@ def get_direct_unread_total(user_id):
 
 @app.context_processor
 def inject_global_unread_counters():
+    # Compute whether the Direct (messaging) UI should be enabled for the
+    # current session/user. This takes into account the global feature flag
+    # (`DIRECT_ENABLED`), the admin-block (admins are intentionally blocked
+    # from Direct in this project), and the temporary maintenance mode which
+    # disables Direct for non-admins when `DIRECT_MAINTENANCE` is set.
+    try:
+        direct_globally_disabled = is_direct_globally_disabled()
+    except Exception:
+        direct_globally_disabled = False
+
     user_id = session.get('user_id')
-    if not user_id:
-        return {'direct_unread_count': 0}
-    return {'direct_unread_count': get_direct_unread_total(user_id)}
+
+    # If Direct is globally disabled or the user is not authenticated, report
+    # zero unread messages and mark the UI as disabled.
+    if direct_globally_disabled or not user_id:
+        return {'direct_unread_count': 0, 'direct_enabled': False}
+
+    # By default assume enabled for the authenticated user, then apply
+    # per-session restrictions (admin-block and temporary maintenance).
+    direct_enabled_for_user = True
+    try:
+        if is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
+            direct_enabled_for_user = False
+    except Exception:
+        # on error be conservative and keep it disabled
+        direct_enabled_for_user = False
+
+    return {
+        'direct_unread_count': get_direct_unread_total(user_id),
+        'direct_enabled': direct_enabled_for_user
+    }
 
 
 def build_direct_inbox_items(current_user_id, current_filter='all', search_query='', for_api=False):
@@ -1509,6 +1588,7 @@ def direct():
         conversations=conversations,
         current_filter=current_filter,
         search_query=search_query
+        , direct_enabled=app.config.get('DIRECT_ENABLED', True)
     )
 
 
@@ -2019,15 +2099,22 @@ def direct_conversation(username):
         group_creator_username=group_creator_username,
         participant_usernames=participant_usernames,
         participant_cards=participant_cards
+        , direct_enabled=app.config.get('DIRECT_ENABLED', True)
     )
     t1 = time.time()
     print(f"[PERF] /direct/conversa/{{username}} total: {{(t1-t0)*1000:.1f}}ms")
     return resp
+    # NOTE: render_template already returns the response above; ensure direct_enabled passed via context
 
 @socketio.on('connect')
 def handle_socket_connect():
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
+    # Deny socket connections when Direct is globally disabled, or when the
+    # session is invalid or access is blocked by maintenance/admin rules.
+    if (not user_id
+            or is_direct_globally_disabled()
+            or is_direct_blocked_for_system_admin()
+            or is_direct_temporarily_disabled_for_users()):
         return False
 
     online_user_connections[user_id] = online_user_connections.get(user_id, 0) + 1
@@ -2059,7 +2146,10 @@ def handle_socket_disconnect():
 @socketio.on('direct:join')
 def handle_direct_join(payload):
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
+    if (not user_id
+            or is_direct_globally_disabled()
+            or is_direct_blocked_for_system_admin()
+            or is_direct_temporarily_disabled_for_users()):
         emit('direct:error', {'error': 'acesso negado'})
         return
 
@@ -2084,6 +2174,10 @@ def handle_direct_join(payload):
 
 @socketio.on('direct:leave')
 def handle_direct_leave(payload):
+    # If Direct is globally disabled there's nothing to do here.
+    if is_direct_globally_disabled():
+        return
+
     data = payload or {}
     try:
         conversation_id = int(data.get('conversation_id'))
@@ -2095,7 +2189,10 @@ def handle_direct_leave(payload):
 @socketio.on('direct:typing')
 def handle_direct_typing(payload):
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
+    if (not user_id
+            or is_direct_globally_disabled()
+            or is_direct_blocked_for_system_admin()
+            or is_direct_temporarily_disabled_for_users()):
         return
 
     data = payload or {}
@@ -2133,7 +2230,10 @@ def get_message_reaction_summary(message_id):
 @socketio.on('direct:react')
 def handle_direct_react(payload):
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
+    if (not user_id
+            or is_direct_globally_disabled()
+            or is_direct_blocked_for_system_admin()
+            or is_direct_temporarily_disabled_for_users()):
         emit('direct:error', {'error': 'acesso negado'})
         return
 
@@ -2142,11 +2242,11 @@ def handle_direct_react(payload):
         conversation_id = int(data.get('conversation_id'))
         message_id = int(data.get('message_id'))
     except (TypeError, ValueError):
-        emit('direct:error', {'error': 'dados invalidos'})
+        emit('direct:error', {'error': 'dados inválidos'})
         return
     reaction = (data.get('reaction') or '').strip()
     if not reaction:
-        emit('direct:error', {'error': 'reacao invalida'})
+        emit('direct:error', {'error': 'reação invalida'})
         return
 
     membership = get_membership(conversation_id, user_id)
@@ -2279,4 +2379,4 @@ def logout():
     session.clear(); return redirect(url_for('welcome'))
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=False)

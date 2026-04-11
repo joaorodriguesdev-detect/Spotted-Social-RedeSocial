@@ -255,13 +255,22 @@
 
             <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
-            <!-- Direct access temporarily disabled until realtime/send fixes are applied -->
-            <button type="button" title="Direct desativado temporariamente" aria-disabled="true" disabled class="relative w-9 h-9 flex items-center justify-center text-lg opacity-50 cursor-not-allowed {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}">
-                <i class="fa-regular fa-paper-plane"></i>
-                {% if direct_unread_count and direct_unread_count > 0 %}
-                    <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
-                {% endif %}
-            </button>
+            <!-- Direct access: render as an anchor when server indicates enabled, otherwise render a disabled button. -->
+            {% if direct_enabled is defined and direct_enabled %}
+                <a id="nav-direct-button" href="/direct" title="Direct" data-server-direct-enabled="true" class="relative w-9 h-9 flex items-center justify-center text-lg {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}">
+                    <i class="fa-regular fa-paper-plane"></i>
+                    {% if direct_unread_count and direct_unread_count > 0 %}
+                        <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
+                    {% endif %}
+                </a>
+            {% else %}
+                <button id="nav-direct-button" type="button" title="Direct desativado" aria-disabled="true" disabled data-server-direct-enabled="false" class="relative w-9 h-9 flex items-center justify-center text-lg opacity-50 cursor-not-allowed {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}">
+                    <i class="fa-regular fa-paper-plane"></i>
+                    {% if direct_unread_count and direct_unread_count > 0 %}
+                        <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
+                    {% endif %}
+                </button>
+            {% endif %}
 
             <a href="/notificacoes" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/notificacoes') %}text-indigo-500{% else %}text-main{% endif %}">
                 <i class="fa-regular fa-bell"></i>
@@ -572,6 +581,87 @@
             event.preventDefault();
             openDeleteModal(trigger.getAttribute('href'), trigger.getAttribute('data-confirm-message'));
         });
+    </script>
+    <script>
+        // Sync bottom-nav Direct button with server/client feature flag.
+        (function () {
+            function syncNavDirectButton() {
+                try {
+                    var el = document.getElementById('nav-direct-button');
+                    if (!el) return;
+                    var serverVal = el.dataset && el.dataset.serverDirectEnabled === 'true';
+                    var clientVal = (typeof window.DIRECT_ENABLED !== 'undefined') ? Boolean(window.DIRECT_ENABLED) : serverVal;
+
+                    // Helper to strip disabled visual classes
+                    function stripDisabledClasses(node) {
+                        node.classList.remove('opacity-50', 'cursor-not-allowed');
+                        node.removeAttribute('aria-disabled');
+                        try { node.disabled = false; } catch (e) {}
+                    }
+
+                    function applyDisabledClasses(node) {
+                        node.classList.add('opacity-50', 'cursor-not-allowed');
+                        node.setAttribute('aria-disabled', 'true');
+                        try { node.disabled = true; } catch (e) {}
+                    }
+
+                    // If enabled: ensure we have an <a> element that navigates to /direct
+                    if (clientVal) {
+                        if (el.tagName.toUpperCase() === 'A') {
+                            // already anchor: ensure enabled look
+                            stripDisabledClasses(el);
+                            el.setAttribute('href', '/direct');
+                            el.title = 'Direct';
+                        } else {
+                            // replace button with anchor while preserving inner content (badge etc.)
+                            var a = document.createElement('a');
+                            a.id = el.id || 'nav-direct-button';
+                            a.className = el.className.replace('opacity-50', '').replace('cursor-not-allowed', '');
+                            a.setAttribute('href', '/direct');
+                            a.setAttribute('title', 'Direct');
+                            a.innerHTML = el.innerHTML;
+                            // copy dataset
+                            if (el.dataset) {
+                                Object.keys(el.dataset).forEach(function (k) { a.dataset[k] = el.dataset[k]; });
+                            }
+                            el.parentNode.replaceChild(a, el);
+                        }
+                    } else {
+                        // Disabled: ensure we have a non-interactive <button>
+                        if (el.tagName.toUpperCase() === 'BUTTON') {
+                            applyDisabledClasses(el);
+                            el.title = el.title || 'Direct desativado pelo sistema.';
+                            // prevent default clicks
+                            el.onclick = function (e) { e.preventDefault(); };
+                        } else {
+                            // replace anchor with button
+                            var btn = document.createElement('button');
+                            btn.id = el.id || 'nav-direct-button';
+                            btn.className = (el.className || '') + ' opacity-50 cursor-not-allowed';
+                            btn.setAttribute('type', 'button');
+                            btn.innerHTML = el.innerHTML;
+                            if (el.dataset) {
+                                Object.keys(el.dataset).forEach(function (k) { btn.dataset[k] = el.dataset[k]; });
+                            }
+                            applyDisabledClasses(btn);
+                            btn.title = 'Direct desativado pelo sistema.';
+                            btn.onclick = function (e) { e.preventDefault(); };
+                            el.parentNode.replaceChild(btn, el);
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', syncNavDirectButton);
+            } else {
+                syncNavDirectButton();
+            }
+            // Allow other scripts to update window.DIRECT_ENABLED and resync if they emit an event
+            window.addEventListener('direct:flag-changed', syncNavDirectButton);
+        })();
     </script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
