@@ -25,7 +25,9 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - name: 'Qodana Scan'
-        uses: JetBrains/qodana-action@v2026.1
+        # Use a pinned release; if this tag doesn't exist in the runner's marketplace
+        # replace with a valid tag from https://github.com/JetBrains/qodana-action/releases
+        uses: JetBrains/qodana-action@v2026.0
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
         with:

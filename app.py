@@ -1,7 +1,7 @@
 import os
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, and_, or_, func, UniqueConstraint, select
@@ -206,7 +206,9 @@ def public_files(filename):
     return send_from_directory(app.config['PUBLIC_FOLDER'], filename)
 
 def br_time():
-    return datetime.utcnow() - timedelta(hours=3)
+    # Use timezone-aware UTC datetime to avoid deprecation warnings and
+    # ensure consistent timezone arithmetic. We represent BR time as UTC-3.
+    return datetime.now(timezone.utc) - timedelta(hours=3)
 
 def ensure_user_created_at_column():
     inspector = inspect(db.engine)
