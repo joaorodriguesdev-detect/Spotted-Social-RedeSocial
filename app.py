@@ -2179,6 +2179,15 @@ def direct_conversation(username):
     return resp
     # NOTE: render_template already returns the response above; ensure direct_enabled passed via context
 
+# Register blueprints
+from routes.feed import feed_bp
+from routes.perfil import perfil_bp
+from routes.direct import direct_bp
+
+app.register_blueprint(feed_bp)
+app.register_blueprint(perfil_bp)
+app.register_blueprint(direct_bp)
+
 @socketio.on('connect')
 def handle_socket_connect():
     user_id = session.get('user_id')
