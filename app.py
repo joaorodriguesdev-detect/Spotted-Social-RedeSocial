@@ -979,7 +979,6 @@ def comentar(post_id):
 def perfil(username):
     if 'user_id' not in session: return redirect(url_for('welcome'))
     user = User.query.filter_by(username=username).first_or_404()
-    if user.is_admin and not session.get('is_admin'): return redirect(url_for('feed'))
     posts = Post.query.filter(
         Post.user_id == user.id,
         Post.is_anonymous.is_(False),
@@ -1011,8 +1010,6 @@ def perfil_por_remetente():
         flash('Perfil do remetente nao encontrado.')
         return redirect(request.referrer or url_for('feed'))
 
-    if user.is_admin and not session.get('is_admin'):
-        return redirect(url_for('feed'))
 
     return redirect(url_for('perfil', username=user.username))
 
