@@ -25,12 +25,10 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
-
       - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
           python -m pip install --no-cache-dir -r requirements.txt
-
   atualizar_servidor:
     name: 🚀 Deploy na VPS
     runs-on: ubuntu-latest
@@ -53,12 +51,10 @@ jobs:
             git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
             git fetch --all --prune
             git remote set-url origin "https://github.com/${{ github.repository }}.git"
-
             # Prepare temporary test workspace with the target branch contents
             TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t deploy-test)
             echo "Creating test tree at $TMP_DIR"
             git archive origin/beta | tar -x -C "$TMP_DIR"
-
             # Create and activate a temporary venv for verification. If the
             # system lacks python3-venv (ensurepip), fall back to a syntax-only
             # check using the system Python to avoid aborting the deploy due to
@@ -90,7 +86,6 @@ jobs:
               echo "Could not create temporary venv. Falling back to syntax-only check. See /tmp/venv_create_err.log for details."
               FALLBACK_PY_COMPILE=1
             fi
-
             # Syntax check: compile all Python files to catch syntax errors/import-time
             # issues that would prevent the app from starting. If we created a
             # temp venv above we'll run py_compile inside it; otherwise use the
@@ -107,7 +102,6 @@ jobs:
                 exit 1
               fi
             fi
-
             # Optional: run a simple import check for the main module in isolation
             # without executing the app's runtime side-effects. We avoid importing
             # `app` to prevent DB/schema side-effects at import time; instead try
@@ -116,11 +110,9 @@ jobs:
             # Skipping direct import-check of the app module to avoid executing
             # import-time side-effects (DB migrations, seeding, etc.). We rely on
             # dependency install and py_compile for safety verification.
-
             echo "Verification succeeded — applying update to $APP_DIR"
             # Apply the update to the live app directory now that verification passed
             git reset --hard origin/beta
-
             # Create venv if not exists in the live app and install deps. If
             # creating a venv fails on the live host (missing python3-venv),
             # fall back to installing requirements using the system python3.
@@ -140,7 +132,6 @@ jobs:
               python -m pip install --upgrade pip
               python -m pip install --no-cache-dir -r requirements.txt || true
             fi
-
             # Reinicia ou inicia o processo via pm2
             if pm2 describe "$PM2_PROCESS" > /dev/null 2>&1; then
               echo "Restarting $PM2_PROCESS"
@@ -149,5 +140,4 @@ jobs:
               echo "Starting $PM2_PROCESS (fallback start)"
               pm2 start app.py --name "$PM2_PROCESS" || pm2 start main.js --name "$PM2_PROCESS" || true
             fi
-
             echo "Deploy finished"

@@ -255,23 +255,12 @@
             <a href="/feed" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path == '/feed' %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-house"></i>{% if current_path == '/feed' %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
             <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
-
-            <!-- Direct access: render as an anchor when server indicates enabled, otherwise render a disabled button. -->
-            {% if direct_enabled is defined and direct_enabled %}
                 <a id="nav-direct-button" href="/direct" title="Direct" data-server-direct-enabled="true" class="relative w-9 h-9 flex items-center justify-center text-lg {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}">
                     <i class="fa-regular fa-paper-plane"></i>
                     {% if direct_unread_count and direct_unread_count > 0 %}
                         <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
                     {% endif %}
                 </a>
-            {% else %}
-                <button id="nav-direct-button" type="button" title="Direct desativado" aria-disabled="true" disabled data-server-direct-enabled="false" class="relative w-9 h-9 flex items-center justify-center text-lg opacity-50 cursor-not-allowed {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}">
-                    <i class="fa-regular fa-paper-plane"></i>
-                    {% if direct_unread_count and direct_unread_count > 0 %}
-                        <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
-                    {% endif %}
-                </button>
-            {% endif %}
 
             <a href="/notificacoes" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/notificacoes') %}text-indigo-500{% else %}text-main{% endif %}">
                 <i class="fa-regular fa-bell"></i>
