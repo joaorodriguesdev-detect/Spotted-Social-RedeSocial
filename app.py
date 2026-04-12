@@ -3,6 +3,8 @@ import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
+import logging
+import traceback
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, and_, or_, func, UniqueConstraint, select
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -11,26 +13,31 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
+# Configure a simple file logger for uncaught exceptions to aid local debugging.
+LOG_PATH = os.environ.get('SPOTTED_ERROR_LOG', 'instance/error.log')
+os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True) if os.path.dirname(LOG_PATH) else None
+file_handler = logging.FileHandler(LOG_PATH)
+file_handler.setLevel(logging.ERROR)
+file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+app.logger.addHandler(file_handler)
+
 app.secret_key = os.environ.get('SECRET_KEY', 'spotted_university_ultra_v8_final_fix') 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///spotted.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['PUBLIC_FOLDER'] = os.path.join(app.root_path, 'static', 'public')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-# Feature flag: enable/disable the Direct (messaging) system entirely.
-# Set DIRECT_ENABLED=0|false|no|off in the environment to disable messaging.
-raw_direct_enabled = os.environ.get('DIRECT_ENABLED', 'true')
-# Normalize to a simple boolean True/False (user requested a simple true/false flag)
-try:
-    app.config['DIRECT_ENABLED'] = str(raw_direct_enabled).strip().lower() in {'1', 'true', 'yes', 'on'}
-except Exception:
-    app.config['DIRECT_ENABLED'] = True
+# Feature flag: force the Direct (messaging) system to be enabled for all
+# non-admin users. Per requirement, messaging must remain active for regular
+# users and disabled only for admin users. We therefore force DIRECT_ENABLED
+# to True regardless of environment configuration to avoid accidental global
+# disabling in production.
+app.config['DIRECT_ENABLED'] = True
 
 db = SQLAlchemy(app)
 # Use explicit settings to force polling mode on hosts that disallow WebSocket upgrades
 # (PythonAnywhere/uWSGI blocks WebSocket upgrade attempts and raises "Cannot obtain socket").
 socketio = SocketIO(app,
-
                     cors_allowed_origins="*",
                     async_mode='threading',
                     engineio_logger=False,
@@ -209,6 +216,27 @@ def br_time():
     # Use timezone-aware UTC datetime to avoid deprecation warnings and
     # ensure consistent timezone arithmetic. We represent BR time as UTC-3.
     return datetime.now(timezone.utc) - timedelta(hours=3)
+
+
+@app.errorhandler(Exception)
+def log_exception(e):
+    """Log unhandled exceptions to a file with traceback for local debugging.
+
+    This handler captures any exception not explicitly handled by routes and
+    writes a full traceback to the configured log file. It then returns the
+    default 500 response so the behavior is unchanged for clients.
+    """
+    try:
+        tb = traceback.format_exc()
+        app.logger.error('Unhandled exception:\n%s', tb)
+    except Exception:
+        # If logging itself fails, fall back to printing to stderr
+        print('Failed to log exception', flush=True)
+        traceback.print_exc()
+    # Return a simple 500 response without rendering templates to avoid
+    # cascading template errors during debugging.
+    return ("<h1>Internal Server Error</h1><p>An unexpected error occurred."
+            " The full traceback has been written to the error log."), 500
 
 def ensure_user_created_at_column():
     inspector = inspect(db.engine)
@@ -1072,12 +1100,8 @@ def is_direct_temporarily_disabled_for_users():
     temporary redirect/block for normal users while preserving admin access so
     developers can still test.
     """
-    try:
-        raw = os.environ.get('DIRECT_MAINTENANCE', '')
-        if isinstance(raw, str) and raw.strip().lower() in {'1', 'true', 'yes', 'on'}:
-            return not bool(session.get('is_admin'))
-    except Exception:
-        pass
+    # Per requirement, do not allow temporary maintenance to disable Direct
+    # for regular users. Always return False so non-admin users retain access.
     return False
 
 
@@ -1088,10 +1112,10 @@ def is_direct_globally_disabled():
     (True = enabled, False = disabled). This helper returns True when the
     system should be considered disabled.
     """
-    try:
-        return not bool(app.config.get('DIRECT_ENABLED', True))
-    except Exception:
-        return False
+    # We force Direct to be globally enabled for non-admin users (see above),
+    # so this helper should always report False. Admin access remains blocked
+    # via `is_direct_blocked_for_system_admin()` checks.
+    return False
 
 
 @app.before_request

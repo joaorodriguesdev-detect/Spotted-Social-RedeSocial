@@ -67,18 +67,24 @@ jobs:
             if python3 -m venv "$TMP_DIR/venv" 2>/tmp/venv_create_err.log; then
               echo "Temporary venv created at $TMP_DIR/venv"
               source "$TMP_DIR/venv/bin/activate"
-              python -m pip install --upgrade pip
-
-              # Install requirements if present (best-effort). If install fails,
-              # we consider verification failed to be conservative.
-              if [ -f "$TMP_DIR/requirements.txt" ]; then
-                echo "Installing dependencies into test venv (this may take a while)"
-                if ! python -m pip install --no-cache-dir -r "$TMP_DIR/requirements.txt"; then
-                  echo "Dependency installation failed — aborting deploy"
-                  exit 1
-                fi
+              # Try to enable pip inside the venv. If ensurepip isn't available
+              # the upgrade will fail; in that case fall back to a syntax-only
+              # check so deploy can continue.
+              if ! python -m pip install --upgrade pip 2>/tmp/venv_pip_err.log; then
+                echo "pip not available in venv (ensurepip missing). Falling back to syntax-only check. See /tmp/venv_pip_err.log"
+                FALLBACK_PY_COMPILE=1
               else
-                echo "No requirements.txt found in branch — skipping deps install"
+                # Install requirements if present (best-effort). If install fails,
+                # we consider verification failed to be conservative.
+                if [ -f "$TMP_DIR/requirements.txt" ]; then
+                  echo "Installing dependencies into test venv (this may take a while)"
+                  if ! python -m pip install --no-cache-dir -r "$TMP_DIR/requirements.txt"; then
+                    echo "Dependency installation failed — aborting deploy"
+                    exit 1
+                  fi
+                else
+                  echo "No requirements.txt found in branch — skipping deps install"
+                fi
               fi
             else
               echo "Could not create temporary venv. Falling back to syntax-only check. See /tmp/venv_create_err.log for details."
