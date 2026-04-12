@@ -1089,7 +1089,11 @@ def can_user_access_group_conversation(conversation, user):
 
 
 def is_direct_blocked_for_system_admin():
-    return bool(session.get('is_admin'))
+    # Historically this project blocked the built-in 'admin' seeded account
+    # from using Direct so developers could test maintenance flows. In the
+    # current setup the requirement is to allow Direct for all users, so
+    # always return False (do not block admins).
+    return False
 
 
 def is_direct_temporarily_disabled_for_users():
