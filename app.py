@@ -213,9 +213,11 @@ def public_files(filename):
     return send_from_directory(app.config['PUBLIC_FOLDER'], filename)
 
 def br_time():
-    # Use timezone-aware UTC datetime to avoid deprecation warnings and
-    # ensure consistent timezone arithmetic. We represent BR time as UTC-3.
-    return datetime.now(timezone.utc) - timedelta(hours=3)
+    # Return a timezone-aware datetime in Brazil time (UTC-3).
+    # Use a proper tzinfo with a fixed -3 hours offset so callers receive
+    # aware datetimes consistently.
+    tz_br = timezone(timedelta(hours=-3))
+    return datetime.now(tz_br)
 
 
 @app.errorhandler(Exception)
@@ -306,7 +308,27 @@ def post_time_filter(ts):
     if not ts:
         return ''
 
-    now = br_time()
+    # Normalize both now and the provided timestamp to the same timezone
+    # so subtraction does not fail when mixing naive and aware datetimes.
+    tz_br = timezone(timedelta(hours=-3))
+    now = datetime.now(tz_br)
+
+    # If the stored timestamp is naive, assume it was recorded in UTC and
+    # attach UTC tzinfo. Then convert to Brazil timezone for delta math.
+    try:
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        ts = ts.astimezone(tz_br)
+    except Exception:
+        # If conversion fails for any reason, fall back to treating both
+        # values as naive in the system local time by removing tzinfo.
+        try:
+            now = now.replace(tzinfo=None)
+            ts = ts.replace(tzinfo=None)
+        except Exception:
+            # As a last resort, return an empty label rather than crash.
+            return ''
+
     delta = now - ts
 
     # Guard against future timestamps caused by clock drift.
