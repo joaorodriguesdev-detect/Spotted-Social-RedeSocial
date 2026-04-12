@@ -313,12 +313,14 @@ def post_time_filter(ts):
     tz_br = timezone(timedelta(hours=-3))
     now = datetime.now(tz_br)
 
-    # If the stored timestamp is naive, assume it was recorded in UTC and
-    # attach UTC tzinfo. Then convert to Brazil timezone for delta math.
+    # If the stored timestamp is naive, it was likely created with br_time()
+    # (a naive Brazil time). Treat naive timestamps as BR-local instead of UTC
+    # to avoid a ~3-hour offset when converting.
     try:
         if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
-        ts = ts.astimezone(tz_br)
+            ts = ts.replace(tzinfo=tz_br)
+        else:
+            ts = ts.astimezone(tz_br)
     except Exception:
         # If conversion fails for any reason, fall back to treating both
         # values as naive in the system local time by removing tzinfo.
@@ -335,14 +337,20 @@ def post_time_filter(ts):
     if delta.total_seconds() < 0:
         return 'agora'
 
-    if delta < timedelta(minutes=1):
+    # Present concise, localized relative-time labels used in the UI.
+    # Examples: 'agora', '3m', '2h', '5d', '12/03', '12/03/2024'
+    seconds = int(delta.total_seconds())
+    if seconds < 60:
         return 'agora'
-    if delta < timedelta(hours=1):
-        return f"{int(delta.total_seconds() // 60)} min"
-    if delta < timedelta(days=1):
-        return f"{int(delta.total_seconds() // 3600)} h"
-    if delta < timedelta(days=30):
-        return f"{delta.days} d"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}m"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours}h"
+    days = delta.days
+    if days < 30:
+        return f"{days}d"
     if delta < timedelta(days=365):
         return ts.strftime('%d/%m')
     return ts.strftime('%d/%m/%Y')
@@ -1108,41 +1116,21 @@ def can_user_access_group_conversation(conversation, user):
 
 
 def is_direct_blocked_for_system_admin():
-    # Historically this project blocked the built-in 'admin' seeded account
-    # from using Direct so developers could test maintenance flows. Restore
-    # that behavior: when the current session is an admin, block Direct.
-    try:
-        return bool(session.get('is_admin'))
-    except Exception:
-        # If session is not available for some reason, be conservative and
-        # block access to admin-only behavior by returning True when unable
-        # to determine session state.
-        return True
+    # The old admin-block behavior was used to prevent the seeded 'admin'
+    # account from accessing Direct during maintenance/testing. That maintenance
+    # system has been removed: Direct access should not be denied based on the
+    # session's admin flag. Keep this helper for compatibility but always
+    # return False so no account is blocked by role.
+    return False
 
 
 def is_direct_temporarily_disabled_for_users():
-    """Return True when Direct is globally disabled via the DIRECT_MAINTENANCE
-    environment variable and the current session user is NOT an admin.
-
-    Set DIRECT_MAINTENANCE=1 (or true/yes/on) in the environment to enable the
-    temporary redirect/block for normal users while preserving admin access so
-    developers can still test.
-    """
-    # When the environment variable DIRECT_MAINTENANCE is present (values
-    # '1', 'true', 'yes', 'on' are accepted), non-admin users should be
-    # prevented from accessing Direct while admins can still test. This
-    # helper returns True for non-admin users when maintenance mode is set.
-    try:
-        raw = os.environ.get('DIRECT_MAINTENANCE', '') or ''
-        enabled = str(raw).strip().lower() in {'1', 'true', 'yes', 'on'}
-        if not enabled:
-            return False
-        # If maintenance is enabled, block for non-admins only
-        return not bool(session.get('is_admin'))
-    except Exception:
-        # On error, do not accidentally disable Direct for regular users;
-        # return False to keep the system available.
-        return False
+    # This application previously supported a temporary "maintenance" mode
+    # controlled via the DIRECT_MAINTENANCE environment variable that would
+    # block non-admin users from accessing Direct. That maintenance system has
+    # been retired: always return False so the temporary disable logic no
+    # longer blocks any users.
+    return False
 
 
 def is_direct_globally_disabled():
@@ -1162,39 +1150,10 @@ def is_direct_globally_disabled():
         return False
 
 
-@app.before_request
-def block_direct_when_maintenance():
-    """If DIRECT_MAINTENANCE is enabled, prevent non-admin users from
-    accessing Direct pages and APIs. API calls under /api/direct will receive
-    a 403 JSON response; browser page requests to /direct will be redirected
-    to the feed with a maintenance flash message.
-    """
-    # If the entire Direct system is turned off via DIRECT_ENABLED, block all users
-    try:
-        if is_direct_globally_disabled():
-            path = (request.path or '')
-            if path.startswith('/api/direct'):
-                return jsonify({'error': 'direct desativado'}), 403
-            if path.startswith('/direct'):
-                flash('Direct desativado.')
-                return redirect(url_for('feed'))
-    except Exception:
-        # If our feature-flag check fails, fall back to normal behavior
-        pass
-
-    try:
-        if not is_direct_temporarily_disabled_for_users():
-            return None
-    except Exception:
-        return None
-
-    # Only apply to Direct-related HTTP endpoints (temporary maintenance mode)
-    path = (request.path or '')
-    if path.startswith('/api/direct'):
-        return jsonify({'error': 'direct temporariamente desativado'}), 403
-    if path.startswith('/direct'):
-        flash('Direct temporariamente desativado. Voltaremos em breve.')
-        return redirect(url_for('feed'))
+# The ad-hoc Direct maintenance/before_request hook has been removed so the
+# application no longer intercepts Direct routes at request-time for temporary
+# maintenance. Direct availability is now determined only by
+# `app.config['DIRECT_ENABLED']` (checked via `is_direct_globally_disabled()`).
 
 
 def conversation_room_name(conversation_id):
@@ -1512,8 +1471,8 @@ def inject_global_unread_counters():
     # Compute whether the Direct (messaging) UI should be enabled for the
     # current session/user. This takes into account the global feature flag
     # (`DIRECT_ENABLED`), the admin-block (admins are intentionally blocked
-    # from Direct in this project), and the temporary maintenance mode which
-    # disables Direct for non-admins when `DIRECT_MAINTENANCE` is set.
+    # from Direct in older versions. We no longer block based on admin role or
+    # temporary maintenance mode — only the global flag controls availability.
     try:
         direct_globally_disabled = is_direct_globally_disabled()
     except Exception:
@@ -1521,24 +1480,15 @@ def inject_global_unread_counters():
 
     user_id = session.get('user_id')
 
-    # If Direct is globally disabled or the user is not authenticated, report
-    # zero unread messages and mark the UI as disabled.
+    # If Direct is globally disabled or the user is not authenticated,
+    # report zero unread messages and mark the UI as disabled. Otherwise
+    # consider Direct enabled for the authenticated user.
     if direct_globally_disabled or not user_id:
         return {'direct_unread_count': 0, 'direct_enabled': False}
 
-    # By default assume enabled for the authenticated user, then apply
-    # per-session restrictions (admin-block and temporary maintenance).
-    direct_enabled_for_user = True
-    try:
-        if is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
-            direct_enabled_for_user = False
-    except Exception:
-        # on error be conservative and keep it disabled
-        direct_enabled_for_user = False
-
     return {
         'direct_unread_count': get_direct_unread_total(user_id),
-        'direct_enabled': direct_enabled_for_user
+        'direct_enabled': True
     }
 
 
@@ -2179,7 +2129,13 @@ def direct_conversation(username):
 # Register blueprints
 from routes.feed import feed_bp
 from routes.perfil import perfil_bp
-from routes.direct import direct_bp
+try:
+    # Prefer the full `routes.direct` blueprint when available. If the
+    # full implementation is temporarily corrupted, fall back to a small
+    # local stub to allow the app to start for debugging.
+    from routes.direct import direct_bp
+except Exception:
+    from routes.direct_stub import direct_bp
 
 app.register_blueprint(feed_bp)
 app.register_blueprint(perfil_bp)

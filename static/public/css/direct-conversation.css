@@ -1754,3 +1754,54 @@ body.dark-mode .conversation-reply-cancel {
         animation: none !important;
     }
 }
+
+/* Composer send button: improved light/dark theme rules */
+:root {
+    --composer-send-bg: #4f46e5;
+    --composer-send-text: #ffffff;
+    --composer-send-hover: #4338ca;
+    --composer-send-shadow: 0 8px 20px rgba(79,70,229,0.14);
+}
+body.dark-mode {
+    --composer-send-bg: #6366f1;
+    --composer-send-text: #ffffff;
+    --composer-send-hover: #4f46e5;
+    --composer-send-shadow: 0 10px 26px rgba(0,0,0,0.5);
+}
+
+#conversation-send-button.composer-send-btn {
+    background: var(--composer-send-bg);
+    color: var(--composer-send-text);
+    border: none;
+    box-shadow: var(--composer-send-shadow);
+    min-width: 68px;
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+#conversation-send-button.composer-send-btn:not(:disabled):hover {
+    transform: translateY(-1px);
+    background: var(--composer-send-hover);
+}
+
+#conversation-send-button.composer-send-btn:active {
+    transform: translateY(0);
+}
+
+#conversation-send-button.composer-send-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* When composer is visually disabled, ensure the button is non-interactive */
+.conversation-composer--disabled #conversation-send-button.composer-send-btn {
+    pointer-events: none;
+    opacity: 0.6;
+}
+

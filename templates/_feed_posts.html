@@ -110,14 +110,27 @@
 {% endfor %}
 
 <!-- MODAL DENÚNCIA -->
-<div id="modalDenuncia" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+<div id="modalDenuncia" class="fixed inset-0 hidden items-center justify-center z-50" aria-hidden="true">
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6">
+    <!-- backdrop -->
+    <div id="modalDenunciaBackdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
 
-        <h2 class="text-lg font-semibold mb-4">Denunciar postagem</h2>
+    <div role="dialog" aria-modal="true" aria-labelledby="modalDenunciaTitle"
+         class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6 mx-4 transform transition-all duration-200 scale-95 opacity-0"
+         id="modalDenunciaPanel">
 
+        <div class="flex items-start justify-between">
+            <h2 id="modalDenunciaTitle" class="text-lg font-semibold mb-2 text-main">Denunciar postagem</h2>
+            <button id="closeModalDenuncia" aria-label="Fechar modal" class="text-secondary hover:text-main">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <p class="text-sm text-secondary mb-3">Explique o motivo da denúncia para que a moderação possa analisar.</p>
+
+        <label for="descricaoDenuncia" class="sr-only">Descrição da denúncia</label>
         <textarea id="descricaoDenuncia"
-                  class="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:bg-gray-700"
+                  class="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:bg-gray-700 dark:border-gray-600"
                   rows="4"
                   placeholder="Descreva o motivo da denúncia..."></textarea>
 
@@ -127,12 +140,12 @@
 
         <div class="flex justify-end gap-2 mt-4">
             <button id="cancelarDenuncia"
-                    class="px-4 py-2 text-sm bg-gray-600 rounded hover:bg-gray-500">
+                    class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-secondary rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition">
                 Cancelar
             </button>
 
             <button id="enviarDenuncia"
-                    class="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600">
+                    class="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition">
                 Enviar
             </button>
         </div>
@@ -157,16 +170,49 @@
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            modal.setAttribute('aria-hidden', 'false');
+
+            // animate panel in
+            const panel = document.getElementById('modalDenunciaPanel');
+            const backdrop = document.getElementById('modalDenunciaBackdrop');
+            requestAnimationFrame(() => {
+                panel.classList.remove('scale-95', 'opacity-0');
+                panel.classList.add('scale-100', 'opacity-100');
+                backdrop.classList.add('opacity-100');
+            });
 
             textarea.value = '';
             erro.classList.add('hidden');
+            textarea.focus();
         });
     });
 
+    // close helpers
+    function closeModal() {
+        const panel = document.getElementById('modalDenunciaPanel');
+        const backdrop = document.getElementById('modalDenunciaBackdrop');
+        panel.classList.add('scale-95', 'opacity-0');
+        backdrop.classList.remove('opacity-100');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.setAttribute('aria-hidden', 'true');
+        }, 180);
+    }
+
     // cancelar
-    document.getElementById('cancelarDenuncia').onclick = () => {
-        modal.classList.add('hidden');
-    };
+    document.getElementById('cancelarDenuncia').onclick = () => closeModal();
+    document.getElementById('closeModalDenuncia').onclick = () => closeModal();
+
+    // click outside to close
+    document.getElementById('modalDenunciaBackdrop').addEventListener('click', () => closeModal());
+
+    // ESC to close
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
 
     // enviar
     document.getElementById('enviarDenuncia').onclick = () => {
@@ -187,7 +233,7 @@
             })
         })
         .then(() => {
-            modal.classList.add('hidden');
+            closeModal();
             textarea.value = '';
             showToast('Denúncia enviada com sucesso!');
         })

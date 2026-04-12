@@ -1,12 +1,16 @@
 from flask import Blueprint, request, redirect, url_for, flash, jsonify, render_template, session
 from sqlalchemy import or_
-from app import db, User, Post, Comment, Event, Notification, datetime, uuid, os, br_time, get_feed_chunk, annotate_posts_with_like_info, normalize_search_category, notify_mentions, build_event_post_content, sync_event_feed_post, normalize_event_description, parse_event_datetime
+
+# Avoid importing `app` at module import time to prevent circular imports.
+# Import necessary symbols from `app` inside route handlers where needed.
 
 feed_bp = Blueprint('feed', __name__)
 
 @feed_bp.route('/feed')
 def feed():
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import get_feed_chunk, annotate_posts_with_like_info, Notification
+
     posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk()
     annotate_posts_with_like_info(posts, session.get('user_id'))
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
@@ -32,10 +36,13 @@ def feed_more():
     cursor_id = None
     if cursor_ts_raw and cursor_id_raw:
         try:
+            from app import datetime
             cursor_ts = datetime.fromisoformat(cursor_ts_raw)
             cursor_id = int(cursor_id_raw)
         except (TypeError, ValueError):
             return jsonify({'error': 'cursor invalido'}), 400
+
+    from app import get_feed_chunk, annotate_posts_with_like_info
 
     posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk(
         cursor_ts=cursor_ts,
@@ -54,6 +61,8 @@ def feed_more():
 @feed_bp.route('/search')
 def search():
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import normalize_search_category, Notification, Post, Event, User
+
     query = request.args.get('query', '').lower().strip().replace('@', '')
     category = normalize_search_category(request.args.get('category'))
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
@@ -104,6 +113,7 @@ def search():
 def api_search():
     if 'user_id' not in session:
         return jsonify({'error': 'nao autenticado'}), 401
+    from app import normalize_search_category, Event, User
 
     query = (request.args.get('query') or '').lower().strip().replace('@', '')
     category = normalize_search_category(request.args.get('category'))
@@ -151,13 +161,15 @@ def api_search():
 @feed_bp.route('/postar', methods=['POST'])
 def postar():
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import Post, db, uuid, os, notify_mentions
+
     content = request.form.get('content')
     anon_mode = request.form.get('anon_mode') == 'true'
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
         ext = os.path.splitext(file.filename)[1]
         filename = str(uuid.uuid4()) + ext
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        file.save(os.path.join('static', 'uploads', filename))
     new_post = Post(content=content, media_url=filename, user_id=session.get('user_id'), is_anonymous=anon_mode)
     db.session.add(new_post)
     db.session.flush() 

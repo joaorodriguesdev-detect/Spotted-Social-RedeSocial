@@ -65,6 +65,26 @@
         /* Make bottom-nav icons easier to tap on small touch screens */
         .bottom-nav a { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 6px; }
 
+        /* Accessible utility for screen-reader-only text */
+        .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+
+        /* Direct button specific styling to improve UX on mobile and desktop */
+        .direct-btn { border-radius: 9999px; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+        .direct-btn:active { transform: scale(0.96); }
+        .direct-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(79,70,229,0.14); }
+        /* Disabled state for when Direct is not available to the current user */
+        .direct-btn[disabled], .direct-btn[aria-disabled="true"] { cursor: not-allowed; opacity: 0.6; filter: grayscale(0.12); }
+
+        /* Unread badge for direct messages */
+        .direct-badge { position: absolute; top: -6px; right: -6px; background-color: #4f46e5; color: #fff; font-size: 10px; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font-weight: 800; }
+
+        /* Subtle pulse used to draw attention to new direct messages without being distracting */
+        @keyframes direct-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(79,70,229,0.18); }
+            70% { box-shadow: 0 0 0 10px rgba(79,70,229,0); }
+            100% { box-shadow: 0 0 0 0 rgba(79,70,229,0); }
+        }
+        .direct-pulse { animation: direct-pulse 1.6s ease-out infinite; }
         /* --- TEMA BLACK --- */
         body.dark-mode { background-color: #000000; color: #e7e9ea; }
         body.dark-mode nav { background-color: rgba(0, 0, 0, 0.8); border-color: #2f3336; }
@@ -255,12 +275,16 @@
         <a href="/feed" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path == '/feed' %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-house"></i>{% if current_path == '/feed' %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
         <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
-        <button type="button" title="Direct desativado temporariamente" aria-disabled="true" disabled class="relative w-9 h-9 flex items-center justify-center text-lg opacity-50 cursor-not-allowed {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}">
-            <i class="fa-regular fa-paper-plane"></i>
+        <!-- Use a stable literal path for the Direct link so the navbar works even
+             if the Direct blueprint/view registration changes. Keep the
+             original template-based url_for for clarity in a data attribute. -->
+        <a href="/direct" data-href-template="{{ url_for('direct') }}" class="relative w-10 h-10 flex items-center justify-center text-lg hover:text-indigo-500 direct-btn {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}" aria-label="Direct" title="Mensagens">
+            <i class="fa-regular fa-paper-plane" aria-hidden="true"></i>
+            <span class="sr-only">Entrar no Direct</span>
             {% if direct_unread_count and direct_unread_count > 0 %}
-            <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
+            <span id="direct-unread-badge" class="direct-badge">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
             {% endif %}
-        </button>
+        </a>
 
         <a href="/notificacoes" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/notificacoes') %}text-indigo-500{% else %}text-main{% endif %}">
             <i class="fa-regular fa-bell"></i>
@@ -639,6 +663,54 @@
         // socket.io client may not be available in some contexts; fail silently
         console.warn('Realtime notifications disabled:', e);
     }
+</script>
+<script>
+    // Small UX enhancement: add a subtle pulse to the direct icon when there are unread messages
+    (function() {
+        try {
+            const badge = document.getElementById('direct-unread-badge');
+            const directBtn = badge ? badge.closest('a') : document.querySelector('a[href="/direct"]');
+            function updatePulse() {
+                if (!badge || !directBtn) return;
+                const count = parseInt(badge.textContent) || 0;
+                if (count > 0 && !directBtn.classList.contains('direct-pulse')) {
+                    directBtn.classList.add('direct-pulse');
+                } else if (count <= 0 && directBtn.classList.contains('direct-pulse')) {
+                    directBtn.classList.remove('direct-pulse');
+                }
+            }
+            updatePulse();
+            // Observe changes to the badge text so updates from sockets/fetches trigger the pulse change
+            if (badge) {
+                const observer = new MutationObserver(updatePulse);
+                observer.observe(badge, { childList: true, characterData: true, subtree: true });
+            }
+        } catch (e) {
+            // ignore
+        }
+    })();
+</script>
+<script>
+    // Fallback: force navigation for anchors that use the Direct link template
+    // when some other script might intercept clicks. We run this in the capture
+    // phase so it executes before other handlers and ensures the user can
+    // navigate using the bottom navbar icon even if other code prevents default.
+    document.addEventListener('click', function (ev) {
+        try {
+            var a = ev.target.closest && ev.target.closest('a[data-href-template]');
+            if (!a) return;
+            var href = a.getAttribute('href');
+            if (!href) return;
+            // If already on the same path just let default behavior happen
+            if (window.location.pathname === href) return;
+            // Force navigation (capture phase makes this run before usual listeners)
+            window.location.href = href;
+            ev.stopPropagation();
+            ev.preventDefault();
+        } catch (e) {
+            // ignore
+        }
+    }, true);
 </script>
 {% block scripts %}{% endblock %}
 </body>

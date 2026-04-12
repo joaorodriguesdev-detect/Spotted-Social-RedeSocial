@@ -1,11 +1,14 @@
 from flask import Blueprint, request, redirect, url_for, flash, session, render_template
-from app import db, User, Post, Message, Event, Notification, uuid, os, resolve_user_by_sender_name
+
+# Defer imports from `app` into handlers to avoid circular import at module import time.
 
 perfil_bp = Blueprint('perfil', __name__)
 
 @perfil_bp.route('/perfil/<username>')
 def perfil(username):
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import User, Post, Event, Message, Notification
+
     user = User.query.filter_by(username=username).first_or_404()
     if user.is_admin and not session.get('is_admin'): return redirect(url_for('feed'))
     posts = Post.query.filter(
@@ -34,6 +37,8 @@ def perfil_por_remetente():
         return redirect(url_for('welcome'))
 
     sender_name = request.args.get('sender_name', '')
+    from app import resolve_user_by_sender_name, User
+
     user = resolve_user_by_sender_name(sender_name)
     if not user:
         flash('Perfil do remetente nao encontrado.')
@@ -47,6 +52,8 @@ def perfil_por_remetente():
 @perfil_bp.route('/editar_perfil', methods=['POST'])
 def editar_perfil():
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import User, db, uuid, os, app
+
     user = User.query.get(session['user_id'])
     name_post = request.form.get('name')
     university_post = request.form.get('university')
@@ -68,6 +75,8 @@ def editar_perfil():
 
 @perfil_bp.route('/seguir/<username>')
 def seguir(username):
+    from app import User, Notification, db
+
     if 'user_id' not in session: return redirect(url_for('perfil', username=username))
     user_to_follow = User.query.filter_by(username=username).first_or_404()
     me = User.query.get(session['user_id'])
@@ -85,6 +94,8 @@ def enviar_recado(user_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
     content = request.form.get('content')
     if content:
+        from app import Message, Notification, db
+
         sender = session.get('username')
         db.session.add(Message(receiver_id=user_id, sender_name=sender, content=content))
         db.session.add(Notification(user_id=user_id, sender_name=sender, action_type="deixou um recado no mural"))
