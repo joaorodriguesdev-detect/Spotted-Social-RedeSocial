@@ -302,6 +302,12 @@
     }
 
     function initRealtime() {
+        // If the server has disabled Direct globally, skip realtime initialization.
+        if (typeof window.DIRECT_ENABLED !== 'undefined' && !window.DIRECT_ENABLED) {
+            // Disable realtime features: leave polling/Socket.IO inactive.
+            console.info('Direct is disabled by server; realtime features are inactive.');
+            return;
+        }
         if (!conversationId) return;
 
         function loadLatestMessages() {
@@ -1355,6 +1361,36 @@
         const replyCancelButton = document.getElementById('conversation-reply-cancel');
 
         if (!composerForm || !messageInput || !sendButton || !replyPreview || !replyAuthor || !replyText || !replyCancelButton) {
+            return;
+        }
+
+        // Apply server-controlled Direct enabled/disabled state to composer UI
+        function applyDirectEnabledState() {
+            try {
+                if (typeof window.DIRECT_ENABLED !== 'undefined' && !window.DIRECT_ENABLED) {
+                    messageInput.placeholder = 'Direct desativado.';
+                    messageInput.disabled = true;
+                    sendButton.disabled = true;
+                    composerForm.classList.add('conversation-composer--disabled');
+                    sendButton.setAttribute('aria-disabled', 'true');
+                    return false;
+                }
+                // Ensure composer is enabled when server allows Direct
+                messageInput.disabled = false;
+                composerForm.classList.remove('conversation-composer--disabled');
+                sendButton.removeAttribute('aria-disabled');
+                // Send button enabled/disabled will be managed by setSendButtonState()
+                return true;
+            } catch (e) {
+                // On unexpected failures, default to enabled to avoid locking UI
+                try { messageInput.disabled = false; sendButton.removeAttribute('aria-disabled'); composerForm.classList.remove('conversation-composer--disabled'); } catch (ee) {}
+                return true;
+            }
+        }
+
+        var _directAvailable = applyDirectEnabledState();
+        if (!_directAvailable) {
+            // Direct is disabled on server — keep composer inactive.
             return;
         }
 

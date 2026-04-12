@@ -4,6 +4,7 @@
         return;
     }
 
+    // Ensure we have references to key DOM nodes before toggling state
     var composeBtn = document.getElementById('direct-new-message-trigger');
     var modal = document.getElementById('direct-new-modal');
     var closeBtn = document.getElementById('direct-new-modal-close');
@@ -24,6 +25,22 @@
     var filterLinks = document.querySelectorAll('.direct-filters a[data-filter]');
     var listContainer = document.getElementById('direct-list');
     var conversationsCount = document.getElementById('direct-conversations-count');
+
+    // If server disabled Direct, show a notice and disable compose actions early.
+    if (typeof window.DIRECT_ENABLED !== 'undefined' && !window.DIRECT_ENABLED) {
+        try {
+            var notice = document.createElement('div');
+            notice.className = 'dm-disabled-banner p-3 text-center text-sm text-secondary';
+            notice.textContent = 'Direct desativado pelo sistema.';
+            shell.insertBefore(notice, shell.firstChild);
+            // Disable compose button if present
+            if (composeBtn) try { composeBtn.disabled = true; } catch (e) {}
+            if (listContainer) listContainer.innerHTML = '<div class="dm-empty-card rounded-2xl p-6 text-center text-secondary text-sm mx-2">Direct está desativado no momento.</div>';
+        } catch (e) {
+            // ignore DOM failures
+        }
+        return;
+    }
 
     if (!composeBtn || !modal || !modalSearchInput || !resultsContainer) {
         return;
@@ -221,7 +238,8 @@
 
     function renderUsers(users) {
         if (!users || users.length === 0) {
-            renderComposeMessage(isGroupMode ? 'Nenhum usuario para selecionar.' : 'Nenhum usuario encontrado.');
+            // When in group mode, clarify why results may be empty: only mutual followers
+            renderComposeMessage(isGroupMode ? 'Nenhum usuário para selecionar. Apenas usuários que se seguem mutuamente aparecem aqui.' : 'Nenhum usuário encontrado.');
             return;
         }
 
@@ -345,13 +363,32 @@
                 });
             })
             .then(function (result) {
-                if (!result.ok || !result.payload || !result.payload.url) {
-                    throw new Error('Falha ao criar grupo');
+                // If server returned a structured error, show it to the user.
+                if (!result.ok) {
+                    var err = (result.payload && (result.payload.error || result.payload.message)) || 'Falha ao criar grupo';
+                    renderComposeMessage(err);
+                    return Promise.reject(new Error(err));
                 }
-                window.location.href = result.payload.url;
+                var url = result.payload && result.payload.url;
+                if (!url) {
+                    renderComposeMessage('Falha ao criar grupo. Resposta inesperada do servidor.');
+                    return Promise.reject(new Error('no url'));
+                }
+                // Close modal and navigate to the newly created conversation
+                try { closeModal(); } catch (e) {}
+                window.location.href = url;
+                return Promise.resolve();
             })
-            .catch(function () {
-                renderComposeMessage('Nao foi possivel criar o grupo. Tente novamente.');
+            .catch(function (err) {
+                // If the promise was rejected earlier we already showed a message.
+                if (typeof err === 'string') {
+                    renderComposeMessage(err);
+                }
+                // Otherwise ensure there's a fallback message
+                if (!resultsContainer.innerHTML || resultsContainer.innerHTML.indexOf('Falha') === -1) {
+                    // only show generic when not already showing a specific error
+                    renderComposeMessage('Nao foi possivel criar o grupo. Tente novamente.');
+                }
             })
             .finally(function () {
                 groupCreateSubmit.disabled = false;

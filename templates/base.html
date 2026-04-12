@@ -6,7 +6,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <title>{% block title %}Spotted{% endblock %}</title>
-    <link rel="icon" type="image/x-icon" href="{{ url_for('public_files', filename='icon-page.ico') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('public_files', filename='icon-page.ico') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('public_files', filename='icon-apple-touch.png') }}" />
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
         .insta-font { font-family: 'Lobster', cursive; }
@@ -93,7 +94,7 @@
         body.dark-mode .interactive-control:hover { filter: brightness(1.08); }
 
         .preview-img { display: none; max-height: 300px; width: 100%; object-fit: cover; border-radius: 1rem; margin-top: 1rem; border: 1px solid #2f3336; }
-        
+
         .twitter-card { border-bottom: 1px solid; border-color: inherit; transition: background 0.2s; }
         body:not(.dark-mode) .twitter-card { background-color: #ffffff; border-color: #dbe2f0; }
         body:not(.dark-mode) .twitter-card:hover { background-color: #f8faff; }
@@ -223,89 +224,87 @@
     {% block head_extra %}{% endblock %}
 </head>
 <body class="min-h-screen">
-    <script>
-        // Define Dark como padrão se não houver preferência salva
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark' || !savedTheme) {
-            document.body.classList.add('dark-mode');
-        }
-    </script>
+<script>
+    // Define Dark como padrão se não houver preferência salva
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || !savedTheme) {
+        document.body.classList.add('dark-mode');
+    }
+</script>
 
-    {% if not hide_chrome|default(false) %}
-    <nav class="backdrop-blur-md border-b sticky top-0 z-[100] py-3 px-4 transition-all">
-        <div class="max-w-[600px] mx-auto flex justify-between items-center relative">
-            <div class="w-10"></div>
-            <h1 class="text-xl insta-font cursor-pointer absolute left-1/2 -translate-x-1/2" onclick="window.location.href='/feed'">Spotted</h1>
-            <button onclick="toggleTheme()" class="w-10 h-10 flex items-center justify-center text-lg hover:bg-gray-200 dark:hover:bg-gray-800 active:scale-90 rounded-full transition-all" id="theme-btn">
-                <i class="fa-solid fa-moon"></i>
-            </button>
-        </div>
-    </nav>
-    {% endif %}
+{% if not hide_chrome|default(false) %}
+<nav class="backdrop-blur-md border-b sticky top-0 z-[100] py-3 px-4 transition-all">
+    <div class="max-w-[600px] mx-auto flex justify-between items-center relative">
+        <div class="w-10"></div>
+        <h1 class="text-xl insta-font cursor-pointer absolute left-1/2 -translate-x-1/2" onclick="window.location.href='/feed'">Spotted</h1>
+        <button onclick="toggleTheme()" class="w-10 h-10 flex items-center justify-center text-lg active:scale-90 rounded-full transition-all" id="theme-btn">
+            <i class="fa-solid fa-moon"></i>
+        </button>
+    </div>
+</nav>
+{% endif %}
 
-    <main>
-        {% block content %}{% endblock %}
-    </main>
+<main>
+    {% block content %}{% endblock %}
+</main>
 
-    {% if not hide_chrome|default(false) %}
-    <div class="fixed bottom-0 left-0 right-0 border-t bottom-nav py-2 px-4 z-[100] backdrop-blur-md transition-all">
-        {% set current_path = request.path %}
-        <div class="max-w-[600px] mx-auto flex justify-between items-center">
-            <a href="/feed" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path == '/feed' %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-house"></i>{% if current_path == '/feed' %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
+{% if not hide_chrome|default(false) %}
+<div class="fixed bottom-0 left-0 right-0 border-t bottom-nav py-2 px-4 z-[100] backdrop-blur-md transition-all">
+    {% set current_path = request.path %}
+    <div class="max-w-[600px] mx-auto flex justify-between items-center">
+        <a href="/feed" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path == '/feed' %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-house"></i>{% if current_path == '/feed' %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
-            <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
-
-            <!-- Direct access temporarily disabled until realtime/send fixes are applied -->
-            <button type="button" title="Direct desativado temporariamente" aria-disabled="true" disabled class="relative w-9 h-9 flex items-center justify-center text-lg opacity-50 cursor-not-allowed {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}">
-                <i class="fa-regular fa-paper-plane"></i>
-                {% if direct_unread_count and direct_unread_count > 0 %}
-                    <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
-                {% endif %}
-            </button>
-
-            <a href="/notificacoes" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/notificacoes') %}text-indigo-500{% else %}text-main{% endif %}">
-                <i class="fa-regular fa-bell"></i>
-                <!-- Always render the badge element so client-side JS can update it in realtime. Hidden when count is zero. -->
-                <span id="notif-unread-badge" class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold" {% if not (unread_count and unread_count > 0) %}style="display:none"{% endif %}>{{ unread_count if unread_count and unread_count > 0 else '' }}</span>
-                {% if current_path.startswith('/notificacoes') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}
-            </a>
-
-            {% if session.get('user_id') %}
-            <div class="relative">
-                <button type="button" id="profile-menu-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-context-menu" class="relative w-10 h-10 rounded-full border twitter-border flex items-center justify-center overflow-hidden transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent">
-                    {% if session.get('profile_pic') %}
-                        <img src="{{ url_for('static', filename='uploads/' + session.get('profile_pic')) }}" class="w-full h-full object-cover" alt="Foto do perfil">
-                    {% else %}
-                        <span class="text-[10px] text-main font-bold">{{ session.get('username')[0].upper() }}</span>
-                    {% endif %}
-                    {% if current_path.startswith('/perfil/') %}<span class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}
-                </button>
-                <div id="profile-context-menu" role="menu" aria-labelledby="profile-menu-trigger" class="profile-context-menu hidden absolute bottom-11 right-0 min-w-[148px] rounded-xl py-1 z-[180] transition-all duration-150">
-                    <a href="/perfil/{{ session['username'] }}" role="menuitem" class="profile-menu-link block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition">Perfil</a>
-                    <a href="{{ url_for('logout') }}" role="menuitem" class="profile-menu-link-danger block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition">Sair</a>
-                </div>
-            </div>
-            {% else %}
-            <a href="/" class="w-9 h-9 flex items-center justify-center text-main text-lg"><i class="fa-solid fa-right-from-bracket"></i></a>
+        <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
+        <button type="button" title="Direct desativado temporariamente" aria-disabled="true" disabled class="relative w-9 h-9 flex items-center justify-center text-lg opacity-50 cursor-not-allowed {% if current_path.startswith('/direct') %}text-indigo-500{% else %}text-main{% endif %}">
+            <i class="fa-regular fa-paper-plane"></i>
+            {% if direct_unread_count and direct_unread_count > 0 %}
+            <span class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">{{ direct_unread_count if direct_unread_count < 100 else '99+' }}</span>
             {% endif %}
-        </div>
-    </div>
-    {% endif %}
+        </button>
 
-    <div id="delete-confirm-modal" class="hidden fixed inset-0 z-[250] bg-black/60 items-center justify-center p-4 overflow-y-auto">
-        <div class="w-full max-w-sm rounded-2xl bg-white dark:bg-[#16181c] border twitter-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
-            <h3 class="text-sm font-black text-main">Confirmar exclusão</h3>
-            <p id="delete-confirm-text" class="mt-2 text-xs text-secondary">Tem certeza que deseja excluir este item?</p>
-            <div class="mt-4 flex items-center justify-end gap-2">
-                <button type="button" id="delete-cancel-btn" class="px-3 py-2 rounded-lg text-xs font-bold bg-gray-100 dark:bg-white/10 text-main hover:bg-gray-200 dark:hover:bg-white/20 transition">Cancelar</button>
-                <a id="delete-confirm-btn" href="#" class="px-3 py-2 rounded-lg text-xs font-bold bg-red-500 text-white hover:bg-red-600 transition">Excluir</a>
+        <a href="/notificacoes" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/notificacoes') %}text-indigo-500{% else %}text-main{% endif %}">
+            <i class="fa-regular fa-bell"></i>
+            <!-- Always render the badge element so client-side JS can update it in realtime. Hidden when count is zero. -->
+            <span id="notif-unread-badge" class="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold" {% if not (unread_count and unread_count > 0) %}style="display:none"{% endif %}>{{ unread_count if unread_count and unread_count > 0 else '' }}</span>
+            {% if current_path.startswith('/notificacoes') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}
+        </a>
+
+        {% if session.get('user_id') %}
+        <div class="relative">
+            <button type="button" id="profile-menu-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-context-menu" class="relative w-10 h-10 rounded-full border twitter-border flex items-center justify-center overflow-hidden transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent">
+                {% if session.get('profile_pic') %}
+                <img src="{{ url_for('static', filename='uploads/' + session.get('profile_pic')) }}" class="w-full h-full object-cover" alt="Foto do perfil">
+                {% else %}
+                <span class="text-[10px] text-main font-bold">{{ session.get('username')[0].upper() }}</span>
+                {% endif %}
+                {% if current_path.startswith('/perfil/') %}<span class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}
+            </button>
+            <div id="profile-context-menu" role="menu" aria-labelledby="profile-menu-trigger" class="profile-context-menu hidden absolute bottom-11 right-0 min-w-[148px] rounded-xl py-1 z-[180] transition-all duration-150">
+                <a href="/perfil/{{ session['username'] }}" role="menuitem" class="profile-menu-link block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition">Perfil</a>
+                <a href="{{ url_for('logout') }}" role="menuitem" class="profile-menu-link-danger block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition">Sair</a>
             </div>
         </div>
+        {% else %}
+        <a href="/" class="w-9 h-9 flex items-center justify-center text-main text-lg"><i class="fa-solid fa-right-from-bracket"></i></a>
+        {% endif %}
     </div>
+</div>
+{% endif %}
 
-    <script>
-        const themeBtn = document.getElementById('theme-btn');
-        if (themeBtn) {
+<div id="delete-confirm-modal" class="hidden fixed inset-0 z-[250] bg-black/60 items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-sm rounded-2xl bg-white dark:bg-[#16181c] border twitter-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-sm font-black text-main">Confirmar exclusão</h3>
+        <p id="delete-confirm-text" class="mt-2 text-xs text-secondary">Tem certeza que deseja excluir este item?</p>
+        <div class="mt-4 flex items-center justify-end gap-2">
+            <button type="button" id="delete-cancel-btn" class="px-3 py-2 rounded-lg text-xs font-bold bg-gray-100 dark:bg-white/10 text-main hover:bg-gray-200 dark:hover:bg-white/20 transition">Cancelar</button>
+            <a id="delete-confirm-btn" href="#" class="px-3 py-2 rounded-lg text-xs font-bold bg-red-500 text-white hover:bg-red-600 transition">Excluir</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const themeBtn = document.getElementById('theme-btn');
+    if (themeBtn) {
         function syncIcon() {
             const icon = themeBtn.querySelector('i');
             if (document.body.classList.contains('dark-mode')) {
@@ -322,326 +321,325 @@
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
             syncIcon();
         }
-        }
-    </script>
-    <script>
-        const profileMenuTrigger = document.getElementById('profile-menu-trigger');
-        const profileContextMenu = document.getElementById('profile-context-menu');
-        const profileMenuItems = profileContextMenu ? Array.from(profileContextMenu.querySelectorAll('[role="menuitem"]')) : [];
+    }
+</script>
+<script>
+    const profileMenuTrigger = document.getElementById('profile-menu-trigger');
+    const profileContextMenu = document.getElementById('profile-context-menu');
+    const profileMenuItems = profileContextMenu ? Array.from(profileContextMenu.querySelectorAll('[role="menuitem"]')) : [];
 
-        function closeProfileMenu(restoreFocus = false) {
-            if (!profileContextMenu || !profileMenuTrigger) return;
-            console.debug('[profile-menu] closeProfileMenu called');
-            profileContextMenu.classList.add('hidden');
-            profileMenuTrigger.setAttribute('aria-expanded', 'false');
-            // clear any inline positioning overrides so mobile layout keeps working
-            profileContextMenu.style.left = '';
-            profileContextMenu.style.top = '';
-            profileContextMenu.style.right = '';
-            profileContextMenu.style.bottom = '';
-            // also clear any forced position (we may set 'fixed' when opening)
-            profileContextMenu.style.position = '';
-            // If we previously moved the menu to document.body to avoid stacking
-            // context clipping, restore it to its original parent when closing so
-            // mobile/absolute anchoring keeps working.
-            try {
-                if (profileContextMenu.dataset && profileContextMenu.dataset.__movedToBody) {
-                    const origParent = profileContextMenu.__origParent;
-                    const origNext = profileContextMenu.__origNext;
-                    if (origParent) {
-                        if (origNext && origNext.parentNode === origParent) {
-                            origParent.insertBefore(profileContextMenu, origNext);
-                        } else {
-                            origParent.appendChild(profileContextMenu);
-                        }
+    function closeProfileMenu(restoreFocus = false) {
+        if (!profileContextMenu || !profileMenuTrigger) return;
+        console.debug('[profile-menu] closeProfileMenu called');
+        profileContextMenu.classList.add('hidden');
+        profileMenuTrigger.setAttribute('aria-expanded', 'false');
+        // clear any inline positioning overrides so mobile layout keeps working
+        profileContextMenu.style.left = '';
+        profileContextMenu.style.top = '';
+        profileContextMenu.style.right = '';
+        profileContextMenu.style.bottom = '';
+        // also clear any forced position (we may set 'fixed' when opening)
+        profileContextMenu.style.position = '';
+        // If we previously moved the menu to document.body to avoid stacking
+        // context clipping, restore it to its original parent when closing so
+        // mobile/absolute anchoring keeps working.
+        try {
+            if (profileContextMenu.dataset && profileContextMenu.dataset.__movedToBody) {
+                const origParent = profileContextMenu.__origParent;
+                const origNext = profileContextMenu.__origNext;
+                if (origParent) {
+                    if (origNext && origNext.parentNode === origParent) {
+                        origParent.insertBefore(profileContextMenu, origNext);
+                    } else {
+                        origParent.appendChild(profileContextMenu);
                     }
-                    // clean up temporary markers
-                    delete profileContextMenu.__origParent;
-                    delete profileContextMenu.__origNext;
-                    delete profileContextMenu.dataset.__movedToBody;
                 }
-            } catch (e) {
-                // ignore restore failures
+                // clean up temporary markers
+                delete profileContextMenu.__origParent;
+                delete profileContextMenu.__origNext;
+                delete profileContextMenu.dataset.__movedToBody;
             }
-            if (restoreFocus) {
-                profileMenuTrigger.focus();
-            }
+        } catch (e) {
+            // ignore restore failures
         }
+        if (restoreFocus) {
+            profileMenuTrigger.focus();
+        }
+    }
 
-        function openProfileMenu(focusIndex = null) {
-            if (!profileContextMenu || !profileMenuTrigger) return;
-            console.debug('[profile-menu] openProfileMenu called');
-            // Ensure the menu is attached to <body> to avoid stacking/positioning issues
-            try {
-                if (!profileContextMenu.dataset.__movedToBody) {
-                    profileContextMenu.__origParent = profileContextMenu.parentElement;
-                    profileContextMenu.__origNext = profileContextMenu.nextElementSibling;
-                    document.body.appendChild(profileContextMenu);
-                    profileContextMenu.dataset.__movedToBody = '1';
-                    console.debug('[profile-menu] moved menu to body to avoid ancestor stacking contexts');
+    function openProfileMenu(focusIndex = null) {
+        if (!profileContextMenu || !profileMenuTrigger) return;
+        console.debug('[profile-menu] openProfileMenu called');
+        // Ensure the menu is attached to <body> to avoid stacking/positioning issues
+        try {
+            if (!profileContextMenu.dataset.__movedToBody) {
+                profileContextMenu.__origParent = profileContextMenu.parentElement;
+                profileContextMenu.__origNext = profileContextMenu.nextElementSibling;
+                document.body.appendChild(profileContextMenu);
+                profileContextMenu.dataset.__movedToBody = '1';
+                console.debug('[profile-menu] moved menu to body to avoid ancestor stacking contexts');
+            }
+        } catch (e) {
+            console.warn('[profile-menu] failed to move menu to body', e);
+        }
+        profileContextMenu.classList.remove('hidden');
+        profileMenuTrigger.setAttribute('aria-expanded', 'true');
+
+        // Position menu smartly on wider viewports (desktop): open above the avatar and align to its right edge.
+        try {
+            if (window.innerWidth > 640) {
+                // When using viewport coordinates, ensure the menu is positioned relative to the
+                // viewport (not the nearest positioned ancestor). Some layouts add `position: relative`
+                // to the bottom chrome which would break getBoundingClientRect()-based placement.
+                profileContextMenu.style.position = 'fixed';
+                // Remove bottom/right anchors so we can measure natural size
+                profileContextMenu.style.right = 'auto';
+                profileContextMenu.style.bottom = 'auto';
+                const triggerRect = profileMenuTrigger.getBoundingClientRect();
+                const menuRect = profileContextMenu.getBoundingClientRect();
+                // Align right edge of menu to trigger's right edge, shift into viewport if needed
+                let left = triggerRect.right - menuRect.width;
+                left = Math.max(8, Math.min(left, window.innerWidth - menuRect.width - 8));
+                let top = triggerRect.top - menuRect.height - 8;
+                if (top < 8) {
+                    // fallback to placing below trigger if not enough space above
+                    top = triggerRect.bottom + 8;
                 }
-            } catch (e) {
-                console.warn('[profile-menu] failed to move menu to body', e);
-            }
-            profileContextMenu.classList.remove('hidden');
-            profileMenuTrigger.setAttribute('aria-expanded', 'true');
-
-            // Position menu smartly on wider viewports (desktop): open above the avatar and align to its right edge.
-            try {
-                if (window.innerWidth > 640) {
-                    // When using viewport coordinates, ensure the menu is positioned relative to the
-                    // viewport (not the nearest positioned ancestor). Some layouts add `position: relative`
-                    // to the bottom chrome which would break getBoundingClientRect()-based placement.
-                    profileContextMenu.style.position = 'fixed';
-                    // Remove bottom/right anchors so we can measure natural size
-                    profileContextMenu.style.right = 'auto';
-                    profileContextMenu.style.bottom = 'auto';
-                    const triggerRect = profileMenuTrigger.getBoundingClientRect();
-                    const menuRect = profileContextMenu.getBoundingClientRect();
-                    // Align right edge of menu to trigger's right edge, shift into viewport if needed
-                    let left = triggerRect.right - menuRect.width;
-                    left = Math.max(8, Math.min(left, window.innerWidth - menuRect.width - 8));
-                    let top = triggerRect.top - menuRect.height - 8;
-                    if (top < 8) {
-                        // fallback to placing below trigger if not enough space above
-                        top = triggerRect.bottom + 8;
-                    }
-                    profileContextMenu.style.left = left + 'px';
-                    profileContextMenu.style.top = top + 'px';
-                } else {
-                    // Mobile: restore default bottom/right positioning
-                    profileContextMenu.style.left = '';
-                    profileContextMenu.style.top = '';
-                    profileContextMenu.style.right = '';
-                    profileContextMenu.style.bottom = '';
-                    // ensure we go back to absolute positioning used by CSS so it anchors to the bottom nav
-                    profileContextMenu.style.position = '';
-                }
-            } catch (e) {
-                // ignore positioning errors and fall back to CSS defaults
-            }
-
-            if (focusIndex !== null && profileMenuItems[focusIndex]) {
-                profileMenuItems[focusIndex].focus();
-            }
-        }
-
-        function focusMenuItem(nextIndex) {
-            if (!profileMenuItems.length) return;
-            const size = profileMenuItems.length;
-            const normalized = ((nextIndex % size) + size) % size;
-            profileMenuItems[normalized].focus();
-        }
-
-        function toggleProfileMenu(event) {
-            if (!profileContextMenu || !profileMenuTrigger) return;
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            console.debug('[profile-menu] toggleProfileMenu');
-            const isHidden = profileContextMenu.classList.contains('hidden');
-            if (isHidden) {
-                openProfileMenu();
+                profileContextMenu.style.left = left + 'px';
+                profileContextMenu.style.top = top + 'px';
             } else {
-                closeProfileMenu();
+                // Mobile: restore default bottom/right positioning
+                profileContextMenu.style.left = '';
+                profileContextMenu.style.top = '';
+                profileContextMenu.style.right = '';
+                profileContextMenu.style.bottom = '';
+                // ensure we go back to absolute positioning used by CSS so it anchors to the bottom nav
+                profileContextMenu.style.position = '';
             }
+        } catch (e) {
+            // ignore positioning errors and fall back to CSS defaults
         }
 
-        if (profileMenuTrigger) {
-            console.debug('[profile-menu] attaching listeners to trigger');
-            profileMenuTrigger.addEventListener('click', toggleProfileMenu);
-            profileMenuTrigger.addEventListener('keydown', (event) => {
-                if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    openProfileMenu(0);
-                    return;
-                }
-                if (event.key === 'ArrowUp') {
-                    event.preventDefault();
-                    openProfileMenu(profileMenuItems.length - 1);
-                }
-            });
+        if (focusIndex !== null && profileMenuItems[focusIndex]) {
+            profileMenuItems[focusIndex].focus();
         }
+    }
 
-        if (profileContextMenu) {
-            console.debug('[profile-menu] profileContextMenu exists; attaching listeners');
-            profileContextMenu.addEventListener('keydown', (event) => {
-                if (!profileMenuItems.length) return;
-                const currentIndex = profileMenuItems.indexOf(document.activeElement);
+    function focusMenuItem(nextIndex) {
+        if (!profileMenuItems.length) return;
+        const size = profileMenuItems.length;
+        const normalized = ((nextIndex % size) + size) % size;
+        profileMenuItems[normalized].focus();
+    }
 
-                if (event.key === 'Escape') {
-                    event.preventDefault();
-                    closeProfileMenu(true);
-                    return;
-                }
-
-                if (event.key === 'ArrowDown') {
-                    event.preventDefault();
-                    focusMenuItem(currentIndex + 1);
-                    return;
-                }
-
-                if (event.key === 'ArrowUp') {
-                    event.preventDefault();
-                    focusMenuItem(currentIndex - 1);
-                    return;
-                }
-
-                if (event.key === 'Home') {
-                    event.preventDefault();
-                    focusMenuItem(0);
-                    return;
-                }
-
-                if (event.key === 'End') {
-                    event.preventDefault();
-                    focusMenuItem(profileMenuItems.length - 1);
-                }
-            });
-
-            profileContextMenu.addEventListener('click', () => {
-                closeProfileMenu();
-            });
+    function toggleProfileMenu(event) {
+        if (!profileContextMenu || !profileMenuTrigger) return;
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
         }
+        console.debug('[profile-menu] toggleProfileMenu');
+        const isHidden = profileContextMenu.classList.contains('hidden');
+        if (isHidden) {
+            openProfileMenu();
+        } else {
+            closeProfileMenu();
+        }
+    }
 
-        document.addEventListener('click', (event) => {
-            if (!profileContextMenu || !profileMenuTrigger) return;
-            if (profileContextMenu.classList.contains('hidden')) return;
-            if (profileMenuTrigger.contains(event.target) || profileContextMenu.contains(event.target)) return;
+    if (profileMenuTrigger) {
+        console.debug('[profile-menu] attaching listeners to trigger');
+        profileMenuTrigger.addEventListener('click', toggleProfileMenu);
+        profileMenuTrigger.addEventListener('keydown', (event) => {
+            if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                openProfileMenu(0);
+                return;
+            }
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                openProfileMenu(profileMenuItems.length - 1);
+            }
+        });
+    }
+
+    if (profileContextMenu) {
+        console.debug('[profile-menu] profileContextMenu exists; attaching listeners');
+        profileContextMenu.addEventListener('keydown', (event) => {
+            if (!profileMenuItems.length) return;
+            const currentIndex = profileMenuItems.indexOf(document.activeElement);
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeProfileMenu(true);
+                return;
+            }
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                focusMenuItem(currentIndex + 1);
+                return;
+            }
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                focusMenuItem(currentIndex - 1);
+                return;
+            }
+
+            if (event.key === 'Home') {
+                event.preventDefault();
+                focusMenuItem(0);
+                return;
+            }
+
+            if (event.key === 'End') {
+                event.preventDefault();
+                focusMenuItem(profileMenuItems.length - 1);
+            }
+        });
+
+        profileContextMenu.addEventListener('click', () => {
             closeProfileMenu();
         });
+    }
 
-        // Fallback delegated listener: if for any reason the direct listener on the
-        // trigger wasn't attached (race or DOM modifications), handle clicks that
-        // originate on an element matching #profile-menu-trigger and toggle the menu.
-        document.addEventListener('click', (event) => {
-            try {
-                const clickedTrigger = event.target.closest && event.target.closest('#profile-menu-trigger');
-                if (clickedTrigger) {
-                    // Let the existing handler run (it will stop propagation). Call toggle as fallback.
-                    toggleProfileMenu(event);
-                }
-            } catch (e) {
-                // ignore
+    document.addEventListener('click', (event) => {
+        if (!profileContextMenu || !profileMenuTrigger) return;
+        if (profileContextMenu.classList.contains('hidden')) return;
+        if (profileMenuTrigger.contains(event.target) || profileContextMenu.contains(event.target)) return;
+        closeProfileMenu();
+    });
+
+    // Fallback delegated listener: if for any reason the direct listener on the
+    // trigger wasn't attached (race or DOM modifications), handle clicks that
+    // originate on an element matching #profile-menu-trigger and toggle the menu.
+    document.addEventListener('click', (event) => {
+        try {
+            const clickedTrigger = event.target.closest && event.target.closest('#profile-menu-trigger');
+            if (clickedTrigger) {
+                // Let the existing handler run (it will stop propagation). Call toggle as fallback.
+                toggleProfileMenu(event);
             }
-        });
-
-        const deleteModal = document.getElementById('delete-confirm-modal');
-        const deleteConfirmText = document.getElementById('delete-confirm-text');
-        const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
-        const deleteCancelBtn = document.getElementById('delete-cancel-btn');
-
-        function openDeleteModal(targetUrl, customMessage) {
-            if (!deleteModal || !deleteConfirmBtn) return;
-            deleteConfirmBtn.setAttribute('href', targetUrl);
-            deleteConfirmText.textContent = customMessage || 'Tem certeza de que deseja excluir este item?';
-            deleteModal.classList.remove('hidden');
-            deleteModal.classList.add('flex');
+        } catch (e) {
+            // ignore
         }
+    });
 
-        function closeDeleteModal() {
-            if (!deleteModal) return;
-            deleteModal.classList.add('hidden');
-            deleteModal.classList.remove('flex');
-        }
+    const deleteModal = document.getElementById('delete-confirm-modal');
+    const deleteConfirmText = document.getElementById('delete-confirm-text');
+    const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+    const deleteCancelBtn = document.getElementById('delete-cancel-btn');
 
-        if (deleteCancelBtn) {
-            deleteCancelBtn.addEventListener('click', closeDeleteModal);
-        }
+    function openDeleteModal(targetUrl, customMessage) {
+        if (!deleteModal || !deleteConfirmBtn) return;
+        deleteConfirmBtn.setAttribute('href', targetUrl);
+        deleteConfirmText.textContent = customMessage || 'Tem certeza de que deseja excluir este item?';
+        deleteModal.classList.remove('hidden');
+        deleteModal.classList.add('flex');
+    }
 
-        if (deleteModal) {
-            deleteModal.addEventListener('click', (event) => {
-                if (event.target === deleteModal) {
-                    closeDeleteModal();
-                }
-            });
-        }
+    function closeDeleteModal() {
+        if (!deleteModal) return;
+        deleteModal.classList.add('hidden');
+        deleteModal.classList.remove('flex');
+    }
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') {
-                closeProfileMenu(true);
+    if (deleteCancelBtn) {
+        deleteCancelBtn.addEventListener('click', closeDeleteModal);
+    }
+
+    if (deleteModal) {
+        deleteModal.addEventListener('click', (event) => {
+            if (event.target === deleteModal) {
                 closeDeleteModal();
             }
         });
+    }
 
-        // Event delegation keeps delete modal working for cards loaded dynamically in infinite feed.
-        document.addEventListener('click', (event) => {
-            const trigger = event.target.closest('[data-confirm-delete="true"]');
-            if (!trigger) return;
-            event.preventDefault();
-            openDeleteModal(trigger.getAttribute('href'), trigger.getAttribute('data-confirm-message'));
-        });
-    </script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        // Notification realtime client: join user's personal room is handled server-side using session in the socket connect handler.
-        window.__NOTIF_STATE__ = { unread_count: {{ unread_count|default(0) }} };
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeProfileMenu(true);
+            closeDeleteModal();
+        }
+    });
 
-            try {
-                // Avoid enabling long-polling socket.io on hosts that keep WSGI
-                // workers blocked (eg. pythonanywhere). In those environments we
-                // rely on short-polling endpoints instead (the page already
-                // performs periodic fetches for conversation/message updates).
-                var _host = window.location && window.location.hostname ? window.location.hostname : '';
-                var _disableRealtime = typeof _host === 'string' && _host.endsWith('pythonanywhere.com');
+    // Event delegation keeps delete modal working for cards loaded dynamically in infinite feed.
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-confirm-delete="true"]');
+        if (!trigger) return;
+        event.preventDefault();
+        openDeleteModal(trigger.getAttribute('href'), trigger.getAttribute('data-confirm-message'));
+    });
+</script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    // Notification realtime client: join user's personal room is handled server-side using session in the socket connect handler.
+    window.__NOTIF_STATE__ = { unread_count: {{ unread_count|default(0) }} };
 
-                if (!_disableRealtime) {
-                    // Let socket.io choose the best transport rather than forcing polling.
-                    const socket = io();
-                    socket.on('connect', () => {
-                        // connected
-                    });
+    try {
+        // Avoid enabling long-polling socket.io on hosts that keep WSGI
+        // workers blocked (eg. pythonanywhere). In those environments we
+        // rely on short-polling endpoints instead (the page already
+        // performs periodic fetches for conversation/message updates).
+        var _host = window.location && window.location.hostname ? window.location.hostname : '';
+        var _disableRealtime = typeof _host === 'string' && _host.endsWith('pythonanywhere.com');
 
-                    socket.on('notification:new', (payload) => {
-                        try {
-                            const badge = document.getElementById('notif-unread-badge');
-                            if (!badge) return;
-                            // Only increment if the notification is unread
-                            const isRead = !!payload.is_read;
-                            let current = parseInt(badge.textContent) || 0;
-                            if (!isRead) current = current + 1;
-                            if (current <= 0) {
-                                badge.style.display = 'none';
-                                badge.textContent = '';
-                            } else {
-                                badge.style.display = 'flex';
-                                badge.textContent = current > 99 ? '99+' : String(current);
-                            }
-                            console.log('Nova notificacao recebida', payload);
-                        } catch (e) {
-                            console.error('Failed to handle notification:new', e);
-                        }
-                    });
+        if (!_disableRealtime) {
+            // Let socket.io choose the best transport rather than forcing polling.
+            const socket = io();
+            socket.on('connect', () => {
+                // connected
+            });
 
-                    // When server notifies that notifications were marked as read, update badge accordingly
-                    socket.on('notification:marked-read', (payload) => {
-                        try {
-                            const badge = document.getElementById('notif-unread-badge');
-                            if (!badge) return;
-                            if (typeof payload.unread_count === 'number') {
-                                const c = payload.unread_count;
-                                if (c <= 0) {
-                                    badge.style.display = 'none'; badge.textContent = '';
-                                } else { badge.style.display = 'flex'; badge.textContent = c > 99 ? '99+' : String(c); }
-                                return;
-                            }
-                            let current = parseInt(badge.textContent) || 0;
-                            current = Math.max(0, current - 1);
-                            if (current <= 0) { badge.style.display = 'none'; badge.textContent = ''; } else { badge.style.display = 'flex'; badge.textContent = current > 99 ? '99+' : String(current); }
-                        } catch (e) {
-                            console.error('Failed to handle notification:marked-read', e);
-                        }
-                    });
-                } else {
-                    console.warn('Realtime notifications disabled on host:', _host);
+            socket.on('notification:new', (payload) => {
+                try {
+                    const badge = document.getElementById('notif-unread-badge');
+                    if (!badge) return;
+                    // Only increment if the notification is unread
+                    const isRead = !!payload.is_read;
+                    let current = parseInt(badge.textContent) || 0;
+                    if (!isRead) current = current + 1;
+                    if (current <= 0) {
+                        badge.style.display = 'none';
+                        badge.textContent = '';
+                    } else {
+                        badge.style.display = 'flex';
+                        badge.textContent = current > 99 ? '99+' : String(current);
+                    }
+                    console.log('Nova notificacao recebida', payload);
+                } catch (e) {
+                    console.error('Failed to handle notification:new', e);
                 }
-            } catch (e) {
-                // socket.io client may not be available in some contexts; fail silently
-                console.warn('Realtime notifications disabled:', e);
-            }
-    </script>
-    {% block scripts %}{% endblock %}
+            });
+
+            // When server notifies that notifications were marked as read, update badge accordingly
+            socket.on('notification:marked-read', (payload) => {
+                try {
+                    const badge = document.getElementById('notif-unread-badge');
+                    if (!badge) return;
+                    if (typeof payload.unread_count === 'number') {
+                        const c = payload.unread_count;
+                        if (c <= 0) {
+                            badge.style.display = 'none'; badge.textContent = '';
+                        } else { badge.style.display = 'flex'; badge.textContent = c > 99 ? '99+' : String(c); }
+                        return;
+                    }
+                    let current = parseInt(badge.textContent) || 0;
+                    current = Math.max(0, current - 1);
+                    if (current <= 0) { badge.style.display = 'none'; badge.textContent = ''; } else { badge.style.display = 'flex'; badge.textContent = current > 99 ? '99+' : String(current); }
+                } catch (e) {
+                    console.error('Failed to handle notification:marked-read', e);
+                }
+            });
+        } else {
+            console.warn('Realtime notifications disabled on host:', _host);
+        }
+    } catch (e) {
+        // socket.io client may not be available in some contexts; fail silently
+        console.warn('Realtime notifications disabled:', e);
+    }
+</script>
+{% block scripts %}{% endblock %}
 </body>
 </html>
-

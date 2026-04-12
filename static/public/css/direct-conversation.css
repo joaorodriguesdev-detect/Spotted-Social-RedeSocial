@@ -1257,6 +1257,30 @@
     cursor: not-allowed;
 }
 
+/* When the server has disabled Direct, apply a clear visual disabled state
+   to the whole composer (including the paper-airplane send button). This
+   ensures the button looks and behaves non-interactive even if the HTML
+   disabled attribute is toggled elsewhere. */
+.conversation-composer--disabled {
+    opacity: 0.98; /* keep composer visible but slightly muted */
+}
+
+.conversation-composer--disabled #conversation-send-button,
+.conversation-composer--disabled #conversation-send-button[aria-disabled="true"] {
+    opacity: 0.65;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* If Direct is enabled, ensure the send button has a clear interactive
+   appearance when not disabled. This helps in case previous state left the
+   button visually muted. */
+#conversation-send-button:not(:disabled) {
+    opacity: 1;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
 body.dark-mode .conversation-body {
     background: radial-gradient(circle at top, rgba(99, 102, 241, 0.2), transparent 48%);
     --conversation-scroll-track: rgba(148, 163, 184, 0.12);
