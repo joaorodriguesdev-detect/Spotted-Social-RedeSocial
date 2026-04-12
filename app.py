@@ -550,7 +550,7 @@ with app.app_context():
     admin_master = User.query.filter_by(username='admin').first()
     if not admin_master:
         nova_senha_hash = generate_password_hash('Migo@2026!#')
-        admin_master = User(name="Administrador", username='admin', password=nova_senha_hash, is_admin=True, bio="Sistema")
+        admin_master = User(name="Spotted Social", username='admin', password=nova_senha_hash, is_admin=True, bio="Sistema")
         db.session.add(admin_master)
     db.session.commit()
 
