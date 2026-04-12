@@ -1090,10 +1090,15 @@ def can_user_access_group_conversation(conversation, user):
 
 def is_direct_blocked_for_system_admin():
     # Historically this project blocked the built-in 'admin' seeded account
-    # from using Direct so developers could test maintenance flows. In the
-    # current setup the requirement is to allow Direct for all users, so
-    # always return False (do not block admins).
-    return False
+    # from using Direct so developers could test maintenance flows. Restore
+    # that behavior: when the current session is an admin, block Direct.
+    try:
+        return bool(session.get('is_admin'))
+    except Exception:
+        # If session is not available for some reason, be conservative and
+        # block access to admin-only behavior by returning True when unable
+        # to determine session state.
+        return True
 
 
 def is_direct_temporarily_disabled_for_users():
@@ -1104,9 +1109,21 @@ def is_direct_temporarily_disabled_for_users():
     temporary redirect/block for normal users while preserving admin access so
     developers can still test.
     """
-    # Per requirement, do not allow temporary maintenance to disable Direct
-    # for regular users. Always return False so non-admin users retain access.
-    return False
+    # When the environment variable DIRECT_MAINTENANCE is present (values
+    # '1', 'true', 'yes', 'on' are accepted), non-admin users should be
+    # prevented from accessing Direct while admins can still test. This
+    # helper returns True for non-admin users when maintenance mode is set.
+    try:
+        raw = os.environ.get('DIRECT_MAINTENANCE', '') or ''
+        enabled = str(raw).strip().lower() in {'1', 'true', 'yes', 'on'}
+        if not enabled:
+            return False
+        # If maintenance is enabled, block for non-admins only
+        return not bool(session.get('is_admin'))
+    except Exception:
+        # On error, do not accidentally disable Direct for regular users;
+        # return False to keep the system available.
+        return False
 
 
 def is_direct_globally_disabled():
@@ -1116,10 +1133,14 @@ def is_direct_globally_disabled():
     (True = enabled, False = disabled). This helper returns True when the
     system should be considered disabled.
     """
-    # We force Direct to be globally enabled for non-admin users (see above),
-    # so this helper should always report False. Admin access remains blocked
-    # via `is_direct_blocked_for_system_admin()` checks.
-    return False
+    # The configuration `app.config['DIRECT_ENABLED']` controls whether the
+    # messaging system is globally enabled. If set to False, Direct should be
+    # considered disabled for all users. Default to True when not configured.
+    try:
+        return not bool(app.config.get('DIRECT_ENABLED', True))
+    except Exception:
+        # On error, assume not globally disabled.
+        return False
 
 
 @app.before_request
