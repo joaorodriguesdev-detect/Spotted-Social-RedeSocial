@@ -1,9 +1,9 @@
-name: Atualizar Branch Main Segura
+name: Deploy para Produção (Main)
 
 on:
   push:
     branches:
-      - main # O robô só acorda quando tem código novo nesta branch
+      - main # O robô só acorda quando tem código novo na branch principal
 
 jobs:
   testar_codigo:
@@ -32,10 +32,9 @@ jobs:
           python -m pip install --no-cache-dir -r requirements.txt
 
   atualizar_servidor:
-    name: 🚀 Deploy na VPS
+    name: 🚀 Deploy na VPS (Produção)
     runs-on: ubuntu-latest
     needs: testar_codigo # Só executa se os testes passarem
-    environment: main # <--- ISSO É A MÁGICA! Puxa as variáveis exclusivas do Main
 
     steps:
       - name: Conectar via SSH e atualizar PM2
@@ -48,13 +47,14 @@ jobs:
           script: |
             set -euo pipefail
             
-            # Puxando as variáveis do Environment do GitHub
-            APP_DIR="${{ secrets.APP_DIR }}"
-            PM2_PROCESS="${{ secrets.PM2_PROCESS_NAME }}"
-            PORT="${{ secrets.PORT }}"
+            # --- CONFIGURAÇÕES FIXAS DO AMBIENTE DE PRODUÇÃO ---
+            APP_DIR="/opt/spotted-main"
+            PM2_PROCESS="spotted-main"
+            PORT="5001"
             PM2_BIN="/root/.bun/bin/pm2"
+            # ---------------------------------------------------
             
-            echo "Preparando deploy para $APP_DIR na porta $PORT (processo $PM2_PROCESS)"
+            echo "Preparando deploy de PRODUÇÃO para $APP_DIR na porta $PORT (processo $PM2_PROCESS)"
             
             # Garante que a pasta existe (cria se for a primeira vez)
             mkdir -p "$APP_DIR"
@@ -75,7 +75,7 @@ jobs:
             # Cria/Ativa o ambiente virtual na pasta da VPS
             if [ ! -d venv ]; then
               echo "Criando ambiente virtual..."
-              python3 -m venv venv
+              python3.14 -m venv venv
             fi
             source venv/bin/activate
             python -m pip install --upgrade pip
@@ -89,4 +89,4 @@ jobs:
             
             $PM2_BIN save
             
-            echo "Deploy finalizado com sucesso!"
+            echo "Deploy de Produção finalizado com sucesso na VPS!"
