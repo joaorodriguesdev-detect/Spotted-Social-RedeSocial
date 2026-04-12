@@ -89,4 +89,4 @@ jobs:
             
             $PM2_BIN save
             
-            echo "Deploy finalizado com sucesso!"
+            echo "Deploy finalizado com sucesso na VPS!"
