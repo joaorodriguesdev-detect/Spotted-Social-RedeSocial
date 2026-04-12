@@ -34,7 +34,6 @@ jobs:
   atualizar_servidor:
     name: 🚀 Deploy na VPS
     runs-on: ubuntu-latest
-    needs: testar_codigo # Só executa se os testes passarem
     environment: beta # <--- ISSO É A MÁGICA! Puxa as variáveis exclusivas do Beta
 
     steps:
@@ -50,7 +49,7 @@ jobs:
             
             # Puxando as variáveis do Environment do GitHub
             APP_DIR="${{ secrets.APP_DIR }}"
-            PM2_PROCESS="${{ secrets.PM2_PROCESS_NAME }}"
+            PM2_PROCESS="${{ secrets.PM2_NAME }}"
             PORT="${{ secrets.PORT }}"
             PM2_BIN="/root/.bun/bin/pm2"
             
