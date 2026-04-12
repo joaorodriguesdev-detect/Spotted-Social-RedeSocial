@@ -58,12 +58,24 @@ jobs:
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
-            # Se a pasta estiver vazia, clona o repo. Se não, atualiza.
+            # If there's no .git folder, the directory may be empty (first deploy)
+            # or contain files deployed manually. Handle both safely:
+            # - If empty: perform a normal clone
+            # - If not empty but no .git: initialize a git repo, add origin and
+            #   reset to origin/main (safe idempotent operation)
             if [ ! -d ".git" ]; then
-              echo "Clonando repositório pela primeira vez..."
-              git clone -b main https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git .
+              if [ -z "$(ls -A .)" ]; then
+                echo "Diretório vazio — clonando repositório pela primeira vez..."
+                git clone -b main https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git .
+              else
+                echo "Diretório existente sem .git — inicializando repositório e resetando para origin/main"
+                git init
+                git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" || true
+                git fetch --all --prune
+                git reset --hard origin/main
+              fi
             else
-              echo "Baixando novidades da origin/main..."
+              echo "Repositório Git detectado — buscando novidades da origin/main..."
               git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
               git fetch --all --prune
               git remote set-url origin "https://github.com/${{ github.repository }}.git"
