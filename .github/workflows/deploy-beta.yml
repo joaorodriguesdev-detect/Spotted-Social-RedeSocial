@@ -132,19 +132,16 @@ jobs:
               python -m pip install --upgrade pip
               python -m pip install --no-cache-dir -r requirements.txt || true
             fi
-            # Define o caminho absoluto do PM2 baseado no seu 'which pm2'
             PM2_BIN="/root/.bun/bin/pm2"
 
-            # Reinicia ou inicia o processo via pm2 usando o Gunicorn!
-            if $PM2_BIN describe "$PM2_PROCESS" > /dev/null 2>&1; then
-              echo "Restarting $PM2_PROCESS"
-              $PM2_BIN restart "$PM2_PROCESS --update-env"
-            else
-              echo "Starting $PM2_PROCESS (fallback start)"
-              $PM2_BIN start ./venv/bin/gunicorn --interpreter ./venv/bin/python --name "$PM2_PROCESS" -- --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --workers 1 --bind 127.0.0.1:5000 app:app || true
-            fi
+            echo "Atualizando a aplicação..."
             
-            # Salva a lista para garantir
+            # Tenta reiniciar (atualizando as variáveis de ambiente). 
+            # Se falhar (||), ele executa o comando de Start com o Gunicorn logo abaixo.
+            $PM2_BIN restart "$PM2_PROCESS" --update-env || \
+            $PM2_BIN start ./venv/bin/gunicorn --interpreter ./venv/bin/python --name "$PM2_PROCESS" -- --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --workers 1 --bind 127.0.0.1:5000 app:app
+            
+            # Salva a lista para garantir que ele volte se o servidor reiniciar
             $PM2_BIN save
             
             echo "Deploy finished"
