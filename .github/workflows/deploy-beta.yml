@@ -59,29 +59,47 @@ jobs:
             echo "Creating test tree at $TMP_DIR"
             git archive origin/beta | tar -x -C "$TMP_DIR"
 
-            # Create and activate a temporary venv for verification
-            python3 -m venv "$TMP_DIR/venv"
-            source "$TMP_DIR/venv/bin/activate"
-            python -m pip install --upgrade pip
+            # Create and activate a temporary venv for verification. If the
+            # system lacks python3-venv (ensurepip), fall back to a syntax-only
+            # check using the system Python to avoid aborting the deploy due to
+            # missing OS packages on the server.
+            FALLBACK_PY_COMPILE=0
+            if python3 -m venv "$TMP_DIR/venv" 2>/tmp/venv_create_err.log; then
+              echo "Temporary venv created at $TMP_DIR/venv"
+              source "$TMP_DIR/venv/bin/activate"
+              python -m pip install --upgrade pip
 
-            # Install requirements if present (best-effort). If install fails,
-            # we consider verification failed to be conservative.
-            if [ -f "$TMP_DIR/requirements.txt" ]; then
-              echo "Installing dependencies into test venv (this may take a while)"
-              if ! python -m pip install --no-cache-dir -r "$TMP_DIR/requirements.txt"; then
-                echo "Dependency installation failed — aborting deploy"
-                exit 1
+              # Install requirements if present (best-effort). If install fails,
+              # we consider verification failed to be conservative.
+              if [ -f "$TMP_DIR/requirements.txt" ]; then
+                echo "Installing dependencies into test venv (this may take a while)"
+                if ! python -m pip install --no-cache-dir -r "$TMP_DIR/requirements.txt"; then
+                  echo "Dependency installation failed — aborting deploy"
+                  exit 1
+                fi
+              else
+                echo "No requirements.txt found in branch — skipping deps install"
               fi
             else
-              echo "No requirements.txt found in branch — skipping deps install"
+              echo "Could not create temporary venv. Falling back to syntax-only check. See /tmp/venv_create_err.log for details."
+              FALLBACK_PY_COMPILE=1
             fi
 
             # Syntax check: compile all Python files to catch syntax errors/import-time
-            # issues that would prevent the app from starting.
+            # issues that would prevent the app from starting. If we created a
+            # temp venv above we'll run py_compile inside it; otherwise use the
+            # system python3 for a syntax-only check.
             echo "Running python -m py_compile on branch files"
-            if ! find "$TMP_DIR" -name '*.py' -print0 | xargs -0 python -m py_compile; then
-              echo "Syntax check failed — aborting deploy"
-              exit 1
+            if [ "$FALLBACK_PY_COMPILE" -eq 1 ]; then
+              if ! find "$TMP_DIR" -name '*.py' -print0 | xargs -0 python3 -m py_compile; then
+                echo "Syntax check failed — aborting deploy"
+                exit 1
+              fi
+            else
+              if ! find "$TMP_DIR" -name '*.py' -print0 | xargs -0 python -m py_compile; then
+                echo "Syntax check failed — aborting deploy"
+                exit 1
+              fi
             fi
 
             # Optional: run a simple import check for the main module in isolation
@@ -97,14 +115,25 @@ jobs:
             # Apply the update to the live app directory now that verification passed
             git reset --hard origin/beta
 
-            # Create venv if not exists in the live app and install deps
+            # Create venv if not exists in the live app and install deps. If
+            # creating a venv fails on the live host (missing python3-venv),
+            # fall back to installing requirements using the system python3.
             if [ ! -d venv ]; then
               echo "Creating live venv..."
-              python3 -m venv venv
+              if python3 -m venv venv 2>/tmp/live_venv_err.log; then
+                source venv/bin/activate
+                python -m pip install --upgrade pip
+                python -m pip install --no-cache-dir -r requirements.txt || true
+              else
+                echo "Could not create live venv; see /tmp/live_venv_err.log. Falling back to system python to install requirements."
+                python3 -m pip install --upgrade pip || true
+                python3 -m pip install --no-cache-dir -r requirements.txt || true
+              fi
+            else
+              source venv/bin/activate
+              python -m pip install --upgrade pip
+              python -m pip install --no-cache-dir -r requirements.txt || true
             fi
-            source venv/bin/activate
-            python -m pip install --upgrade pip
-            python -m pip install --no-cache-dir -r requirements.txt || true
 
             # Reinicia ou inicia o processo via pm2
             if pm2 describe "$PM2_PROCESS" > /dev/null 2>&1; then

@@ -27,7 +27,11 @@ jobs:
       - name: 'Qodana Scan'
         # Use a pinned release; if this tag doesn't exist in the runner's marketplace
         # replace with a valid tag from https://github.com/JetBrains/qodana-action/releases
-        uses: JetBrains/qodana-action@v2026.0
+        # Fallback to the main branch of the action repository to avoid
+        # failures when a specific release tag is not available on the
+        # runner's marketplace. Replace with a pinned release once you
+        # verify a stable tag (recommended for reproducibility).
+        uses: JetBrains/qodana-action@main
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
         with:
