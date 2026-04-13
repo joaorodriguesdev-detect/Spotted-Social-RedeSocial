@@ -363,5 +363,3 @@
         editLocationInput && editLocationInput.addEventListener('input', validateEditEventForm);
     }
 })();
-``
-

@@ -94,13 +94,36 @@
                 <a href="/like/{{ post.id }}" onclick="ajaxLike(event, this)"
                    class="interactive-control flex items-center group {% if post.liked_by_me %}text-red-500{% endif %}">
                     <i class="fa-regular fa-heart mr-1 text-[15px]"></i>
-                    <span class="text-[12px]">{{ post.likes }}</span>
+                    <span class="like-count text-[12px]">{{ post.likes }}</span>
                 </a>
 
-                <div onclick="document.getElementById('in-{{post.id}}').focus()"
+                <div onclick="document.getElementById('in-{{post.id}}') && document.getElementById('in-{{post.id}}').focus()"
                      class="interactive-control flex items-center group hover:text-indigo-500 cursor-pointer">
                     <i class="fa-regular fa-comment mr-1 text-[15px]"></i>
-                    <span class="text-[12px]">{{ post.comments|length }}</span>
+                    <span class="comment-count text-[12px]">{{ post.comments|length }}</span>
+                </div>
+            </div>
+
+            <!-- COMMENTS -->
+            <div id="comments-{{ post.id }}" class="mt-3">
+                <div id="comments-container-{{ post.id }}">
+                    {% for c in post.comments %}
+                    <div class="text-[13px] mb-1">
+                        <a href="{{ url_for('perfil', username=c.username) }}" class="hover:underline">
+                            <span class="font-bold text-main">{{ c.username }}</span>
+                        </a>
+                        <span class="text-main ml-1">{{ c.content }}</span>
+                        <span class="text-secondary text-[11px] ml-1">&middot; {{ c.timestamp | post_time }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-2">
+                    <form action="/comentar/{{ post.id }}" method="POST" onsubmit="ajaxComment(event, this, {{ post.id }})" class="flex items-center gap-2">
+                        <input type="text" name="comment_content" id="in-{{post.id}}" placeholder="Escreva um comentário..." class="form-field flex-1 text-sm p-2 rounded-lg" autocomplete="off">
+                        <button type="submit" class="interactive-control bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-sm font-bold">Comentar</button>
+                    </form>
+                    <p data-comment-error class="text-red-500 text-xs mt-1 hidden"></p>
                 </div>
             </div>
 

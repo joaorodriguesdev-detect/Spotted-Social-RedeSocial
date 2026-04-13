@@ -125,6 +125,17 @@ function ajaxComment(event, form, postId) {
         container.appendChild(newComment);
         input.value = '';
         setInlineError(input, errorEl, '');
+        // Update visible comment count on the post if present
+        try {
+            const countSpan = document.querySelector(`#post-${postId} .comment-count`);
+            if (countSpan) {
+                const current = parseInt(countSpan.innerText || '0', 10) || 0;
+                countSpan.innerText = String(current + 1);
+            }
+        } catch (e) {
+            // ignore DOM update failures
+            console.error('Failed to update comment count', e);
+        }
     });
 }
 
@@ -548,6 +559,61 @@ function createFeedController(dom, pageCtx) {
 
     if (!isSearching) {
         createFeedController(dom, pageCtx).init();
+
+        // If the page was opened with a fragment like #post-123 and the
+        // element is not present in the initial chunk, progressively load
+        // more feed chunks until the element appears (or no more chunks).
+        (function ensureHashAnchorLoaded() {
+            try {
+                const hash = (location.hash || '').trim();
+                if (!hash || !hash.startsWith('#post-')) return;
+                const targetId = hash.slice(1);
+                if (document.getElementById(targetId)) {
+                    document.getElementById(targetId).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+
+                // Use pageCtx's cursors to fetch additional chunks
+                let nextCursorTs = pageCtx.next_cursor_ts || null;
+                let nextCursorId = pageCtx.next_cursor_id || null;
+                let hasMore = Boolean(pageCtx.has_more);
+                const container = dom.feedContainer;
+                if (!container || !hasMore) return;
+
+                const fetchMoreUntilFound = async () => {
+                    while (hasMore && !document.getElementById(targetId)) {
+                        const params = new URLSearchParams();
+                        if (nextCursorTs) params.set('cursor_ts', nextCursorTs);
+                        if (nextCursorId) params.set('cursor_id', String(nextCursorId));
+                        try {
+                            const resp = await fetch('/feed/more?' + params.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                            if (!resp.ok) break;
+                            const data = await resp.json();
+                            if (data.html) {
+                                container.insertAdjacentHTML('beforeend', data.html);
+                                initFeedEventDescriptionToggles(container);
+                            }
+                            hasMore = Boolean(data.has_more);
+                            nextCursorTs = data.next_cursor_ts;
+                            nextCursorId = data.next_cursor_id;
+                            if (document.getElementById(targetId)) {
+                                document.getElementById(targetId).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                break;
+                            }
+                            // small delay between fetches
+                            await new Promise(r => setTimeout(r, 120));
+                        } catch (e) {
+                            console.error('Failed to fetch feed/more for anchor resolution', e);
+                            break;
+                        }
+                    }
+                };
+
+                fetchMoreUntilFound();
+            } catch (err) {
+                console.error('Anchor resolution failed', err);
+            }
+        })();
     }
     if (searchPageActive) {
         createSearchController(dom).init();

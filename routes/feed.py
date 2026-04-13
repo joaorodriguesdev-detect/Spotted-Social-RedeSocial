@@ -167,9 +167,10 @@ def postar():
     anon_mode = request.form.get('anon_mode') == 'true'
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
-        ext = os.path.splitext(file.filename)[1]
-        filename = str(uuid.uuid4()) + ext
-        file.save(os.path.join('static', 'uploads', filename))
+        # Convert uploaded image to webp and use returned filename
+        filename_base = str(uuid.uuid4())
+        from app import save_and_optimize_image
+        filename = save_and_optimize_image(file, filename_base)
     new_post = Post(content=content, media_url=filename, user_id=session.get('user_id'), is_anonymous=anon_mode)
     db.session.add(new_post)
     db.session.flush() 
@@ -252,10 +253,10 @@ def criar_evento():
     
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
-        ext = os.path.splitext(file.filename)[1]
-        filename = str(uuid.uuid4()) + ext
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-    
+        filename_base = str(uuid.uuid4())
+        from app import save_and_optimize_image
+        filename = save_and_optimize_image(file, filename_base)
+
     full_date = f"{date} às {time}"
     new_event = Event(title=title, description=description, event_date=full_date, location=location, media_url=filename, user_id=session['user_id'])
     db.session.add(new_event)

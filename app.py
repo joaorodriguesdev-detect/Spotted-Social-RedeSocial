@@ -10,6 +10,10 @@ from sqlalchemy import inspect, and_, or_, func, UniqueConstraint, select
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+try:
+    from PIL import Image
+except Exception:
+    Image = None
 
 app = Flask(__name__)
 
@@ -37,12 +41,19 @@ app.config['DIRECT_ENABLED'] = True
 db = SQLAlchemy(app)
 # Use explicit settings to force polling mode on hosts that disallow WebSocket upgrades
 # (PythonAnywhere/uWSGI blocks WebSocket upgrade attempts and raises "Cannot obtain socket").
+_socketio_cors = os.environ.get('SOCKETIO_CORS_ALLOWED_ORIGINS', '*')
+_socketio_allow_upgrades = os.environ.get('SOCKETIO_ALLOW_UPGRADES', 'False').lower() in ('1', 'true', 'yes')
+_socketio_async_mode = os.environ.get('SOCKETIO_ASYNC_MODE', 'threading')
+
+# Initialize SocketIO with configurable options. Default preserves the
+# previous conservative defaults (polling-only) but allows env-driven
+# overrides for deployments that support websocket upgrades.
 socketio = SocketIO(app,
-                    cors_allowed_origins="*",
-                    async_mode='threading',
+                    cors_allowed_origins=_socketio_cors,
+                    async_mode=_socketio_async_mode,
                     engineio_logger=False,
                     logger=False,
-                    allow_upgrades=False)  # Isso impede o erro de 'Cannot obtain socket'
+                    allow_upgrades=_socketio_allow_upgrades)
 
 online_user_connections = {}
 
@@ -59,6 +70,78 @@ def resolve_feed_page_size():
 
 
 FEED_PAGE_SIZE = resolve_feed_page_size()
+
+
+def save_and_optimize_image(file_storage, filename, upload_folder=None, max_size=(1280, 1280), quality=75):
+    """Save an uploaded image and convert it to WebP for smaller payloads.
+
+    - `filename` may be provided with or without an extension. The function
+      will produce a .webp filename and return it.
+    - If Pillow (PIL) is not available or processing fails we fallback to a
+      direct save using the caller-provided filename.
+    Returns the final filename (usually with .webp extension).
+    """
+    folder = upload_folder or app.config.get('UPLOAD_FOLDER', 'static/uploads')
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except Exception:
+        pass
+
+    # Ensure base name (no extension) so we always produce .webp
+    base = os.path.splitext(filename)[0]
+    out_name = f"{base}.webp"
+    dest = os.path.join(folder, out_name)
+
+    if Image is None:
+        # Pillow not installed; fallback to direct save using original filename
+        # attempt to save to the requested filename location (best-effort)
+        try:
+            fallback_dest = os.path.join(folder, filename)
+            file_storage.save(fallback_dest)
+            return filename
+        except Exception:
+            return filename
+
+    try:
+        # Ensure stream is at start
+        try:
+            file_storage.stream.seek(0)
+        except Exception:
+            pass
+
+        with Image.open(file_storage.stream) as img:
+            # Preserve alpha when possible (WEBP supports alpha). Convert P palettes
+            # to RGBA to avoid palette issues.
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+
+            # Resize to a reasonable max size keeping aspect ratio
+            img.thumbnail(max_size, Image.LANCZOS)
+
+            save_kwargs = {'quality': quality, 'method': 6}
+            # For images without alpha, convert to RGB to reduce unexpected results
+            if img.mode not in ('RGB', 'RGBA'):
+                try:
+                    img = img.convert('RGB')
+                except Exception:
+                    pass
+
+            # Save as WebP
+            img.save(dest, 'WEBP', **save_kwargs)
+            return out_name
+    except Exception:
+        # If optimization fails, try a plain save as a fallback to the original filename
+        try:
+            try:
+                file_storage.stream.seek(0)
+            except Exception:
+                pass
+            fallback_dest = os.path.join(folder, filename)
+            file_storage.save(fallback_dest)
+            return filename
+        except Exception:
+            # As a last resort, give up and return the provided filename
+            return filename
 
 # Server-side group definitions (UI-only for now). This prevents clients
 # from forcing group mode through query params.
@@ -925,9 +1008,9 @@ def postar():
     anon_mode = request.form.get('anon_mode') == 'true'
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
-        ext = os.path.splitext(file.filename)[1]
-        filename = str(uuid.uuid4()) + ext
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        # Generate a stable base name (no extension); the helper will produce .webp
+        filename_base = str(uuid.uuid4())
+        filename = save_and_optimize_image(file, filename_base)
     new_post = Post(content=content, media_url=filename, user_id=session.get('user_id'), is_anonymous=anon_mode)
     db.session.add(new_post)
     db.session.flush() 
@@ -1035,9 +1118,10 @@ def editar_perfil():
     if bio_post is not None: user.bio = bio_post[:150]
     file = request.files.get('profile_pic')
     if file and file.filename != '':
-        ext = os.path.splitext(file.filename)[1]
-        filename = f"pfp_{user.id}_{str(uuid.uuid4())[:8]}{ext}"
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        # Profile pictures are converted to webp; build a base name and let helper
+        # return the final filename (with .webp).
+        filename_base = f"pfp_{user.id}_{str(uuid.uuid4())[:8]}"
+        filename = save_and_optimize_image(file, filename_base)
         user.profile_pic = filename
         session['profile_pic'] = filename 
     db.session.commit()
@@ -2345,9 +2429,8 @@ def criar_evento():
     
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
-        ext = os.path.splitext(file.filename)[1]
-        filename = str(uuid.uuid4()) + ext
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        filename_base = str(uuid.uuid4())
+        filename = save_and_optimize_image(file, filename_base)
     
     full_date = f"{date} às {time}"
     new_event = Event(title=title, description=description, event_date=full_date, location=location, media_url=filename, user_id=session['user_id'])
@@ -2414,4 +2497,8 @@ def logout():
     session.clear(); return redirect(url_for('welcome'))
 
 if __name__ == '__main__':
-    socketio.run(app, debug=False)
+    # Allow runtime configuration via environment variables for local/dev runs
+    debug = os.environ.get('FLASK_DEBUG', 'False').lower() in ('1', 'true', 'yes')
+    host = os.environ.get('FLASK_RUN_HOST', '127.0.0.1')
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, debug=debug, host=host, port=port)

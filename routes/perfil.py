@@ -65,9 +65,9 @@ def editar_perfil():
     if bio_post is not None: user.bio = bio_post[:150]
     file = request.files.get('profile_pic')
     if file and file.filename != '':
-        ext = os.path.splitext(file.filename)[1]
-        filename = f"pfp_{user.id}_{str(uuid.uuid4())[:8]}{ext}"
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        filename_base = f"pfp_{user.id}_{str(uuid.uuid4())[:8]}"
+        from app import save_and_optimize_image
+        filename = save_and_optimize_image(file, filename_base)
         user.profile_pic = filename
         session['profile_pic'] = filename
     db.session.commit()
