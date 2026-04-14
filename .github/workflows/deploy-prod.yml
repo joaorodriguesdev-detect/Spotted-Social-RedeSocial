@@ -18,6 +18,13 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Instalar dependências do sistema (bibliotecas para Pillow)
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            libjpeg-dev zlib1g-dev libwebp-dev libtiff5-dev libopenjp2-7-dev libfreetype6-dev pkg-config \
+            && sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*
+
       - name: Cache pip
         uses: actions/cache@v4
         with:
@@ -25,12 +32,16 @@ jobs:
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
+
       - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip
+          python -m pip install --upgrade setuptools wheel
           python -m pip install --no-cache-dir -r requirements.txt
+
   atualizar_servidor:
     name: 🚀 Deploy na VPS (Produção)
+    needs: testar_codigo
     runs-on: ubuntu-latest
     environment: production
 
@@ -41,85 +52,72 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || '22' }}
           script: |
             set -euo pipefail
+
             APP_DIR="${{ secrets.APP_DIR || '/opt/spotted' }}"
             PM2_PROCESS="${{ secrets.PM2_NAME || 'spotted-app' }}"
             PORT="${{ secrets.PORT || '5000' }}"
             PM2_BIN="${{ secrets.PM2_BIN_PATH || '/root/.bun/bin/pm2' }}"
+
+            echo "Instalando dependências de sistema para Pillow na VPS de Produção..."
+            sudo apt-get update && sudo apt-get install -y libjpeg-dev zlib1g-dev libwebp-dev
+
             echo "Preparando deploy de PRODUÇÃO para $APP_DIR na porta $PORT (processo $PM2_PROCESS)"
-            # Garante que a pasta existe (cria se for a primeira vez)
+
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
-            # If there's no .git folder, the directory may be empty (first deploy)
-            # or contain files deployed manually. Handle both safely:
-            # - If empty: perform a normal clone
-            # - If not empty but no .git: initialize a git repo, add origin and
-            #   reset to origin/main (safe idempotent operation)
+
             if [ ! -d ".git" ]; then
               if [ -z "$(ls -A .)" ]; then
-                echo "Diretório vazio — clonando repositório pela primeira vez..."
+                echo "Diretório vazio — clonando repositório..."
                 git clone -b main https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git .
               else
-                echo "Diretório existente sem .git — inicializando repositório e resetando para origin/main"
+                echo "Diretório existente sem .git — inicializando..."
                 git init
                 git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" || true
                 git fetch --all --prune
                 git reset --hard origin/main
               fi
             else
-              echo "Repositório Git detectado — buscando novidades da origin/main..."
+              echo "Repositório Git detectado — buscando novidades..."
               git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
               git fetch --all --prune
               git remote set-url origin "https://github.com/${{ github.repository }}.git"
             fi
-            # Cria uma cópia isolada do branch target para verificação
+
+            # Verificação de segurança em diretório temporário
             TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t deploy-test)
-            echo "Criando árvore de teste em $TMP_DIR"
             git archive origin/main | tar -x -C "$TMP_DIR"
-            FALLBACK_PY_COMPILE=0
-            # Tenta criar venv temporário; se falhar (ensurepip ausente), faz fallback para py_compile
-            if python3 -m venv "$TMP_DIR/venv" 2>/tmp/venv_create_err.log; then
-              echo "Venv temporário criado em $TMP_DIR/venv"
+            
+            if python3 -m venv "$TMP_DIR/venv"; then
               source "$TMP_DIR/venv/bin/activate"
-              if ! python -m pip install --upgrade pip 2>/tmp/venv_pip_err.log; then
-                echo "pip não disponível no venv temporário; fallback para checagem de sintaxe"
-                FALLBACK_PY_COMPILE=1
-              else
-                if [ -f "$TMP_DIR/requirements.txt" ]; then
-                  echo "Instalando dependências no venv temporário"
-                  if ! python -m pip install --no-cache-dir -r "$TMP_DIR/requirements.txt"; then
-                    echo "Falha ao instalar dependências no venv de teste — abortando deploy"
-                    exit 1
-                  fi
+              python -m pip install --upgrade pip setuptools wheel
+              if [ -f "$TMP_DIR/requirements.txt" ]; then
+                if ! python -m pip install --no-cache-dir -r "$TMP_DIR/requirements.txt"; then
+                  echo "Falha no teste de dependências — abortando para não quebrar a produção"
+                  exit 1
                 fi
               fi
-            else
-              echo "Não foi possível criar venv temporário; fallback para checagem de sintaxe"
-              FALLBACK_PY_COMPILE=1
             fi
-            echo "Verificação concluída com sucesso — aplicando atualização na árvore live"
+
+            echo "Verificação concluída — aplicando atualização na árvore live"
             git reset --hard origin/main
+
             # Criar/atualizar venv live
             if [ ! -d venv ]; then
-              echo "Criando venv live..."
-              if python3 -m venv venv 2>/tmp/live_venv_err.log; then
-                source venv/bin/activate
-                python -m pip install --upgrade pip || true
-                python -m pip install --no-cache-dir -r requirements.txt || true
-              else
-                echo "Não foi possível criar venv live; veja /tmp/live_venv_err.log. Tentando instalar deps com python3 do sistema"
-                python3 -m pip install --upgrade pip || true
-                python3 -m pip install --no-cache-dir -r requirements.txt || true
-              fi
-            else
-              source venv/bin/activate
-              python -m pip install --upgrade pip || true
-              python -m pip install --no-cache-dir -r requirements.txt || true
+              python3 -m venv venv
             fi
-            echo "Reiniciando processo $PM2_PROCESS (pm2 bin: $PM2_BIN)"
+            
+            source venv/bin/activate
+            echo "Atualizando ambiente live..."
+            python -m pip install --upgrade pip setuptools wheel
+            python -m pip install --no-cache-dir -r requirements.txt
+
+            echo "Reiniciando processo $PM2_PROCESS..."
             $PM2_BIN restart "$PM2_PROCESS" --update-env || \
             $PM2_BIN start ./venv/bin/gunicorn --interpreter ./venv/bin/python --name "$PM2_PROCESS" -- --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --workers 1 --bind 127.0.0.1:$PORT app:app
+            
             $PM2_BIN save || true
-            echo "Deploy finalizado"
-          port: ${{ secrets.SERVER_SSH_PORT || '22' }}
+            echo "Deploy de Produção finalizado com sucesso!"
