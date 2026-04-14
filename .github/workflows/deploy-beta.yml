@@ -3,7 +3,7 @@ name: Atualizar Branch Beta Segura
 on:
   push:
     branches:
-      - beta # O robô só acorda quando tem código novo nesta branch
+      - beta
 
 jobs:
   testar_codigo:
@@ -18,29 +18,17 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Instalar dependências do sistema (bibliotecas para Pillow)
+      - name: Instalar dependências de sistema (Runner)
         run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            libjpeg-dev zlib1g-dev libwebp-dev libtiff5-dev libopenjp2-7-dev libfreetype6-dev pkg-config \
-            && sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          sudo apt-get update && sudo apt-get install -y libjpeg-dev zlib1g-dev libwebp-dev
 
       - name: Instalar dependências
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade setuptools wheel
+          python -m pip install --upgrade pip setuptools wheel
           python -m pip install --no-cache-dir -r requirements.txt
 
   atualizar_servidor:
-    name: 🚀 Deploy na VPS
+    name: 🚀 Deploy na VPS (Beta)
     needs: testar_codigo
     runs-on: ubuntu-latest
     environment: beta
@@ -60,42 +48,30 @@ jobs:
             PORT="${{ secrets.PORT }}"
             PM2_BIN="/root/.bun/bin/pm2"
 
-            echo "Instalando dependências de sistema para Pillow na VPS..."
-            sudo apt-get update && sudo apt-get install -y libjpeg-dev zlib1g-dev libwebp-dev
-
-            echo "Preparando deploy para $APP_DIR na porta $PORT (processo $PM2_PROCESS)"
+            echo "Instalando libs de imagem na VPS..."
+            sudo apt-get update && sudo apt-get install -y libjpeg-dev zlib1g-dev libwebp-dev python3-dev build-essential
 
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
-            if [ ! -d ".git" ]; then
-              echo "Clonando repositório pela primeira vez..."
-              git clone -b beta https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git .
-            else
-              echo "Baixando novidades da origin/beta..."
-              git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-              git fetch --all --prune
-              git reset --hard origin/beta
-              git remote set-url origin "https://github.com/${{ github.repository }}.git"
-            fi
+            echo "Atualizando código da branch Beta..."
+            git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+            git fetch --all --prune
+            git reset --hard origin/beta
 
-            if [ ! -d venv ]; then
-              echo "Criando ambiente virtual..."
-              python3 -m venv venv
-            fi
-
+            echo "Limpando VENV antigo para evitar erros de cache..."
+            rm -rf venv
+            python3 -m venv venv
             source venv/bin/activate
-            
-            echo "Atualizando ferramentas do Pip..."
+
+            echo "Instalando pacotes (Pillow Binário + Requirements)..."
             python -m pip install --upgrade pip setuptools wheel
-            
-            echo "Instalando requisitos..."
+            python -m pip install --only-binary=:all: Pillow
             python -m pip install --no-cache-dir -r requirements.txt
 
-            echo "Atualizando a aplicação no PM2..."
+            echo "Reiniciando PM2..."
             $PM2_BIN restart "$PM2_PROCESS" --update-env || \
             $PM2_BIN start ./venv/bin/gunicorn --interpreter ./venv/bin/python --name "$PM2_PROCESS" -- --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --workers 1 --bind 127.0.0.1:$PORT app:app
-
+            
             $PM2_BIN save
-
-            echo "Deploy finalizado com sucesso na VPS!"
+            echo "Deploy Beta concluído com sucesso!"
