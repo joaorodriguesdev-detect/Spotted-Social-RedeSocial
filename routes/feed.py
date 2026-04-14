@@ -181,6 +181,7 @@ def postar():
 
 @feed_bp.route('/excluir_post/<int:post_id>')
 def excluir_post(post_id):
+    from app import Post, db
     post = Post.query.get_or_404(post_id)
     if (post.user_id == session.get('user_id') and post.user_id is not None) or session.get('is_admin'):
         db.session.delete(post)
@@ -190,6 +191,7 @@ def excluir_post(post_id):
 @feed_bp.route('/like/<int:post_id>')
 def like(post_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import Post, User, db, Notification
     post = Post.query.get_or_404(post_id)
     user = User.query.get(session['user_id'])
     if post not in user.liked_posts:
@@ -216,6 +218,7 @@ def like(post_id):
 @feed_bp.route('/comentar/<int:post_id>', methods=['POST'])
 def comentar(post_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import Comment, Post, db, notify_mentions, Notification
     content = request.form.get('comment_content'); post = Post.query.get_or_404(post_id)
     if content:
         autor_username = session.get('username') 
@@ -229,6 +232,8 @@ def comentar(post_id):
 @feed_bp.route('/eventos')
 def eventos():
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import Event, Notification
+
     all_events = Event.query.order_by(Event.created_at.desc()).all()
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
     return render_template('eventos.html', events=all_events, unread_count=unread)
@@ -236,6 +241,8 @@ def eventos():
 @feed_bp.route('/criar_evento', methods=['POST'])
 def criar_evento():
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import Event, Post, db, uuid, save_and_optimize_image, build_event_post_content, normalize_event_description, parse_event_datetime
+
     title = request.form.get('title')
     description = normalize_event_description(request.form.get('description'))
     date = request.form.get('date')
@@ -254,7 +261,6 @@ def criar_evento():
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
         filename_base = str(uuid.uuid4())
-        from app import save_and_optimize_image
         filename = save_and_optimize_image(file, filename_base)
 
     full_date = f"{date} às {time}"
@@ -265,7 +271,7 @@ def criar_evento():
     event_content = build_event_post_content(title, location, full_date, description, session['username'])
     feed_post = Post(content=event_content, media_url=filename, user_id=session['user_id'], is_anonymous=False)
     db.session.add(feed_post)
-    
+
     db.session.commit()
     return redirect(url_for('eventos'))
 
@@ -274,6 +280,7 @@ def criar_evento():
 def editar_evento(event_id):
     if 'user_id' not in session:
         return redirect(url_for('welcome'))
+    from app import Event, db, normalize_event_description, parse_event_datetime, sync_event_feed_post
 
     event = Event.query.get_or_404(event_id)
     if event.user_id != session.get('user_id') and not session.get('is_admin'):
@@ -283,6 +290,7 @@ def editar_evento(event_id):
     old_location = event.location
     old_event_date = event.event_date
     old_description = event.description
+
 
     title = (request.form.get('title') or '').strip()
     description = normalize_event_description(request.form.get('description'))
@@ -311,6 +319,7 @@ def editar_evento(event_id):
 @feed_bp.route('/excluir_evento/<int:event_id>')
 def excluir_evento(event_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
+    from app import Event, db
     event = Event.query.get_or_404(event_id)
     if event.user_id == session['user_id'] or session.get('is_admin'):
         db.session.delete(event)

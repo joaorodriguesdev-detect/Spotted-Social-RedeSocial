@@ -1,21 +1,25 @@
+import logging
 import os
 import re
+import traceback
 import uuid
 from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
-import logging
-import traceback
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, and_, or_, func, UniqueConstraint, select
-from flask_socketio import SocketIO, emit, join_room, leave_room
-from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
+
 try:
     from PIL import Image
 except Exception:
     Image = None
 
 app = Flask(__name__)
+
+import sys
+sys.modules.setdefault('app', sys.modules[__name__])
 
 # Configure a simple file logger for uncaught exceptions to aid local debugging.
 LOG_PATH = os.environ.get('SPOTTED_ERROR_LOG', 'instance/error.log')
@@ -39,21 +43,34 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['DIRECT_ENABLED'] = True
 
 db = SQLAlchemy(app)
-# Use explicit settings to force polling mode on hosts that disallow WebSocket upgrades
-# (PythonAnywhere/uWSGI blocks WebSocket upgrade attempts and raises "Cannot obtain socket").
-_socketio_cors = os.environ.get('SOCKETIO_CORS_ALLOWED_ORIGINS', '*')
-_socketio_allow_upgrades = os.environ.get('SOCKETIO_ALLOW_UPGRADES', 'False').lower() in ('1', 'true', 'yes')
-_socketio_async_mode = os.environ.get('SOCKETIO_ASYNC_MODE', 'threading')
 
-# Initialize SocketIO with configurable options. Default preserves the
-# previous conservative defaults (polling-only) but allows env-driven
-# overrides for deployments that support websocket upgrades.
-socketio = SocketIO(app,
-                    cors_allowed_origins=_socketio_cors,
-                    async_mode=_socketio_async_mode,
-                    engineio_logger=False,
-                    logger=False,
-                    allow_upgrades=_socketio_allow_upgrades)
+_socketio_cors = os.environ.get('SOCKETIO_CORS_ALLOWED_ORIGINS', '*')
+_socketio_allow_upgrades = os.environ.get('SOCKETIO_ALLOW_UPGRADES', 'True').lower() in ('1', 'true', 'yes')
+
+_socketio_env_mode = os.environ.get('SOCKETIO_ASYNC_MODE')
+if _socketio_env_mode:
+    _socketio_async_mode = _socketio_env_mode
+else:
+    try:
+        import gevent
+        _socketio_async_mode = 'gevent'
+    except Exception:
+        _socketio_async_mode = 'threading'
+
+
+logging.getLogger('engineio').setLevel(logging.ERROR)
+logging.getLogger('socketio').setLevel(logging.ERROR)
+
+socketio = SocketIO(
+    app,
+    cors_allowed_origins=_socketio_cors,
+    async_mode=_socketio_async_mode,
+    engineio_logger=False,
+    logger=False,
+    allow_upgrades=_socketio_allow_upgrades,
+    async_handlers=True,
+    max_http_buffer_size=20 * 1024 * 1024  # allow larger message payloads if needed
+)
 
 online_user_connections = {}
 
@@ -294,6 +311,19 @@ def public_index():
 @app.route('/public/<path:filename>')
 def public_files(filename):
     return send_from_directory(app.config['PUBLIC_FOLDER'], filename)
+
+
+# Intercept client requests for the legacy '/socket.io/socket.io.js' endpoint
+# and redirect to a pinned CDN socket.io-client build that is compatible with
+# the deployed python-socketio/python-engineio versions. This prevents the
+# engine.io handler from trying to interpret mismatched client protocol
+# requests (which produced 400 + "unsupported protocol" warnings).
+@app.route('/socket.io/socket.io.js')
+def socketio_client_js():
+    # Use a conservative, widely-compatible client (v4.x). If you control
+    # the frontend, prefer importing a specific client version from your
+    # build pipeline or host a copy in static/public/js/ to avoid CDN use.
+    return redirect('https://cdn.socket.io/4.6.1/socket.io.min.js')
 
 def br_time():
     # Return a timezone-aware datetime in Brazil time (UTC-3).
