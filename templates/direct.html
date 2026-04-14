@@ -118,5 +118,9 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+    // Expose server-side Direct flag to client-side JS as a simple boolean.
+    window.DIRECT_ENABLED = {{ 'true' if direct_enabled else 'false' }};
+</script>
 <script src="{{ url_for('public_files', filename='js/direct-inbox.js') }}"></script>
 {% endblock %}

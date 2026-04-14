@@ -19,6 +19,50 @@
         body.dark-mode .bg-white { background-color: #16181c !important; border-color: #2f3336 !important; color: #ffffff !important; }
         body.dark-mode .text-main { color: #ffffff !important; }
         body.dark-mode .text-secondary { color: #71767b !important; }
+
+        /* Improved send-message button styles (light/dark themes)
+           Add class `send-message-btn` to the appropriate anchor/button. */
+        :root {
+            --send-bg: #ffffff;
+            --send-text: #0f172a;
+            --send-border: #dbe2f0;
+            --send-hover-bg: #eef2ff; /* subtle indigo tint */
+            --send-shadow: 0 4px 8px rgba(15,23,42,0.06);
+        }
+        body.dark-mode {
+            --send-bg: #1f2326;
+            --send-text: #e7e9ea;
+            --send-border: #2f3336;
+            --send-hover-bg: rgba(79,70,229,0.06);
+            --send-shadow: 0 6px 14px rgba(0,0,0,0.6);
+        }
+
+        .send-message-btn {
+            background: var(--send-bg);
+            color: var(--send-text) !important;
+            border: 1px solid var(--send-border);
+            padding: 0.5rem 1.25rem; /* px-6 py-1.5 equivalent */
+            border-radius: 0.75rem; /* rounded-xl */
+            font-weight: 800; /* font-black */
+            font-size: 0.75rem; /* text-xs */
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: var(--send-shadow);
+            transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+        }
+        .send-message-btn:hover {
+            background: var(--send-hover-bg);
+            transform: translateY(-1px);
+        }
+        .send-message-btn:active { transform: translateY(0); }
+        .send-message-btn:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(79,70,229,0.12); }
+        .send-message-btn[disabled], .send-message-btn[aria-disabled="true"] {
+            opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none;
+        }
+
+        /* Compact variant used in some places (keeps px-6 py-1.5 sizing) */
+        .send-message-btn.compact { padding: 0.375rem 1rem; }
     </style>
 {% endblock %}
 
@@ -52,8 +96,7 @@
                     {% elif me and me.id != user.id and not user.is_admin %}
                         <div class="flex items-center gap-2 mt-2 md:mt-0">
                             <a href="{{ url_for('seguir', username=user.username) }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
-                            <!-- Direct temporarily disabled until messaging is fixed -->
-                            <button type="button" title="Direct desativado temporariamente" aria-disabled="true" disabled class="interactive-control border twitter-border text-main px-6 py-1.5 rounded-xl text-xs font-bold opacity-50 cursor-not-allowed">Enviar mensagem</button>
+                            <a href="{{ url_for('direct_conversation', username=user.username) }}" title="Enviar mensagem" aria-label="Enviar mensagem para {{ user.username }}" class="interactive-control send-message-btn compact" data-action="send-message">Enviar mensagem</a>
                         </div>
                     {% endif %}
                 </div>

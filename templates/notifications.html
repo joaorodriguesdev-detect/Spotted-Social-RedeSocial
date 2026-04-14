@@ -125,10 +125,15 @@
                 loadMoreBtn.classList.add('hidden');
             }
 
-            loadMoreBtn.onclick = () => {
-                visibleCount = Math.min(items.length, finalVisible + chunkSize);
-                renderNotifications(false);
-            };
+            if (loadMoreBtn) {
+                // Use addEventListener and prevent default to avoid accidental form submits/navigation
+                loadMoreBtn.removeEventListener && loadMoreBtn.removeEventListener('click', () => {});
+                loadMoreBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    visibleCount = Math.min(items.length, finalVisible + chunkSize);
+                    renderNotifications(false);
+                });
+            }
         }
 
         window.addEventListener('load', () => renderNotifications(true));

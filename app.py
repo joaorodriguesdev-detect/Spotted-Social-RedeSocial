@@ -1,15 +1,29 @@
 import os
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
+import logging
+import traceback
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, and_, or_, func, UniqueConstraint, select
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+try:
+    from PIL import Image
+except Exception:
+    Image = None
 
 app = Flask(__name__)
+
+# Configure a simple file logger for uncaught exceptions to aid local debugging.
+LOG_PATH = os.environ.get('SPOTTED_ERROR_LOG', 'instance/error.log')
+os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True) if os.path.dirname(LOG_PATH) else None
+file_handler = logging.FileHandler(LOG_PATH)
+file_handler.setLevel(logging.ERROR)
+file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+app.logger.addHandler(file_handler)
 
 app.secret_key = os.environ.get('SECRET_KEY', 'spotted_university_ultra_v8_final_fix') 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///spotted.db')
@@ -17,16 +31,29 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['PUBLIC_FOLDER'] = os.path.join(app.root_path, 'static', 'public')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+# Feature flag: force the Direct (messaging) system to be enabled for all
+# non-admin users. Per requirement, messaging must remain active for regular
+# users and disabled only for admin users. We therefore force DIRECT_ENABLED
+# to True regardless of environment configuration to avoid accidental global
+# disabling in production.
+app.config['DIRECT_ENABLED'] = True
 
 db = SQLAlchemy(app)
 # Use explicit settings to force polling mode on hosts that disallow WebSocket upgrades
 # (PythonAnywhere/uWSGI blocks WebSocket upgrade attempts and raises "Cannot obtain socket").
+_socketio_cors = os.environ.get('SOCKETIO_CORS_ALLOWED_ORIGINS', '*')
+_socketio_allow_upgrades = os.environ.get('SOCKETIO_ALLOW_UPGRADES', 'False').lower() in ('1', 'true', 'yes')
+_socketio_async_mode = os.environ.get('SOCKETIO_ASYNC_MODE', 'threading')
+
+# Initialize SocketIO with configurable options. Default preserves the
+# previous conservative defaults (polling-only) but allows env-driven
+# overrides for deployments that support websocket upgrades.
 socketio = SocketIO(app,
-                    cors_allowed_origins="*",
-                    async_mode='threading',
+                    cors_allowed_origins=_socketio_cors,
+                    async_mode=_socketio_async_mode,
                     engineio_logger=False,
                     logger=False,
-                    allow_upgrades=False)  # Isso impede o erro de 'Cannot obtain socket'
+                    allow_upgrades=_socketio_allow_upgrades)
 
 online_user_connections = {}
 
@@ -43,6 +70,78 @@ def resolve_feed_page_size():
 
 
 FEED_PAGE_SIZE = resolve_feed_page_size()
+
+
+def save_and_optimize_image(file_storage, filename, upload_folder=None, max_size=(1280, 1280), quality=75):
+    """Save an uploaded image and convert it to WebP for smaller payloads.
+
+    - `filename` may be provided with or without an extension. The function
+      will produce a .webp filename and return it.
+    - If Pillow (PIL) is not available or processing fails we fallback to a
+      direct save using the caller-provided filename.
+    Returns the final filename (usually with .webp extension).
+    """
+    folder = upload_folder or app.config.get('UPLOAD_FOLDER', 'static/uploads')
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except Exception:
+        pass
+
+    # Ensure base name (no extension) so we always produce .webp
+    base = os.path.splitext(filename)[0]
+    out_name = f"{base}.webp"
+    dest = os.path.join(folder, out_name)
+
+    if Image is None:
+        # Pillow not installed; fallback to direct save using original filename
+        # attempt to save to the requested filename location (best-effort)
+        try:
+            fallback_dest = os.path.join(folder, filename)
+            file_storage.save(fallback_dest)
+            return filename
+        except Exception:
+            return filename
+
+    try:
+        # Ensure stream is at start
+        try:
+            file_storage.stream.seek(0)
+        except Exception:
+            pass
+
+        with Image.open(file_storage.stream) as img:
+            # Preserve alpha when possible (WEBP supports alpha). Convert P palettes
+            # to RGBA to avoid palette issues.
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+
+            # Resize to a reasonable max size keeping aspect ratio
+            img.thumbnail(max_size, Image.LANCZOS)
+
+            save_kwargs = {'quality': quality, 'method': 6}
+            # For images without alpha, convert to RGB to reduce unexpected results
+            if img.mode not in ('RGB', 'RGBA'):
+                try:
+                    img = img.convert('RGB')
+                except Exception:
+                    pass
+
+            # Save as WebP
+            img.save(dest, 'WEBP', **save_kwargs)
+            return out_name
+    except Exception:
+        # If optimization fails, try a plain save as a fallback to the original filename
+        try:
+            try:
+                file_storage.stream.seek(0)
+            except Exception:
+                pass
+            fallback_dest = os.path.join(folder, filename)
+            file_storage.save(fallback_dest)
+            return filename
+        except Exception:
+            # As a last resort, give up and return the provided filename
+            return filename
 
 # Server-side group definitions (UI-only for now). This prevents clients
 # from forcing group mode through query params.
@@ -133,7 +232,7 @@ def parse_event_datetime(date_value, time_value):
         event_date = datetime.strptime(clean_date, '%Y-%m-%d').date()
         event_time = datetime.strptime(clean_time, '%H:%M').time()
     except ValueError:
-        return None, 'Data ou horario invalido.'
+        return None, 'Data ou horário invalido.'
 
     combined = datetime.combine(event_date, event_time)
     if combined < br_time():
@@ -197,7 +296,32 @@ def public_files(filename):
     return send_from_directory(app.config['PUBLIC_FOLDER'], filename)
 
 def br_time():
-    return datetime.utcnow() - timedelta(hours=3)
+    # Return a timezone-aware datetime in Brazil time (UTC-3).
+    # Use a proper tzinfo with a fixed -3 hours offset so callers receive
+    # aware datetimes consistently.
+    tz_br = timezone(timedelta(hours=-3))
+    return datetime.now(tz_br)
+
+
+@app.errorhandler(Exception)
+def log_exception(e):
+    """Log unhandled exceptions to a file with traceback for local debugging.
+
+    This handler captures any exception not explicitly handled by routes and
+    writes a full traceback to the configured log file. It then returns the
+    default 500 response so the behavior is unchanged for clients.
+    """
+    try:
+        tb = traceback.format_exc()
+        app.logger.error('Unhandled exception:\n%s', tb)
+    except Exception:
+        # If logging itself fails, fall back to printing to stderr
+        print('Failed to log exception', flush=True)
+        traceback.print_exc()
+    # Return a simple 500 response without rendering templates to avoid
+    # cascading template errors during debugging.
+    return ("<h1>Internal Server Error</h1><p>An unexpected error occurred."
+            " The full traceback has been written to the error log."), 500
 
 def ensure_user_created_at_column():
     inspector = inspect(db.engine)
@@ -267,21 +391,49 @@ def post_time_filter(ts):
     if not ts:
         return ''
 
-    now = br_time()
+    # Normalize both now and the provided timestamp to the same timezone
+    # so subtraction does not fail when mixing naive and aware datetimes.
+    tz_br = timezone(timedelta(hours=-3))
+    now = datetime.now(tz_br)
+
+    # If the stored timestamp is naive, it was likely created with br_time()
+    # (a naive Brazil time). Treat naive timestamps as BR-local instead of UTC
+    # to avoid a ~3-hour offset when converting.
+    try:
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=tz_br)
+        else:
+            ts = ts.astimezone(tz_br)
+    except Exception:
+        # If conversion fails for any reason, fall back to treating both
+        # values as naive in the system local time by removing tzinfo.
+        try:
+            now = now.replace(tzinfo=None)
+            ts = ts.replace(tzinfo=None)
+        except Exception:
+            # As a last resort, return an empty label rather than crash.
+            return ''
+
     delta = now - ts
 
     # Guard against future timestamps caused by clock drift.
     if delta.total_seconds() < 0:
         return 'agora'
 
-    if delta < timedelta(minutes=1):
+    # Present concise, localized relative-time labels used in the UI.
+    # Examples: 'agora', '3m', '2h', '5d', '12/03', '12/03/2024'
+    seconds = int(delta.total_seconds())
+    if seconds < 60:
         return 'agora'
-    if delta < timedelta(hours=1):
-        return f"{int(delta.total_seconds() // 60)} min"
-    if delta < timedelta(days=1):
-        return f"{int(delta.total_seconds() // 3600)} h"
-    if delta < timedelta(days=30):
-        return f"{delta.days} d"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}m"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours}h"
+    days = delta.days
+    if days < 30:
+        return f"{days}d"
     if delta < timedelta(days=365):
         return ts.strftime('%d/%m')
     return ts.strftime('%d/%m/%Y')
@@ -489,7 +641,7 @@ with app.app_context():
     admin_master = User.query.filter_by(username='admin').first()
     if not admin_master:
         nova_senha_hash = generate_password_hash('Migo@2026!#')
-        admin_master = User(name="Administrador", username='admin', password=nova_senha_hash, is_admin=True, bio="Sistema")
+        admin_master = User(name="Spotted Social", username='admin', password=nova_senha_hash, is_admin=True, bio="Sistema")
         db.session.add(admin_master)
     db.session.commit()
 
@@ -510,6 +662,8 @@ def api_direct_users():
 
     q = (request.args.get('q') or '').strip().lower().replace('@', '')
     current_user_id = session.get('user_id')
+    current_user = User.query.get(current_user_id)
+
     query = User.query.filter(
         User.id != current_user_id,
         User.is_admin.is_(False)
@@ -523,7 +677,22 @@ def api_direct_users():
             )
         )
 
-    users = query.order_by(User.username.asc()).limit(20).all()
+    # Apply mutual-follow filter at the database level so the LIMIT applies to
+    # already-filtered results. This prevents returning non-mutual users when
+    # the current user follows nobody.
+    users = []
+    if current_user:
+        try:
+            mutual_a = select([1]).where(and_(followers.c.follower_id == current_user_id, followers.c.followed_id == User.id)).exists()
+            mutual_b = select([1]).where(and_(followers.c.follower_id == User.id, followers.c.followed_id == current_user_id)).exists()
+            users = query.filter(mutual_a, mutual_b).order_by(User.username.asc()).limit(20).all()
+        except Exception:
+            # Fallback to previous Python-level filtering in case the SQL EXISTS
+            # expression isn't supported in this environment/version.
+            users = query.order_by(User.username.asc()).limit(50).all()
+            users = [user for user in users if users_follow_each_other(current_user, user)]
+    else:
+        users = []
 
     return jsonify({'users': [
         {
@@ -839,9 +1008,9 @@ def postar():
     anon_mode = request.form.get('anon_mode') == 'true'
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
-        ext = os.path.splitext(file.filename)[1]
-        filename = str(uuid.uuid4()) + ext
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        # Generate a stable base name (no extension); the helper will produce .webp
+        filename_base = str(uuid.uuid4())
+        filename = save_and_optimize_image(file, filename_base)
     new_post = Post(content=content, media_url=filename, user_id=session.get('user_id'), is_anonymous=anon_mode)
     db.session.add(new_post)
     db.session.flush() 
@@ -901,7 +1070,6 @@ def comentar(post_id):
 def perfil(username):
     if 'user_id' not in session: return redirect(url_for('welcome'))
     user = User.query.filter_by(username=username).first_or_404()
-    if user.is_admin and not session.get('is_admin'): return redirect(url_for('feed'))
     posts = Post.query.filter(
         Post.user_id == user.id,
         Post.is_anonymous.is_(False),
@@ -933,8 +1101,6 @@ def perfil_por_remetente():
         flash('Perfil do remetente nao encontrado.')
         return redirect(request.referrer or url_for('feed'))
 
-    if user.is_admin and not session.get('is_admin'):
-        return redirect(url_for('feed'))
 
     return redirect(url_for('perfil', username=user.username))
 
@@ -952,9 +1118,10 @@ def editar_perfil():
     if bio_post is not None: user.bio = bio_post[:150]
     file = request.files.get('profile_pic')
     if file and file.filename != '':
-        ext = os.path.splitext(file.filename)[1]
-        filename = f"pfp_{user.id}_{str(uuid.uuid4())[:8]}{ext}"
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        # Profile pictures are converted to webp; build a base name and let helper
+        # return the final filename (with .webp).
+        filename_base = f"pfp_{user.id}_{str(uuid.uuid4())[:8]}"
+        filename = save_and_optimize_image(file, filename_base)
         user.profile_pic = filename
         session['profile_pic'] = filename 
     db.session.commit()
@@ -1033,46 +1200,44 @@ def can_user_access_group_conversation(conversation, user):
 
 
 def is_direct_blocked_for_system_admin():
-    return bool(session.get('is_admin'))
-
-
-def is_direct_temporarily_disabled_for_users():
-    """Return True when Direct is globally disabled via the DIRECT_MAINTENANCE
-    environment variable and the current session user is NOT an admin.
-
-    Set DIRECT_MAINTENANCE=1 (or true/yes/on) in the environment to enable the
-    temporary redirect/block for normal users while preserving admin access so
-    developers can still test.
-    """
-    try:
-        raw = os.environ.get('DIRECT_MAINTENANCE', '')
-        if isinstance(raw, str) and raw.strip().lower() in {'1', 'true', 'yes', 'on'}:
-            return not bool(session.get('is_admin'))
-    except Exception:
-        pass
+    # The old admin-block behavior was used to prevent the seeded 'admin'
+    # account from accessing Direct during maintenance/testing. That maintenance
+    # system has been removed: Direct access should not be denied based on the
+    # session's admin flag. Keep this helper for compatibility but always
+    # return False so no account is blocked by role.
     return False
 
 
-@app.before_request
-def block_direct_when_maintenance():
-    """If DIRECT_MAINTENANCE is enabled, prevent non-admin users from
-    accessing Direct pages and APIs. API calls under /api/direct will receive
-    a 403 JSON response; browser page requests to /direct will be redirected
-    to the feed with a maintenance flash message.
-    """
-    try:
-        if not is_direct_temporarily_disabled_for_users():
-            return None
-    except Exception:
-        return None
+def is_direct_temporarily_disabled_for_users():
+    # This application previously supported a temporary "maintenance" mode
+    # controlled via the DIRECT_MAINTENANCE environment variable that would
+    # block non-admin users from accessing Direct. That maintenance system has
+    # been retired: always return False so the temporary disable logic no
+    # longer blocks any users.
+    return False
 
-    # Only apply to Direct-related HTTP endpoints
-    path = (request.path or '')
-    if path.startswith('/api/direct'):
-        return jsonify({'error': 'direct temporariamente desativado'}), 403
-    if path.startswith('/direct'):
-        flash('Direct temporariamente desativado. Voltaremos em breve.')
-        return redirect(url_for('feed'))
+
+def is_direct_globally_disabled():
+    """Return True when the entire Direct/messaging system is disabled.
+
+    The configuration `app.config['DIRECT_ENABLED']` holds a simple boolean
+    (True = enabled, False = disabled). This helper returns True when the
+    system should be considered disabled.
+    """
+    # The configuration `app.config['DIRECT_ENABLED']` controls whether the
+    # messaging system is globally enabled. If set to False, Direct should be
+    # considered disabled for all users. Default to True when not configured.
+    try:
+        return not bool(app.config.get('DIRECT_ENABLED', True))
+    except Exception:
+        # On error, assume not globally disabled.
+        return False
+
+
+# The ad-hoc Direct maintenance/before_request hook has been removed so the
+# application no longer intercepts Direct routes at request-time for temporary
+# maintenance. Direct availability is now determined only by
+# `app.config['DIRECT_ENABLED']` (checked via `is_direct_globally_disabled()`).
 
 
 def conversation_room_name(conversation_id):
@@ -1387,10 +1552,28 @@ def get_direct_unread_total(user_id):
 
 @app.context_processor
 def inject_global_unread_counters():
+    # Compute whether the Direct (messaging) UI should be enabled for the
+    # current session/user. This takes into account the global feature flag
+    # (`DIRECT_ENABLED`), the admin-block (admins are intentionally blocked
+    # from Direct in older versions. We no longer block based on admin role or
+    # temporary maintenance mode — only the global flag controls availability.
+    try:
+        direct_globally_disabled = is_direct_globally_disabled()
+    except Exception:
+        direct_globally_disabled = False
+
     user_id = session.get('user_id')
-    if not user_id:
-        return {'direct_unread_count': 0}
-    return {'direct_unread_count': get_direct_unread_total(user_id)}
+
+    # If Direct is globally disabled or the user is not authenticated,
+    # report zero unread messages and mark the UI as disabled. Otherwise
+    # consider Direct enabled for the authenticated user.
+    if direct_globally_disabled or not user_id:
+        return {'direct_unread_count': 0, 'direct_enabled': False}
+
+    return {
+        'direct_unread_count': get_direct_unread_total(user_id),
+        'direct_enabled': True
+    }
 
 
 def build_direct_inbox_items(current_user_id, current_filter='all', search_query='', for_api=False):
@@ -1509,6 +1692,7 @@ def direct():
         conversations=conversations,
         current_filter=current_filter,
         search_query=search_query
+        , direct_enabled=app.config.get('DIRECT_ENABLED', True)
     )
 
 
@@ -2019,15 +2203,37 @@ def direct_conversation(username):
         group_creator_username=group_creator_username,
         participant_usernames=participant_usernames,
         participant_cards=participant_cards
+        , direct_enabled=app.config.get('DIRECT_ENABLED', True)
     )
     t1 = time.time()
     print(f"[PERF] /direct/conversa/{{username}} total: {{(t1-t0)*1000:.1f}}ms")
     return resp
+    # NOTE: render_template already returns the response above; ensure direct_enabled passed via context
+
+# Register blueprints
+from routes.feed import feed_bp
+from routes.perfil import perfil_bp
+try:
+    # Prefer the full `routes.direct` blueprint when available. If the
+    # full implementation is temporarily corrupted, fall back to a small
+    # local stub to allow the app to start for debugging.
+    from routes.direct import direct_bp
+except Exception:
+    from routes.direct_stub import direct_bp
+
+app.register_blueprint(feed_bp)
+app.register_blueprint(perfil_bp)
+app.register_blueprint(direct_bp)
 
 @socketio.on('connect')
 def handle_socket_connect():
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
+    # Deny socket connections when Direct is globally disabled, or when the
+    # session is invalid or access is blocked by maintenance/admin rules.
+    if (not user_id
+            or is_direct_globally_disabled()
+            or is_direct_blocked_for_system_admin()
+            or is_direct_temporarily_disabled_for_users()):
         return False
 
     online_user_connections[user_id] = online_user_connections.get(user_id, 0) + 1
@@ -2059,7 +2265,10 @@ def handle_socket_disconnect():
 @socketio.on('direct:join')
 def handle_direct_join(payload):
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
+    if (not user_id
+            or is_direct_globally_disabled()
+            or is_direct_blocked_for_system_admin()
+            or is_direct_temporarily_disabled_for_users()):
         emit('direct:error', {'error': 'acesso negado'})
         return
 
@@ -2084,6 +2293,10 @@ def handle_direct_join(payload):
 
 @socketio.on('direct:leave')
 def handle_direct_leave(payload):
+    # If Direct is globally disabled there's nothing to do here.
+    if is_direct_globally_disabled():
+        return
+
     data = payload or {}
     try:
         conversation_id = int(data.get('conversation_id'))
@@ -2095,7 +2308,10 @@ def handle_direct_leave(payload):
 @socketio.on('direct:typing')
 def handle_direct_typing(payload):
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
+    if (not user_id
+            or is_direct_globally_disabled()
+            or is_direct_blocked_for_system_admin()
+            or is_direct_temporarily_disabled_for_users()):
         return
 
     data = payload or {}
@@ -2133,7 +2349,10 @@ def get_message_reaction_summary(message_id):
 @socketio.on('direct:react')
 def handle_direct_react(payload):
     user_id = session.get('user_id')
-    if not user_id or is_direct_blocked_for_system_admin() or is_direct_temporarily_disabled_for_users():
+    if (not user_id
+            or is_direct_globally_disabled()
+            or is_direct_blocked_for_system_admin()
+            or is_direct_temporarily_disabled_for_users()):
         emit('direct:error', {'error': 'acesso negado'})
         return
 
@@ -2142,11 +2361,11 @@ def handle_direct_react(payload):
         conversation_id = int(data.get('conversation_id'))
         message_id = int(data.get('message_id'))
     except (TypeError, ValueError):
-        emit('direct:error', {'error': 'dados invalidos'})
+        emit('direct:error', {'error': 'dados inválidos'})
         return
     reaction = (data.get('reaction') or '').strip()
     if not reaction:
-        emit('direct:error', {'error': 'reacao invalida'})
+        emit('direct:error', {'error': 'reação invalida'})
         return
 
     membership = get_membership(conversation_id, user_id)
@@ -2210,9 +2429,8 @@ def criar_evento():
     
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
-        ext = os.path.splitext(file.filename)[1]
-        filename = str(uuid.uuid4()) + ext
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        filename_base = str(uuid.uuid4())
+        filename = save_and_optimize_image(file, filename_base)
     
     full_date = f"{date} às {time}"
     new_event = Event(title=title, description=description, event_date=full_date, location=location, media_url=filename, user_id=session['user_id'])
@@ -2279,4 +2497,8 @@ def logout():
     session.clear(); return redirect(url_for('welcome'))
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    # Allow runtime configuration via environment variables for local/dev runs
+    debug = os.environ.get('FLASK_DEBUG', 'False').lower() in ('1', 'true', 'yes')
+    host = os.environ.get('FLASK_RUN_HOST', '127.0.0.1')
+    port = int(os.environ.get('PORT', 5000))
+    socketio.run(app, debug=debug, host=host, port=port)

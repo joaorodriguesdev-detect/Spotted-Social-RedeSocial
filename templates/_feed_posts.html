@@ -10,8 +10,13 @@
                 {{ post.author.username[0].upper() if post.author else '?' }}
             {% endif %}
         </div>
+
         <div class="w-full">
+
+            <!-- HEADER -->
             <div class="flex justify-between items-baseline">
+
+                <!-- INFO USUÁRIO -->
                 <div class="flex flex-col">
                     {% if post.is_anonymous %}
                         <span class="font-bold text-main text-[14px]">Anônimo</span>
@@ -25,16 +30,20 @@
                             <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
                                 <span class="font-bold text-main text-[14px]">{{ post.author.name }}</span>
                             </a>
+
                             {% if post.author.is_admin %}
                                 <i class="fa-solid fa-circle-check text-blue-500 text-[12px]" title="Verificado"></i>
                             {% endif %}
+
                             {% if post.author.university %}
                                 <span class="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
                                     {{ post.author.university }}
                                 </span>
                             {% endif %}
+
                             <span class="text-secondary text-[12px]">{{ post.timestamp | post_time }}</span>
                         </div>
+
                         <div class="flex items-center space-x-1 text-[12px] text-secondary">
                             <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
                                 <span>@{{ post.author.username }}</span>
@@ -42,121 +51,232 @@
                         </div>
                     {% endif %}
                 </div>
-                {% if (session.get('user_id') == post.user_id and post.user_id) or session.get('is_admin') %}
-                <a href="/excluir_post/{{ post.id }}" data-confirm-delete="true" data-confirm-message="Tem certeza que deseja excluir esta postagem?" class="interactive-control text-secondary hover:text-red-500 transition-colors p-1" title="Excluir postagem"><i class="fa-solid fa-trash-can text-xs"></i></a>
-                {% endif %}
+
+                <!-- AÇÕES -->
+                <div class="flex justify-end items-center gap-3">
+
+                    <!-- DENUNCIAR -->
+                    <a href="#"
+                       data-post-id="{{ post.id }}"
+                       class="btn-denunciar inline-flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
+                       title="Denunciar postagem">
+                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    </a>
+
+                    <!-- EXCLUIR -->
+                    {% if (session.get('user_id') == post.user_id and post.user_id) or session.get('is_admin') %}
+                    <a href="/excluir_post/{{ post.id }}"
+                       data-confirm-delete="true"
+                       data-confirm-message="Tem certeza que deseja excluir esta postagem?"
+                       class="interactive-control text-secondary hover:text-red-500 transition-colors"
+                       title="Excluir postagem">
+                        <i class="fa-solid fa-trash-can text-lg"></i>
+                    </a>
+                    {% endif %}
+
+                </div>
             </div>
 
+            <!-- CONTEÚDO -->
             <div class="mt-2 text-main text-[14px] leading-normal break-words text-left">
-                {% if "📢 NOVO EVENTO:" in post.content %}
-                    <span class="text-yellow-500 font-black text-[11px] uppercase tracking-widest block mb-2 text-left">EVENTO</span>
-
-                    {% set lines = post.content.split('\n') %}
-                    {% set raw_event_date = lines[2].replace('📅 Data: ', '').split(' às ')[0] if lines|length > 2 else '' %}
-                    {% set event_date_parts = raw_event_date.split('-') %}
-                    {% set event_date_label = raw_event_date %}
-                    {% if event_date_parts|length == 3 %}
-                        {% set event_date_label = event_date_parts[2] ~ '/' ~ event_date_parts[1] ~ '/' ~ event_date_parts[0] %}
-                    {% endif %}
-                    <div class="space-y-1 mb-3 text-[13px] border-l-2 border-yellow-500/30 pl-3 text-left">
-                        <p class="font-bold text-[15px] text-main">{{ lines[0].replace('📢 NOVO EVENTO: ', '') }}</p>
-                        <p class="text-secondary flex items-center"><i class="fa-solid fa-location-dot w-4 mr-1 text-[11px]"></i> {{ lines[1].replace('📍 Local: ', '') }}</p>
-                        <p class="text-secondary flex items-center"><i class="fa-regular fa-calendar w-4 mr-1 text-[11px]"></i> {{ event_date_label }}</p>
-                        {% set creator_username = lines[-1].replace('Criado por', '').replace('@', '').strip() %}
-                        <p class="text-indigo-500 flex items-center font-bold italic mt-3">
-                            <span>Criado por</span>
-                            <span class="ml-1">{{ ('@' ~ creator_username) | mention | safe }}</span>
-                        </p>
-                    </div>
-
-                    {% if lines|length > 4 %}
-                        <div class="mt-2 text-left">
-                            <div id="post-desc-{{ post.id }}" class="desc-container text-[14px] opacity-90 leading-relaxed whitespace-pre-line break-words text-left">
-                                {{ (lines[4:-2]|join('\n'))|trim | mention | safe }}
-                            </div>
-                            <button data-feed-desc-toggle="{{ post.id }}" onclick="togglePostDesc({{ post.id }}, this)" class="interactive-control hidden text-indigo-500 text-[12px] font-bold mt-1 hover:underline">Ver mais</button>
-                        </div>
-                    {% endif %}
-                {% else %}
-                    {{ post.content | mention | safe }}
-                {% endif %}
+                {{ post.content | mention | safe }}
             </div>
 
+            <!-- MÍDIA -->
             {% if post.media_url %}
             <div class="mt-3 rounded-2xl border twitter-border overflow-hidden">
                 <img src="{{ url_for('static', filename='uploads/' + post.media_url) }}" class="w-full object-cover max-h-[512px]">
             </div>
             {% endif %}
 
+            <!-- AÇÕES (LIKE/COMMENT) -->
             <div class="flex justify-start space-x-8 mt-3 text-secondary">
-                {# Like button acts like a checkbox: filled heart when liked by current user #}
-                <a href="/like/{{ post.id }}" onclick="ajaxLike(event, this)" class="interactive-control flex items-center group transition-colors {% if post.liked_by_me %}text-red-500{% endif %}">
-                    {% if post.liked_by_me %}
-                        <i class="fa-solid fa-heart mr-1 text-[15px]"></i>
-                    {% else %}
-                        <i class="fa-regular fa-heart mr-1 text-[15px]"></i>
-                    {% endif %}
-                    <span class="text-[12px] like-count">{{ post.likes }}</span>
+                <a href="/like/{{ post.id }}" onclick="ajaxLike(event, this)"
+                   class="interactive-control flex items-center group {% if post.liked_by_me %}text-red-500{% endif %}">
+                    <i class="fa-regular fa-heart mr-1 text-[15px]"></i>
+                    <span class="like-count text-[12px]">{{ post.likes }}</span>
                 </a>
-                <div onclick="document.getElementById('in-{{post.id}}').focus()" class="interactive-control flex items-center group hover:text-indigo-500 cursor-pointer transition-colors">
+
+                <div onclick="document.getElementById('in-{{post.id}}') && document.getElementById('in-{{post.id}}').focus()"
+                     class="interactive-control flex items-center group hover:text-indigo-500 cursor-pointer">
                     <i class="fa-regular fa-comment mr-1 text-[15px]"></i>
-                    <span class="text-[12px]">{{ post.comments|length }}</span>
+                    <span class="comment-count text-[12px]">{{ post.comments|length }}</span>
                 </div>
             </div>
 
-            <div class="mt-3">
+            <!-- COMMENTS -->
+            <div id="comments-{{ post.id }}" class="mt-3">
                 <div id="comments-container-{{ post.id }}">
-                    {% for comment in post.comments[:2] %}
+                    {% for c in post.comments %}
                     <div class="text-[13px] mb-1">
-                        {% if comment.username == 'Anônimo' %}
-                            <span class="font-bold text-main">Anônimo</span>
-                        {% else %}
-                            <a href="/perfil/{{ comment.username }}" class="hover:underline">
-                                <span class="font-bold text-main">{{ comment.username }}</span>
-                            </a>
-                            {% if is_verified_platform_account(comment.username) %}
-                                <i class="fa-solid fa-circle-check text-blue-500 text-[11px] ml-1" title="Conta verificada"></i>
-                            {% endif %}
-                        {% endif %}
-                        <span class="text-main ml-1">{{ comment.content | mention | safe }}</span>
-                        <span class="text-secondary text-[11px] ml-1">&middot; {{ comment.timestamp | post_time }}</span>
+                        <a href="{{ url_for('perfil', username=c.username) }}" class="hover:underline">
+                            <span class="font-bold text-main">{{ c.username }}</span>
+                        </a>
+                        <span class="text-main ml-1">{{ c.content }}</span>
+                        <span class="text-secondary text-[11px] ml-1">&middot; {{ c.timestamp | post_time }}</span>
                     </div>
                     {% endfor %}
-
-                    {% if post.comments|length > 2 %}
-                    <button onclick="showComments({{ post.id }}, this)" class="interactive-control text-indigo-500 text-[11px] font-bold hover:underline mb-2">
-                        Ver todos os {{ post.comments|length }} comentários
-                    </button>
-                    <div id="extra-comments-{{ post.id }}" class="hidden">
-                        {% for comment in post.comments[2:] %}
-                        <div class="text-[13px] mb-1">
-                            {% if comment.username == 'Anônimo' %}
-                                <span class="font-bold text-main">Anônimo</span>
-                            {% else %}
-                                <a href="/perfil/{{ comment.username }}" class="hover:underline">
-                                    <span class="font-bold text-main">{{ comment.username }}</span>
-                                </a>
-                                {% if is_verified_platform_account(comment.username) %}
-                                    <i class="fa-solid fa-circle-check text-blue-500 text-[11px] ml-1" title="Conta verificada"></i>
-                                {% endif %}
-                            {% endif %}
-                            <span class="text-main ml-1">{{ comment.content | mention | safe }}</span>
-                            <span class="text-secondary text-[11px] ml-1">&middot; {{ comment.timestamp | post_time }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
                 </div>
 
-                <form action="/comentar/{{ post.id }}" method="POST" onsubmit="ajaxComment(event, this, {{post.id}})" class="mt-2 flex items-center space-x-2">
-                    <input id="in-{{post.id}}" name="comment_content"
-                           class="form-field flex-grow text-[13px] rounded-full py-1.5 px-4 text-main"
-                           placeholder="Postar sua resposta" required>
-                    <button type="submit" class="interactive-control text-indigo-500 font-bold text-[12px] px-2 hover:text-indigo-700 transition">Enviar</button>
-                </form>
-                <p data-comment-error class="form-error hidden mt-1 text-[11px] font-semibold">Digite um comentário antes de enviar.</p>
+                <div class="mt-2">
+                    <form action="/comentar/{{ post.id }}" method="POST" onsubmit="ajaxComment(event, this, {{ post.id }})" class="flex items-center gap-2">
+                        <input type="text" name="comment_content" id="in-{{post.id}}" placeholder="Escreva um comentário..." class="form-field flex-1 text-sm p-2 rounded-lg" autocomplete="off">
+                        <button type="submit" class="interactive-control bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-sm font-bold">Comentar</button>
+                    </form>
+                    <p data-comment-error class="text-red-500 text-xs mt-1 hidden"></p>
+                </div>
             </div>
+
         </div>
     </div>
 </div>
 {% endfor %}
+
+<!-- MODAL DENÚNCIA -->
+<div id="modalDenuncia" class="fixed inset-0 hidden items-center justify-center z-50" aria-hidden="true">
+
+    <!-- backdrop -->
+    <div id="modalDenunciaBackdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
+
+    <div role="dialog" aria-modal="true" aria-labelledby="modalDenunciaTitle"
+         class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6 mx-4 transform transition-all duration-200 scale-95 opacity-0"
+         id="modalDenunciaPanel">
+
+        <div class="flex items-start justify-between">
+            <h2 id="modalDenunciaTitle" class="text-lg font-semibold mb-2 text-main">Denunciar postagem</h2>
+            <button id="closeModalDenuncia" aria-label="Fechar modal" class="text-secondary hover:text-main">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <p class="text-sm text-secondary mb-3">Explique o motivo da denúncia para que a moderação possa analisar.</p>
+
+        <label for="descricaoDenuncia" class="sr-only">Descrição da denúncia</label>
+        <textarea id="descricaoDenuncia"
+                  class="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:bg-gray-700 dark:border-gray-600"
+                  rows="4"
+                  placeholder="Descreva o motivo da denúncia..."></textarea>
+
+        <p id="erroDenuncia" class="text-red-500 text-xs mt-1 hidden">
+            Descreva o motivo antes de enviar.
+        </p>
+
+        <div class="flex justify-end gap-2 mt-4">
+            <button id="cancelarDenuncia"
+                    class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-secondary rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                Cancelar
+            </button>
+
+            <button id="enviarDenuncia"
+                    class="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition">
+                Enviar
+            </button>
+        </div>
+
+    </div>
+</div>
+
+    <!-- SCRIPT -->
+    <script>
+    let postIdSelecionado = null;
+
+    const modal = document.getElementById('modalDenuncia');
+    const textarea = document.getElementById('descricaoDenuncia');
+    const erro = document.getElementById('erroDenuncia');
+
+    // abrir modal
+    document.querySelectorAll('.btn-denunciar').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+
+            postIdSelecionado = btn.dataset.postId;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.setAttribute('aria-hidden', 'false');
+
+            // animate panel in
+            const panel = document.getElementById('modalDenunciaPanel');
+            const backdrop = document.getElementById('modalDenunciaBackdrop');
+            requestAnimationFrame(() => {
+                panel.classList.remove('scale-95', 'opacity-0');
+                panel.classList.add('scale-100', 'opacity-100');
+                backdrop.classList.add('opacity-100');
+            });
+
+            textarea.value = '';
+            erro.classList.add('hidden');
+            textarea.focus();
+        });
+    });
+
+    // close helpers
+    function closeModal() {
+        const panel = document.getElementById('modalDenunciaPanel');
+        const backdrop = document.getElementById('modalDenunciaBackdrop');
+        panel.classList.add('scale-95', 'opacity-0');
+        backdrop.classList.remove('opacity-100');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.setAttribute('aria-hidden', 'true');
+        }, 180);
+    }
+
+    // cancelar
+    document.getElementById('cancelarDenuncia').onclick = () => closeModal();
+    document.getElementById('closeModalDenuncia').onclick = () => closeModal();
+
+    // click outside to close
+    document.getElementById('modalDenunciaBackdrop').addEventListener('click', () => closeModal());
+
+    // ESC to close
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+
+    // enviar
+    document.getElementById('enviarDenuncia').onclick = () => {
+
+        const descricao = textarea.value.trim();
+
+        if (!descricao) {
+            erro.classList.remove('hidden');
+            return;
+        }
+
+        fetch('/denunciar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                post_id: postIdSelecionado,
+                descricao: descricao
+            })
+        })
+        .then(() => {
+            closeModal();
+            textarea.value = '';
+            showToast('Denúncia enviada com sucesso!');
+        })
+        .catch(() => {
+            showToast('Erro ao enviar denúncia', true);
+        });
+    };
+
+    // toast
+    function showToast(msg, erro=false) {
+        const toast = document.createElement('div');
+        toast.innerText = msg;
+
+        toast.className = `
+            fixed bottom-5 right-5 px-4 py-2 rounded text-white text-sm shadow-lg z-50
+            ${erro ? 'bg-red-500' : 'bg-green-500'}
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => toast.remove(), 3000);
+    }
+    </script>
