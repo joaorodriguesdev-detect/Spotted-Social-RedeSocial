@@ -43,28 +43,33 @@ jobs:
             PM2_BIN="${{ secrets.PM2_BIN_PATH || '/root/.bun/bin/pm2' }}"
 
             echo "Garantindo dependências na Produção..."
-            sudo apt-get update && sudo apt-get install -y libjpeg-dev zlib1g-dev libwebp-dev
+            sudo apt-get update && sudo apt-get install -y \
+              python3-venv \
+              python3-pip \
+              python3-dev \
+              libjpeg-dev \
+              zlib1g-dev \
+              libwebp-dev
 
             cd "$APP_DIR"
 
+            echo "Atualizando código Production..."
             git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
             git fetch --all --prune
             git reset --hard origin/main
 
-            # Opcional: Remova o venv se os erros persistirem na produção
-            # rm -rf venv 
-            
+            # Criar venv se não existir
             if [ ! -d venv ]; then
               python3 -m venv venv
             fi
             source venv/bin/activate
 
             echo "Instalando dependências de Produção..."
-            python -m pip install --upgrade pip setuptools wheel
-            python -m pip install --only-binary=:all: Pillow
-            python -m pip install --no-cache-dir -r requirements.txt
+            pip install --upgrade pip setuptools wheel
+            pip install --only-binary=:all: Pillow
+            pip install --no-cache-dir -r requirements.txt
 
-            echo "Restart PM2 Produção..."
+            echo "Reiniciando PM2 Produção..."
             $PM2_BIN restart "$PM2_PROCESS" --update-env || \
             $PM2_BIN start ./venv/bin/gunicorn --interpreter ./venv/bin/python --name "$PM2_PROCESS" -- --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --workers 1 --bind 127.0.0.1:$PORT app:app
 

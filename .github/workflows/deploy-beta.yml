@@ -48,8 +48,15 @@ jobs:
             PORT="${{ secrets.PORT }}"
             PM2_BIN="/root/.bun/bin/pm2"
 
-            echo "Instalando libs de imagem na VPS..."
-            sudo apt-get update && sudo apt-get install -y libjpeg-dev zlib1g-dev libwebp-dev python3-dev build-essential
+            echo "Garantindo dependências de sistema (Python Venv + Imagem) na VPS..."
+            sudo apt-get update && sudo apt-get install -y \
+              python3-venv \
+              python3-pip \
+              python3-dev \
+              build-essential \
+              libjpeg-dev \
+              zlib1g-dev \
+              libwebp-dev
 
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
@@ -59,19 +66,19 @@ jobs:
             git fetch --all --prune
             git reset --hard origin/beta
 
-            echo "Limpando VENV antigo para evitar erros de cache..."
+            echo "Limpando e recriando ambiente virtual (VENV)..."
             rm -rf venv
             python3 -m venv venv
             source venv/bin/activate
 
-            echo "Instalando pacotes (Pillow Binário + Requirements)..."
-            python -m pip install --upgrade pip setuptools wheel
-            python -m pip install --only-binary=:all: Pillow
-            python -m pip install --no-cache-dir -r requirements.txt
+            echo "Instalando pacotes (Pillow Binário)..."
+            pip install --upgrade pip setuptools wheel
+            pip install --only-binary=:all: Pillow
+            pip install --no-cache-dir -r requirements.txt
 
             echo "Reiniciando PM2..."
             $PM2_BIN restart "$PM2_PROCESS" --update-env || \
             $PM2_BIN start ./venv/bin/gunicorn --interpreter ./venv/bin/python --name "$PM2_PROCESS" -- --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --workers 1 --bind 127.0.0.1:$PORT app:app
             
             $PM2_BIN save
-            echo "Deploy Beta concluído com sucesso!"
+            echo "Deploy Beta finalizado com sucesso!"
