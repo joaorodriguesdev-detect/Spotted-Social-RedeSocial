@@ -4,4 +4,4 @@ tests
 *.pyc
 .env
 RELATORIO.md
-uploads/
+uploads/*
