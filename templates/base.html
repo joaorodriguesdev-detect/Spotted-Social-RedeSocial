@@ -294,19 +294,15 @@
         </a>
 
         {% if session.get('user_id') %}
-        <div class="relative">
-            <button type="button" id="profile-menu-trigger" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-context-menu" class="relative w-10 h-10 rounded-full border twitter-border flex items-center justify-center overflow-hidden transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent">
+        <div class="relative flex items-center">
+            <a href="/perfil/{{ session['username'] }}" class="relative w-10 h-10 rounded-full border twitter-border flex items-center justify-center overflow-hidden transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent" aria-label="Ver perfil">
                 {% if session.get('profile_pic') %}
                 <img src="{{ url_for('static', filename='uploads/' + session.get('profile_pic')) }}" class="w-full h-full object-cover" alt="Foto do perfil">
                 {% else %}
                 <span class="text-[10px] text-main font-bold">{{ session.get('username')[0].upper() }}</span>
                 {% endif %}
                 {% if current_path.startswith('/perfil/') %}<span class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}
-            </button>
-            <div id="profile-context-menu" role="menu" aria-labelledby="profile-menu-trigger" class="profile-context-menu hidden absolute bottom-11 right-0 min-w-[148px] rounded-xl py-1 z-[180] transition-all duration-150">
-                <a href="/perfil/{{ session['username'] }}" role="menuitem" class="profile-menu-link block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition">Perfil</a>
-                <a href="{{ url_for('logout') }}" role="menuitem" class="profile-menu-link-danger block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition">Sair</a>
-            </div>
+            </a>
         </div>
         {% else %}
         <a href="/" class="w-9 h-9 flex items-center justify-center text-main text-lg"><i class="fa-solid fa-right-from-bracket"></i></a>

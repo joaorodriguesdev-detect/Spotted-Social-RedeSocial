@@ -41,6 +41,14 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 # to True regardless of environment configuration to avoid accidental global
 # disabling in production.
 app.config['DIRECT_ENABLED'] = True
+# Session lifetime: control how long a user's session cookie stays valid when
+# `session.permanent = True` is used. Default to 7 days but allow override via
+# environment variable `SESSION_EXPIRE_DAYS` (integer days).
+try:
+    _sess_days = int(os.environ.get('SESSION_EXPIRE_DAYS', '7'))
+except Exception:
+    _sess_days = 7
+app.permanent_session_lifetime = timedelta(days=_sess_days)
 
 db = SQLAlchemy(app)
 
@@ -252,6 +260,25 @@ def parse_event_datetime(date_value, time_value):
         return None, 'Data ou horário invalido.'
 
     combined = datetime.combine(event_date, event_time)
+    # Ensure the combined event datetime is timezone-aware in the same
+    # Brazil timezone used elsewhere (br_time returns an aware datetime).
+    try:
+        tz_br = timezone(timedelta(hours=-3))
+        if combined.tzinfo is None:
+            combined = combined.replace(tzinfo=tz_br)
+        else:
+            combined = combined.astimezone(tz_br)
+    except Exception:
+        # If tz operations fail, fall back to naive comparison by removing tz
+        try:
+            now = br_time()
+            if hasattr(now, 'tzinfo') and now.tzinfo is not None:
+                now = now.replace(tzinfo=None)
+            if combined.tzinfo is not None:
+                combined = combined.replace(tzinfo=None)
+        except Exception:
+            pass
+
     if combined < br_time():
         return None, 'Nao e permitido criar ou editar evento com data/horario no passado.'
 
@@ -342,8 +369,16 @@ def log_exception(e):
     default 500 response so the behavior is unchanged for clients.
     """
     try:
+        # Include basic request info in the log so 404s and routing errors can be
+        # traced to the exact URL that triggered them. request.* may fail when
+        # the error occurs outside a request context, so guard it.
+        try:
+            req_info = f"{request.method} {request.path} full_url={request.url}"
+        except Exception:
+            req_info = 'request info unavailable'
+
         tb = traceback.format_exc()
-        app.logger.error('Unhandled exception:\n%s', tb)
+        app.logger.error('Unhandled exception: %s\nRequest: %s\nTraceback:\n%s', type(e).__name__, req_info, tb)
     except Exception:
         # If logging itself fails, fall back to printing to stderr
         print('Failed to log exception', flush=True)
@@ -848,7 +883,9 @@ def welcome():
 
 @app.route('/login', methods=['POST'])
 def login():
-    username = request.form.get('username').lower().strip()
+    # Be defensive: request.form.get may return None if the field is missing.
+    # Use an empty string default so .lower()/.strip() won't raise AttributeError.
+    username = (request.form.get('username') or '').lower().strip()
     password = request.form.get('password')
     user = User.query.filter_by(username=username).first()
     if user and check_password_hash(user.password, password):
@@ -858,14 +895,19 @@ def login():
         session['name'] = user.name
         session['is_admin'] = user.is_admin
         session['profile_pic'] = user.profile_pic
+        # Make this session permanent so the cookie uses app.permanent_session_lifetime
+        # (defaults to 7 days). This causes Flask to set the cookie's expiry instead
+        # of making it a browser-session cookie.
+        session.permanent = True
         return redirect(url_for('feed'))
     flash('Usuário ou senha incorretos.')
     return redirect(url_for('welcome'))
 
 @app.route('/registro', methods=['POST'])
 def registro():
-    name = request.form.get('name').strip()
-    username = request.form.get('username').lower().strip()
+    # Defensive defaults to avoid AttributeError when form fields are missing.
+    name = (request.form.get('name') or '').strip()
+    username = (request.form.get('username') or '').lower().strip()
     password = request.form.get('password')
     university = request.form.get('university')
     if " " in username:
@@ -885,6 +927,8 @@ def registro():
     session['name'] = user.name
     session['is_admin'] = False
     session['profile_pic'] = user.profile_pic 
+    # Persist session for the configured permanent lifetime (e.g. 7 days)
+    session.permanent = True
     return redirect(url_for('feed'))
 
 @app.route('/feed')
