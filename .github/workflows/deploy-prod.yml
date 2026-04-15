@@ -12,13 +12,22 @@ jobs:
     steps:
       - name: Puxar o código
         uses: actions/checkout@v4
+
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      # ADICIONADO: Instalar libs de imagem no servidor do GitHub
+      - name: Instalar dependências de sistema (Runner)
+        run: |
+          sudo apt-get update && sudo apt-get install -y libjpeg-dev zlib1g-dev libwebp-dev
+
       - name: Instalar dependências
         run: |
           python -m pip install --upgrade pip setuptools wheel
+          # Força binário no runner também para ser mais rápido
+          python -m pip install --only-binary=:all: Pillow
           python -m pip install --no-cache-dir -r requirements.txt
 
   atualizar_servidor:
@@ -42,7 +51,7 @@ jobs:
             PORT="${{ secrets.PORT || '5000' }}"
             PM2_BIN="${{ secrets.PM2_BIN_PATH || '/root/.bun/bin/pm2' }}"
 
-            echo "Garantindo dependências na Produção..."
+            echo "Garantindo dependências na VPS de Produção..."
             sudo apt-get update && sudo apt-get install -y \
               python3-venv \
               python3-pip \
@@ -58,7 +67,6 @@ jobs:
             git fetch --all --prune
             git reset --hard origin/main
 
-            # Criar venv se não existir
             if [ ! -d venv ]; then
               python3 -m venv venv
             fi
