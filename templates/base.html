@@ -6,6 +6,47 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <title>{% block title %}Spotted{% endblock %}</title>
+
+    {# SEO: dynamic meta tags, OpenGraph, Twitter Card and JSON-LD structured data #}
+    {% block meta %}
+    <meta name="description" content="{% block meta_description %}A comunidade Spotted para estudantes — compartilhe posts, eventos e mensagens de forma simples e rápida.{% endblock %}" />
+    <meta name="keywords" content="{% block meta_keywords %}spotted, universidade, eventos, estudantes, mensagens, comunidade{% endblock %}" />
+    <link rel="canonical" href="{{ request.url }}" />
+    <link rel="alternate" href="{{ request.url }}" hreflang="pt-br" />
+
+    {# Open Graph defaults (pages can override by setting `og_title`, `og_description`, `og_image`) #}
+    <meta property="og:site_name" content="Spotted" />
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}" />
+    {# define overridable blocks but do not render their contents inline (avoid visible text) #}
+    {% block og_title %}{% endblock %}
+    <meta property="og:title" content="{{ self.og_title()|trim or self.title() }}" />
+    {% block og_description %}{% endblock %}
+    <meta property="og:description" content="{{ self.og_description()|trim or 'A comunidade Spotted para estudantes — compartilhe posts, eventos e mensagens.' }}" />
+    <meta property="og:url" content="{{ request.url }}" />
+    <meta property="og:image" content="{% block og_image %}{{ url_for('public_files', filename='apple-touch-icon.png') }}{% endblock %}" />
+
+    {# Twitter Card defaults #}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ self.og_title() }}" />
+    <meta name="twitter:description" content="{{ self.og_description() }}" />
+    <meta name="twitter:image" content="{{ self.og_image() }}" />
+
+    {# Basic structured data for WebSite/Organization to improve rich results #}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Spotted",
+      "url": "{{ request.url_root }}",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "{{ url_for('search', _external=True) }}?query={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    {% endblock %}
+
     <link rel="icon" type="image/x-icon" href="{{ url_for('public_files', filename='icon-page.ico') }}" />
     <link rel="apple-touch-icon" href="{{ url_for('public_files', filename='icon-apple-touch.png') }}" />
     <style>
