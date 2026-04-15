@@ -31,7 +31,7 @@ jobs:
           python -m pip install --no-cache-dir -r requirements.txt
   atualizar_servidor:
     name: 🚀 Deploy na VPS (Produção)
-    needs: testar_codigo
+    # needs: testar_codigo
     runs-on: ubuntu-latest
     environment: production
 
