@@ -440,6 +440,17 @@ def ensure_notification_category_column():
         # SQLite allows adding a column with a default value
         conn.exec_driver_sql("ALTER TABLE notification ADD COLUMN category VARCHAR(50) DEFAULT 'general'")
 
+def ensure_comment_is_edited_column():
+    inspector = inspect(db.engine)
+    try:
+        cols = {col['name'] for col in inspector.get_columns('comment')}
+    except Exception:
+        cols = set()
+    if 'is_edited' in cols:
+        return
+    with db.engine.begin() as conn:
+        conn.exec_driver_sql("ALTER TABLE comment ADD COLUMN is_edited BOOLEAN DEFAULT 0 NOT NULL")
+
 @app.template_filter('joined_month_year')
 def joined_month_year_filter(ts):
     if not ts:
@@ -618,6 +629,7 @@ class Comment(db.Model):
     content = db.Column(db.String(200), nullable=False)
     username = db.Column(db.String(80), default="Anônimo") 
     timestamp = db.Column(db.DateTime, default=br_time)
+    is_edited = db.Column(db.Boolean, default=False)
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -700,6 +712,7 @@ with app.app_context():
     ensure_conversation_pinned_message_column()
     ensure_direct_chat_message_all_read_column()
     ensure_notification_category_column()
+    ensure_comment_is_edited_column()
     missing_created_at = User.query.filter(User.created_at.is_(None)).all()
     for user in missing_created_at:
         user.created_at = br_time()
@@ -1078,7 +1091,10 @@ def api_search():
 @app.route('/postar', methods=['POST'])
 def postar():
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    content = request.form.get('content')
+    content = (request.form.get('content') or '').strip()
+    if not content:
+        flash('A postagem não pode estar vazia.')
+        return redirect(url_for('feed'))
     anon_mode = request.form.get('anon_mode') == 'true'
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
@@ -1100,6 +1116,50 @@ def excluir_post(post_id):
         db.session.delete(post)
         db.session.commit()
     return redirect(request.referrer or url_for('feed'))
+
+@app.route('/editar_post/<int:post_id>', methods=['POST'])
+def editar_post(post_id):
+    if 'user_id' not in session: return redirect(url_for('welcome'))
+    post = Post.query.get_or_404(post_id)
+    
+    # Verifica permissao: apenas o autor original pode editar sua postagem
+    if post.user_id != session.get('user_id') or post.user_id is None:
+        flash('Sem permissão para editar esta postagem.')
+        return redirect(request.referrer or url_for('feed'))
+        
+    new_content = (request.form.get('content') or '').strip()
+    if new_content:
+        post.content = new_content
+        db.session.commit()
+    else:
+        flash('A postagem não pode estar vazia.')
+        
+    return redirect(request.referrer or url_for('feed', _anchor=f"post-{post.id}"))
+
+@app.route('/denunciar', methods=['POST'])
+def denunciar():
+    if 'user_id' not in session: return jsonify({'error': 'Não autenticado'}), 401
+    
+    data = request.get_json(silent=True) or {}
+    post_id = data.get('post_id')
+    descricao = data.get('descricao')
+    
+    if not post_id or not descricao:
+        return jsonify({'error': 'Dados inválidos'}), 400
+        
+    sender_name = session.get('username')
+    admins = User.query.filter_by(is_admin=True).all()
+    for admin in admins:
+        db.session.add(Notification(
+            user_id=admin.id,
+            sender_name=sender_name,
+            action_type=f"denunciou uma postagem: {descricao[:50]}",
+            post_id=post_id,
+            category='report'
+        ))
+    db.session.commit()
+    return jsonify({'ok': True})
+
 
 @app.route('/like/<int:post_id>')
 def like(post_id):
@@ -1140,15 +1200,54 @@ def comentar(post_id):
         db.session.commit()
     return redirect(url_for('feed', _anchor=f"post-{post_id}"))
 
+@app.route('/editar_comentario/<int:comment_id>', methods=['POST'])
+def editar_comentario(comment_id):
+    if 'user_id' not in session: return redirect(url_for('welcome'))
+    comment = Comment.query.get_or_404(comment_id)
+    
+    # Verifica permissao: o dono do comentario ou o admin do sistema
+    if comment.username != session.get('username') and not session.get('is_admin'):
+        flash('Sem permissão para editar este comentário.')
+        return redirect(url_for('feed', _anchor=f"post-{comment.post_id}"))
+    
+    new_content = (request.form.get('content') or '').strip()
+    if new_content:
+        comment.content = new_content
+        comment.is_edited = True
+        db.session.commit()
+    
+    return redirect(request.referrer or url_for('feed', _anchor=f"post-{comment.post_id}"))
+
+@app.route('/excluir_comentario/<int:comment_id>')
+def excluir_comentario(comment_id):
+    if 'user_id' not in session: return redirect(url_for('welcome'))
+    comment = Comment.query.get_or_404(comment_id)
+    post_id = comment.post_id
+    
+    if comment.username == session.get('username') or session.get('is_admin'):
+        db.session.delete(comment)
+        db.session.commit()
+        
+    return redirect(request.referrer or url_for('feed', _anchor=f"post-{post_id}"))
+
 @app.route('/perfil/<username>')
 def perfil(username):
     if 'user_id' not in session: return redirect(url_for('welcome'))
     user = User.query.filter_by(username=username).first_or_404()
-    posts = Post.query.filter(
-        Post.user_id == user.id,
-        Post.is_anonymous.is_(False),
-        ~Post.content.contains('📢 NOVO EVENTO:')
-    ).order_by(Post.timestamp.desc()).all()
+    
+    if user.is_admin:
+        posts = Post.query.filter(
+            Post.user_id == user.id,
+            Post.is_anonymous.is_(False),
+            ~Post.content.contains('📢 NOVO EVENTO:')
+        ).order_by(Post.timestamp.desc()).limit(10).all()
+    else:
+        posts = Post.query.filter(
+            Post.user_id == user.id,
+            Post.is_anonymous.is_(False),
+            ~Post.content.contains('📢 NOVO EVENTO:')
+        ).order_by(Post.timestamp.desc()).all()
+        
     user_events = Event.query.filter_by(user_id=user.id).order_by(Event.created_at.desc()).all()
     messages = Message.query.filter_by(receiver_id=user.id).order_by(Message.timestamp.desc()).all()
     me = User.query.get(session['user_id'])

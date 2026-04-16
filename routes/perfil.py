@@ -11,11 +11,18 @@ def perfil(username):
 
     user = User.query.filter_by(username=username).first_or_404()
     if user.is_admin and not session.get('is_admin'): return redirect(url_for('feed'))
-    posts = Post.query.filter(
-        Post.user_id == user.id,
-        Post.is_anonymous.is_(False),
-        ~Post.content.contains('📢 NOVO EVENTO:')
-    ).order_by(Post.timestamp.desc()).all()
+    if user.is_admin:
+        posts = Post.query.filter(
+            Post.user_id == user.id,
+            Post.is_anonymous.is_(False),
+            ~Post.content.contains('📢 NOVO EVENTO:')
+        ).order_by(Post.timestamp.desc()).limit(10).all()
+    else:
+        posts = Post.query.filter(
+            Post.user_id == user.id,
+            Post.is_anonymous.is_(False),
+            ~Post.content.contains('📢 NOVO EVENTO:')
+        ).order_by(Post.timestamp.desc()).all()
     user_events = Event.query.filter_by(user_id=user.id).order_by(Event.created_at.desc()).all()
     messages = Message.query.filter_by(receiver_id=user.id).order_by(Message.timestamp.desc()).all()
     me = User.query.get(session['user_id'])
