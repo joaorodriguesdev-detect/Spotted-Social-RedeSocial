@@ -133,10 +133,11 @@
                                 <span class="font-bold text-main">{{ c.username }}</span>
                             </a>
                             <span class="text-main ml-1" id="comment-content-{{ c.id }}">{{ c.content }}</span>
+                            {% if c.is_edited %}<span class="text-secondary text-[11px] ml-1 font-bold">( Editado )</span>{% endif %}
                             <span class="text-secondary text-[11px] ml-1">&middot; {{ c.timestamp | post_time }}</span>
                         </div>
                         {% if session.get('username') == c.username or session.get('is_admin') %}
-                        <div class="hidden group-hover:flex items-center space-x-2 text-gray-400">
+                        <div class="flex items-center space-x-2 text-gray-400">
                             <button type="button" onclick="toggleEditComment({{ c.id }})" class="hover:text-indigo-500" title="Editar"><i class="fa-solid fa-pen text-[11px]"></i></button>
                             <a href="{{ url_for('excluir_comentario', comment_id=c.id) }}" class="hover:text-red-500" title="Excluir" onclick="return confirm('Excluir este comentário?')"><i class="fa-solid fa-trash text-[11px]"></i></a>
                         </div>

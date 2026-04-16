@@ -1213,6 +1213,7 @@ def editar_comentario(comment_id):
     new_content = (request.form.get('content') or '').strip()
     if new_content:
         comment.content = new_content
+        comment.is_edited = True
         db.session.commit()
     
     return redirect(request.referrer or url_for('feed', _anchor=f"post-{comment.post_id}"))
