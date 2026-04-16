@@ -224,22 +224,50 @@
         .profile-menu-separator { height: 1px; background: var(--profile-menu-border); margin: 6px 0; }
 
         /* Mobile behavior: anchor the menu inside the profile card and make it compact/full-width within the card */
-        @media (max-width: 640px) {
-            #profile-card-menu-trigger { top: 0.5rem !important; right: 0.5rem !important; width:36px; height:36px; }
-            .profile-context-menu {
+        /*@media (max-width: 640px) {*/
+        /*    #profile-card-menu-trigger { top: 0.5rem !important; right: 0.5rem !important; width:36px; height:36px; }*/
+        /*    .profile-context-menu {*/
                 position: absolute; /* positioned relative to .profile-card */
-                top: calc(100% + 0.5rem);
-                right: 1rem;
-                left: 1rem;
-                width: auto;
-                max-width: none;
-                min-width: 0;
-                border-radius: 10px;
-                box-shadow: 0 8px 30px rgba(0,0,0,0.45);
-                padding: 6px 0;
+        /*        top: calc(100% + 0.5rem);*/
+        /*        right: 1rem;*/
+        /*        left: 1rem;*/
+        /*        width: auto;*/
+        /*        max-width: none;*/
+        /*        min-width: 0;*/
+        /*        border-radius: 10px;*/
+        /*        box-shadow: 0 8px 30px rgba(0,0,0,0.45);*/
+        /*        padding: 6px 0;*/
+        /*    }*/
+        /*    .profile-menu-link { padding: 10px 14px; font-size: 14px; }*/
+        /*    .profile-menu-separator { margin: 8px 12px; }*/
+        /*}*/
+
+        @media (max-width: 640px) {
+            #profile-card-menu-trigger {
+                top: 12px !important;
+                right: 12px !important;
+                width: 40px;
+                height: 40px;
             }
-            .profile-menu-link { padding: 10px 14px; font-size: 14px; }
-            .profile-menu-separator { margin: 8px 12px; }
+
+            .profile-context-menu {
+                position: absolute;
+                top: calc(100% + 12px);
+                right: 12px;
+                left: 12px;
+                border-radius: 14px;
+                box-shadow: 0 12px 50px rgba(0, 0, 0, 0.55);
+                padding: 10px 0;
+            }
+
+            .profile-menu-link {
+                padding: 13px 18px;
+                font-size: 15px;
+            }
+
+            .profile-menu-separator {
+                margin: 8px 16px;
+            }
         }
     </style>
 {% endblock %}
@@ -269,26 +297,37 @@
 
             {% if me and me.id == user.id %}
             <!-- Profile card menu trigger positioned on the outside card (top-right) -->
-            <button id="profile-card-menu-trigger" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-card-context-menu" class="absolute top-4 right-4 p-0 rounded-full bg-white/90 hover:bg-indigo-50 border twitter-border shadow-sm focus-visible:outline-none text-main flex items-center justify-center w-9 h-9" title="Mais opções">
-                <i class="fa-solid fa-ellipsis-vertical"></i>
-                <span class="sr-only">Abrir menu de perfil</span>
+            <button
+                id="profile-card-menu-trigger"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-controls="profile-card-context-menu"
+                class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full
+                       bg-white/80 hover:bg-white dark:bg-zinc-900 dark:hover:bg-zinc-800
+                       shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700
+                       transition-all active:scale-90"
+                title="Editar conta"
+                onclick="toggleModal(); return false;">
+
+                <i class="fa-solid fa-pen-to-square text-xl text-gray-700 dark:text-gray-300"></i>
             </button>
 
-            <div id="profile-card-context-menu" role="menu" aria-labelledby="profile-card-menu-trigger" class="profile-context-menu hidden absolute top-14 right-4 min-w-[240px] rounded-xl py-1 z-[180]">
-                <a onclick="toggleModal(); return false;" role="menuitem" tabindex="0" class="profile-menu-link profile-menu-item edit-action block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition" title="Editar conta">
-                    <i class="fa-solid fa-pen-to-square mr-3 text-sm" aria-hidden="true" style="color:var(--profile-menu-muted)"></i>
-                    <span>Editar Conta</span>
-                </a>
-                <div class="profile-menu-separator" role="separator" aria-hidden="true"></div>
-                <a href="{{ url_for('logout') }}" role="menuitem" class="profile-menu-link profile-menu-item profile-menu-link-danger block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition" title="Sair">
-                    <i class="fa-solid fa-right-from-bracket mr-3 text-sm" aria-hidden="true" style="color:var(--profile-menu-danger)"></i>
-                    <span style="color:var(--profile-menu-danger)">Sair</span>
-                </a>
-                <button role="menuitem" aria-disabled="true" aria-hidden="true" class="profile-menu-link profile-menu-link-danger profile-menu-hidden profile-menu-item block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition cursor-not-allowed opacity-70">
-                    <i class="fa-solid fa-user-slash mr-3 text-sm" aria-hidden="true" style="color:var(--profile-menu-danger)"></i>
-                    <span>Deletar conta (desabilitado)</span>
-                </button>
-            </div>
+            <!--<div id="profile-card-context-menu" role="menu" aria-labelledby="profile-card-menu-trigger" class="profile-context-menu hidden absolute top-14 right-4 min-w-[240px] rounded-xl py-1 z-[180]">-->
+                <!--<a onclick="toggleModal(); return false;" role="menuitem" tabindex="0" class="profile-menu-link profile-menu-item edit-action block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition" title="Editar conta">-->
+                    <!--<i class="fa-solid fa-pen-to-square mr-3 text-sm" aria-hidden="true" style="color:var(--profile-menu-muted)"></i>-->
+                    <!--<span>Editar Conta</span>-->
+                <!--</a>-->
+                <!--<div class="profile-menu-separator" role="separator" aria-hidden="true"></div>-->
+                <!--<a href="{{ url_for('logout') }}" role="menuitem" class="profile-menu-link profile-menu-item profile-menu-link-danger block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition" title="Sair">-->
+                <!--    <i class="fa-solid fa-right-from-bracket mr-3 text-sm" aria-hidden="true" style="color:var(--profile-menu-danger)"></i>-->
+                <!--    <span style="color:var(--profile-menu-danger)">Sair</span>-->
+                <!--</a>-->
+                <!--<button role="menuitem" aria-disabled="true" aria-hidden="true" class="profile-menu-link profile-menu-link-danger profile-menu-hidden profile-menu-item block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition cursor-not-allowed opacity-70">-->
+                <!--    <i class="fa-solid fa-user-slash mr-3 text-sm" aria-hidden="true" style="color:var(--profile-menu-danger)"></i>-->
+                <!--    <span>Deletar conta (desabilitado)</span>-->
+                <!--</button>-->
+            <!--</div>-->
             {% endif %}
 
             <div class="text-center md:text-left flex-grow max-w-full overflow-hidden">
@@ -301,10 +340,10 @@
                     </div>
                             {% if me and me.id == user.id %}
                                 {# 'Editar perfil' mobile button: shown only on small screens; desktop keeps Edit inside menu #}
-                                <a onclick="toggleModal(); return false;" class="interactive-control edit-profile-mobile inline-flex items-center bg-indigo-600 text-white px-6 py-2 rounded-xl text-xs font-bold shadow-lg md:hidden">
-                                    <i class="fa-solid fa-pen-to-square" aria-hidden="true" style="margin-right:8px;color:#fff;font-size:14px"></i>
-                                    <span>Editar Conta</span>
-                                </a>
+                                <!--<a onclick="toggleModal(); return false;" class="interactive-control edit-profile-mobile inline-flex items-center bg-indigo-600 text-white px-6 py-2 rounded-xl text-xs font-bold shadow-lg md:hidden">-->
+                                <!--    <i class="fa-solid fa-pen-to-square" aria-hidden="true" style="margin-right:8px;color:#fff;font-size:14px"></i>-->
+                                <!--    <span>Editar Conta</span>-->
+                                <!--</a>-->
                     {% elif me and me.id != user.id and not user.is_admin %}
                         <div class="flex items-center gap-2 mt-2 md:mt-0">
                             <a href="{{ url_for('seguir', username=user.username) }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
@@ -313,19 +352,15 @@
                     {% endif %}
                 </div>
                 <div class="mb-6">
-                    {% if not user.is_admin %}
                     <p class="font-bold text-sm text-secondary">@{{ user.username }}</p>
-                    {% endif %}
                     {% if user.created_at %}<p class="text-xs font-semibold text-secondary mt-2 mb-1">Entrou em {{ user.created_at|joined_month_year }}</p>{% endif %}
-                    {% if user.university and not user.is_admin %}<p class="text-xs font-black text-indigo-600 uppercase mt-2 mb-2 tracking-widest flex items-center justify-center md:justify-start"><i class="fa-solid fa-graduation-cap mr-2"></i> {{ user.university }}</p>{% endif %}
+                    {% if user.university %}<p class="text-xs font-black text-indigo-600 uppercase mt-2 mb-2 tracking-widest flex items-center justify-center md:justify-start"><i class="fa-solid fa-graduation-cap mr-2"></i> {{ user.university }}</p>{% endif %}
                     <p class="text-sm whitespace-pre-wrap break-words leading-relaxed mt-4">{% if user.bio %}{{ user.bio }}{% else %}Sem biografia.{% endif %}</p>
                 </div>
                 <div class="flex space-x-8 justify-center md:justify-start pt-4">
                     <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ posts|length }}</span><span class="text-[10px] uppercase font-bold text-secondary">Posts</span></div>
-                    {% if not user.is_admin %}
                     <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followers.count() }}</span><span class="text-[10px] uppercase font-bold text-secondary">Seguidores</span></div>
                     <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followed.count() }}</span><span class="text-[10px] uppercase font-bold text-secondary">Seguindo</span></div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -357,7 +392,6 @@
         </div>
         {% endif %}
 
-        {% if not user.is_admin %}
         <div class="mt-10">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-black text-secondary uppercase text-xs tracking-widest">Eventos</h3>
@@ -394,7 +428,6 @@
                 </div>
             {% endif %}
         </div>
-        {% endif %}
 
         <div class="mt-10">
             <div class="flex items-center justify-between mb-4">

@@ -316,11 +316,29 @@
 {% if not hide_chrome|default(false) %}
 <nav class="backdrop-blur-md border-b sticky top-0 z-[100] py-3 px-4 transition-all">
     <div class="max-w-[600px] mx-auto flex justify-between items-center relative">
-        <div class="w-10"></div>
-        <h1 class="text-xl insta-font cursor-pointer absolute left-1/2 -translate-x-1/2" onclick="window.location.href='/feed'">Spotted</h1>
-        <button onclick="toggleTheme()" class="w-10 h-10 flex items-center justify-center text-lg active:scale-90 rounded-full transition-all" id="theme-btn">
+    <div>
+        <!-- Botão Sair - Lado Esquerdo -->
+        <a href="{{ url_for('logout') }}"
+           class="profile-menu-link profile-menu-item profile-menu-link-danger flex items-center gap-2 px-4 py-3 text-sm font-semibold rounded-full transition-all"
+           title="Sair">
+            <i class="fa-solid fa-right-from-bracket text-lg" aria-hidden="true" style="color:var(--profile-menu-danger)"></i>
+            <span class="hidden sm:inline" style="color:var(--profile-menu-danger)">Sair</span>
+        </a>
+    </div>
+
+        <!-- Título central -->
+        <h1 class="text-xl insta-font cursor-pointer absolute left-1/2 -translate-x-1/2"
+            onclick="window.location.href='/feed'">
+            Spotted
+        </h1>
+
+                <!-- Botão de Engrenagem (Tema) - Lado Direito -->
+        <button onclick="toggleTheme()"
+                class="w-10 h-10 flex items-center justify-center text-2xl active:scale-90 rounded-full transition-all"
+                id="theme-btn">
             <i class="fa-solid fa-moon"></i>
         </button>
+
     </div>
 </nav>
 {% endif %}
