@@ -301,6 +301,7 @@
                 font-size: 0.83rem;
             }
         }
+
     </style>
     {% block head_extra %}{% endblock %}
 </head>
@@ -319,7 +320,7 @@
     <div>
         <!-- Botão Sair - Lado Esquerdo -->
         <a href="{{ url_for('logout') }}"
-           class="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-full transition-all active:scale-90 hover:bg-zinc-100 dark:hover:bg-zinc-800 profile-menu-link profile-menu-item profile-menu-link-danger"
+           class="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-full transition-all active:scale-90 profile-menu-link profile-menu-item profile-menu-link-danger"
            title="Sair">
             <i class="fa-solid fa-right-from-bracket text-l" aria-hidden="true" style="color: rgb(239 68 68 / var(--tw-text-opacity, 1))"></i>
             <span class="hidden sm:inline" style="color: rgb(239 68 68 / var(--tw-text-opacity, 1))">Sair</span>
@@ -332,9 +333,9 @@
             Spotted
         </h1>
 
-                <!-- Botão de Engrenagem (Tema) - Lado Direito -->
+        <!-- Botão de Engrenagem (Tema) - Lado Direito -->
         <button onclick="toggleTheme()"
-                class="w-10 h-10 flex items-center justify-center text-2xl active:scale-90 rounded-full transition-all"
+                class="w-7 h-7 flex items-center justify-center text-lg active:scale-90 rounded-full transition-all"
                 id="theme-btn">
             <i class="fa-solid fa-moon"></i>
         </button>
