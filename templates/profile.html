@@ -313,15 +313,19 @@
                     {% endif %}
                 </div>
                 <div class="mb-6">
+                    {% if not user.is_admin %}
                     <p class="font-bold text-sm text-secondary">@{{ user.username }}</p>
+                    {% endif %}
                     {% if user.created_at %}<p class="text-xs font-semibold text-secondary mt-2 mb-1">Entrou em {{ user.created_at|joined_month_year }}</p>{% endif %}
-                    {% if user.university %}<p class="text-xs font-black text-indigo-600 uppercase mt-2 mb-2 tracking-widest flex items-center justify-center md:justify-start"><i class="fa-solid fa-graduation-cap mr-2"></i> {{ user.university }}</p>{% endif %}
+                    {% if user.university and not user.is_admin %}<p class="text-xs font-black text-indigo-600 uppercase mt-2 mb-2 tracking-widest flex items-center justify-center md:justify-start"><i class="fa-solid fa-graduation-cap mr-2"></i> {{ user.university }}</p>{% endif %}
                     <p class="text-sm whitespace-pre-wrap break-words leading-relaxed mt-4">{% if user.bio %}{{ user.bio }}{% else %}Sem biografia.{% endif %}</p>
                 </div>
                 <div class="flex space-x-8 justify-center md:justify-start pt-4">
                     <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ posts|length }}</span><span class="text-[10px] uppercase font-bold text-secondary">Posts</span></div>
+                    {% if not user.is_admin %}
                     <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followers.count() }}</span><span class="text-[10px] uppercase font-bold text-secondary">Seguidores</span></div>
                     <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followed.count() }}</span><span class="text-[10px] uppercase font-bold text-secondary">Seguindo</span></div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -353,6 +357,7 @@
         </div>
         {% endif %}
 
+        {% if not user.is_admin %}
         <div class="mt-10">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-black text-secondary uppercase text-xs tracking-widest">Eventos</h3>
@@ -389,6 +394,7 @@
                 </div>
             {% endif %}
         </div>
+        {% endif %}
 
         <div class="mt-10">
             <div class="flex items-center justify-between mb-4">
