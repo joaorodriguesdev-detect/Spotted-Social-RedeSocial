@@ -10,12 +10,9 @@
                 {{ post.author.username[0].upper() if post.author else '?' }}
             {% endif %}
         </div>
-
         <div class="w-full">
-
             <!-- HEADER -->
             <div class="flex justify-between items-baseline">
-
                 <!-- INFO USUÁRIO -->
                 <div class="flex flex-col">
                     {% if post.is_anonymous %}
@@ -30,20 +27,16 @@
                             <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
                                 <span class="font-bold text-main text-[14px]">{{ post.author.name }}</span>
                             </a>
-
                             {% if post.author.is_admin %}
                                 <i class="fa-solid fa-circle-check text-blue-500 text-[12px]" title="Verificado"></i>
                             {% endif %}
-
                             {% if post.author.university %}
                                 <span class="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
                                     {{ post.author.university }}
                                 </span>
                             {% endif %}
-
                             <span class="text-secondary text-[12px]">{{ post.timestamp | post_time }}</span>
                         </div>
-
                         <div class="flex items-center space-x-1 text-[12px] text-secondary">
                             <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
                                 <span>@{{ post.author.username }}</span>
@@ -51,10 +44,8 @@
                         </div>
                     {% endif %}
                 </div>
-
                 <!-- AÇÕES -->
                 <div class="flex justify-end items-center gap-3">
-
                     <!-- DENUNCIAR -->
                     <a href="#"
                        data-post-id="{{ post.id }}"
@@ -62,7 +53,6 @@
                        title="Denunciar postagem">
                         <i class="fa-solid fa-triangle-exclamation text-lg"></i>
                     </a>
-
                     <!-- EXCLUIR E EDITAR -->
                     {% if (session.get('user_id') == post.user_id and post.user_id) or session.get('is_admin') %}
                     {% if session.get('user_id') == post.user_id and post.user_id %}
@@ -80,15 +70,13 @@
                         <i class="fa-solid fa-trash-can text-lg"></i>
                     </a>
                     {% endif %}
-
                 </div>
             </div>
-
             <!-- CONTEÚDO -->
             <div id="post-content-view-{{ post.id }}" class="mt-2 text-main text-[14px] leading-normal break-words text-left">
                 {{ post.content | mention | safe }}
             </div>
-            
+           
             {% if session.get('user_id') == post.user_id and post.user_id %}
             <div id="post-edit-{{ post.id }}" class="hidden mt-2">
                 <form action="/editar_post/{{ post.id }}" method="POST">
@@ -100,14 +88,12 @@
                 </form>
             </div>
             {% endif %}
-
             <!-- MÍDIA -->
             {% if post.media_url %}
             <div class="mt-3 rounded-2xl border twitter-border overflow-hidden">
                 <img src="{{ url_for('static', filename='uploads/' + post.media_url) }}" class="w-full object-cover max-h-[512px]">
             </div>
             {% endif %}
-
             <!-- AÇÕES (LIKE/COMMENT) -->
             <div class="flex justify-start space-x-8 mt-3 text-secondary">
                 <a href="/like/{{ post.id }}" onclick="ajaxLike(event, this)"
@@ -115,14 +101,12 @@
                     <i class="fa-regular fa-heart mr-1 text-[15px]"></i>
                     <span class="like-count text-[12px]">{{ post.likes }}</span>
                 </a>
-
                 <div onclick="document.getElementById('in-{{post.id}}') && document.getElementById('in-{{post.id}}').focus()"
                      class="interactive-control flex items-center group hover:text-indigo-500 cursor-pointer">
                     <i class="fa-regular fa-comment mr-1 text-[15px]"></i>
                     <span class="comment-count text-[12px]">{{ post.comments|length }}</span>
                 </div>
             </div>
-
             <!-- COMMENTS -->
             <div id="comments-{{ post.id }}" class="mt-3">
                 <div id="comments-container-{{ post.id }}">
@@ -154,7 +138,6 @@
                     {% endif %}
                     {% endfor %}
                 </div>
-
                 <div class="mt-2">
                     <form action="/comentar/{{ post.id }}" method="POST" onsubmit="ajaxComment(event, this, {{ post.id }})" class="flex items-center gap-2">
                         <input type="text" name="comment_content" id="in-{{post.id}}" placeholder="Escreva um comentário..." class="form-field flex-1 text-sm p-2 rounded-lg" autocomplete="off">
@@ -163,56 +146,44 @@
                     <p data-comment-error class="text-red-500 text-xs mt-1 hidden"></p>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
 {% endfor %}
-
 <!-- MODAL DENÚNCIA -->
 <div id="modalDenuncia" class="fixed inset-0 hidden items-center justify-center z-50" aria-hidden="true">
-
     <!-- backdrop -->
     <div id="modalDenunciaBackdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" aria-hidden="true"></div>
-
     <div role="dialog" aria-modal="true" aria-labelledby="modalDenunciaTitle"
          class="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md p-6 mx-4 transform transition-all duration-200 scale-95 opacity-0"
          id="modalDenunciaPanel">
-
         <div class="flex items-start justify-between">
             <h2 id="modalDenunciaTitle" class="text-lg font-semibold mb-2 text-main">Denunciar postagem</h2>
             <button id="closeModalDenuncia" aria-label="Fechar modal" class="text-secondary hover:text-main">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-
         <p class="text-sm text-secondary mb-3">Explique o motivo da denúncia para que a moderação possa analisar.</p>
-
         <label for="descricaoDenuncia" class="sr-only">Descrição da denúncia</label>
         <textarea id="descricaoDenuncia"
                   class="w-full border rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 dark:bg-gray-700 dark:border-gray-600"
                   rows="4"
                   placeholder="Descreva o motivo da denúncia..."></textarea>
-
         <p id="erroDenuncia" class="text-red-500 text-xs mt-1 hidden">
             Descreva o motivo antes de enviar.
         </p>
-
         <div class="flex justify-end gap-2 mt-4">
             <button id="cancelarDenuncia"
                     class="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-secondary rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition">
                 Cancelar
             </button>
-
             <button id="enviarDenuncia"
                     class="px-4 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition">
                 Enviar
             </button>
         </div>
-
     </div>
 </div>
-
     <!-- SCRIPT -->
     <script>
     function toggleEditPost(postId) {
@@ -231,7 +202,6 @@
             viewDiv.classList.remove('hidden');
         }
     }
-
     function toggleEditComment(commentId) {
         const viewDiv = document.getElementById(`comment-view-${commentId}`);
         const editDiv = document.getElementById(`comment-edit-${commentId}`);
@@ -245,24 +215,18 @@
             viewDiv.classList.remove('hidden');
         }
     }
-
     let postIdSelecionado = null;
-
     const modal = document.getElementById('modalDenuncia');
     const textarea = document.getElementById('descricaoDenuncia');
     const erro = document.getElementById('erroDenuncia');
-
     // abrir modal
     document.querySelectorAll('.btn-denunciar').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-
             postIdSelecionado = btn.dataset.postId;
-
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             modal.setAttribute('aria-hidden', 'false');
-
             // animate panel in
             const panel = document.getElementById('modalDenunciaPanel');
             const backdrop = document.getElementById('modalDenunciaBackdrop');
@@ -271,13 +235,11 @@
                 panel.classList.add('scale-100', 'opacity-100');
                 backdrop.classList.add('opacity-100');
             });
-
             textarea.value = '';
             erro.classList.add('hidden');
             textarea.focus();
         });
     });
-
     // close helpers
     function closeModal() {
         const panel = document.getElementById('modalDenunciaPanel');
@@ -290,31 +252,24 @@
             modal.setAttribute('aria-hidden', 'true');
         }, 180);
     }
-
     // cancelar
     document.getElementById('cancelarDenuncia').onclick = () => closeModal();
     document.getElementById('closeModalDenuncia').onclick = () => closeModal();
-
     // click outside to close
     document.getElementById('modalDenunciaBackdrop').addEventListener('click', () => closeModal());
-
     // ESC to close
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
             closeModal();
         }
     });
-
     // enviar
     document.getElementById('enviarDenuncia').onclick = () => {
-
         const descricao = textarea.value.trim();
-
         if (!descricao) {
             erro.classList.remove('hidden');
             return;
         }
-
         fetch('/denunciar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -332,19 +287,34 @@
             showToast('Erro ao enviar denúncia', true);
         });
     };
-
     // toast
     function showToast(msg, erro=false) {
         const toast = document.createElement('div');
         toast.innerText = msg;
-
         toast.className = `
             fixed bottom-5 right-5 px-4 py-2 rounded text-white text-sm shadow-lg z-50
             ${erro ? 'bg-red-500' : 'bg-green-500'}
         `;
-
         document.body.appendChild(toast);
-
         setTimeout(() => toast.remove(), 3000);
     }
+
+    // ====================== URLs CLICÁVEIS NOS POSTS ======================
+    function makePostLinksClickable() {
+        document.querySelectorAll('[id^="post-content-view-"]').forEach(function(div) {
+            let html = div.innerHTML;
+            const urlRegex = /(\bhttps?:\/\/[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|]|\bwww\.[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])/ig;
+            html = html.replace(urlRegex, function(url) {
+                const href = url.startsWith('www.') ? 'https://' + url : url;
+                return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline break-all">${url}</a>`;
+            });
+            div.innerHTML = html;
+        });
+    }
+
+    // Executa ao carregar a página
+    document.addEventListener('DOMContentLoaded', function() {
+        makePostLinksClickable();
+    });
+
     </script>
