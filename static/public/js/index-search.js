@@ -99,11 +99,31 @@ function ajaxComment(event, form, postId) {
     formData.set('comment_content', content);
     setInlineError(input, errorEl, '');
 
-    fetch(form.action, { method: 'POST', body: formData }).then((response) => {
-        if (!response.ok) return;
+    // Disable submit button while processing
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    }).then((response) => {
+        if (!response.ok) {
+            console.error('Comment submission failed with status:', response.status);
+            setInlineError(input, errorEl, 'Erro ao enviar comentário. Tente novamente.');
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+        }
 
         const container = document.getElementById('comments-container-' + postId);
-        if (!container) return;
+        if (!container) {
+            console.error('Comments container not found for post:', postId);
+            setInlineError(input, errorEl, 'Erro ao atualizar comentários.');
+            if (submitBtn) submitBtn.disabled = false;
+            return;
+        }
 
         const newComment = document.createElement('div');
         newComment.className = 'text-[13px] mb-1';
@@ -136,6 +156,11 @@ function ajaxComment(event, form, postId) {
             // ignore DOM update failures
             console.error('Failed to update comment count', e);
         }
+        if (submitBtn) submitBtn.disabled = false;
+    }).catch((error) => {
+        console.error('Erro ao enviar comentário:', error);
+        setInlineError(input, errorEl, 'Erro de conexão. Tente novamente.');
+        if (submitBtn) submitBtn.disabled = false;
     });
 }
 

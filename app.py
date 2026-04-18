@@ -919,7 +919,7 @@ def api_direct_create_group():
 
 @app.route('/')
 def welcome():
-    if 'user_id' in session: return redirect(url_for('feed'))
+    if 'user_id' in session: return redirect(url_for('feed.feed'))
     return render_template('welcome.html')
 
 @app.route('/login', methods=['POST'])
@@ -940,7 +940,7 @@ def login():
         # (defaults to 7 days). This causes Flask to set the cookie's expiry instead
         # of making it a browser-session cookie.
         session.permanent = True
-        return redirect(url_for('feed'))
+        return redirect(url_for('feed.feed'))
     flash('Usuário ou senha incorretos.')
     return redirect(url_for('welcome'))
 
@@ -967,202 +967,16 @@ def registro():
     session['username'] = user.username
     session['name'] = user.name
     session['is_admin'] = False
-    session['profile_pic'] = user.profile_pic 
+    session['profile_pic'] = user.profile_pic
     # Persist session for the configured permanent lifetime (e.g. 7 days)
     session.permanent = True
-    return redirect(url_for('feed'))
+    return redirect(url_for('feed.feed'))
 
-@app.route('/feed')
-def feed():
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk()
-    annotate_posts_with_like_info(posts, session.get('user_id'))
-    unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
-    return render_template(
-        'index.html',
-        posts=posts,
-        unread_count=unread,
-        has_more=has_more,
-        next_cursor_ts=next_cursor_ts,
-        next_cursor_id=next_cursor_id
-    )
+# Feed routes moved to routes/feed.py blueprint
 
+# Search routes moved to routes/feed.py blueprint
 
-@app.route('/feed/more')
-def feed_more():
-    if 'user_id' not in session:
-        return jsonify({'error': 'nao autenticado'}), 401
-
-    cursor_ts_raw = request.args.get('cursor_ts')
-    cursor_id_raw = request.args.get('cursor_id')
-
-    cursor_ts = None
-    cursor_id = None
-    if cursor_ts_raw and cursor_id_raw:
-        try:
-            cursor_ts = datetime.fromisoformat(cursor_ts_raw)
-            cursor_id = int(cursor_id_raw)
-        except (TypeError, ValueError):
-            return jsonify({'error': 'cursor invalido'}), 400
-
-    posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk(
-        cursor_ts=cursor_ts,
-        cursor_id=cursor_id
-    )
-    # Annotate posts with liked_by_me to allow client-side partial to render like state without per-post queries
-    annotate_posts_with_like_info(posts, session.get('user_id'))
-    html = render_template('_feed_posts.html', posts=posts)
-    return jsonify({
-        'html': html,
-        'has_more': has_more,
-        'next_cursor_ts': next_cursor_ts,
-        'next_cursor_id': next_cursor_id
-    })
-
-@app.route('/search')
-def search():
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    query = request.args.get('query', '').lower().strip().replace('@', '')
-    category = normalize_search_category(request.args.get('category'))
-    unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
-    if not query:
-        posts = Post.query.order_by(Post.timestamp.desc()).all()
-        return render_template(
-            'index.html',
-            searching=True,
-            query='',
-            posts=posts,
-            unread_count=unread,
-            search_category=category,
-            search_results=[],
-            event_results=[]
-        )
-
-    if category == 'eventos':
-        event_results = Event.query.filter(
-            or_(
-                Event.title.ilike(f'%{query}%'),
-                Event.location.ilike(f'%{query}%'),
-                Event.description.ilike(f'%{query}%')
-            )
-        ).order_by(Event.created_at.desc()).all()
-        return render_template(
-            'index.html',
-            event_results=event_results,
-            search_results=[],
-            query=query,
-            searching=True,
-            unread_count=unread,
-            search_category=category
-        )
-
-    results = User.query.filter(User.username.contains(query), User.is_admin == False).all()
-    return render_template(
-        'index.html',
-        search_results=results,
-        event_results=[],
-        query=query,
-        searching=True,
-        unread_count=unread,
-        search_category=category
-    )
-
-
-@app.route('/api/search')
-def api_search():
-    if 'user_id' not in session:
-        return jsonify({'error': 'nao autenticado'}), 401
-
-    query = (request.args.get('query') or '').lower().strip().replace('@', '')
-    category = normalize_search_category(request.args.get('category'))
-
-    if not query:
-        return jsonify({'category': category, 'query': query, 'users': [], 'events': []})
-
-    if category == 'eventos':
-        events = Event.query.filter(
-            or_(
-                Event.title.ilike(f'%{query}%'),
-                Event.location.ilike(f'%{query}%'),
-                Event.description.ilike(f'%{query}%')
-            )
-        ).order_by(Event.created_at.desc()).limit(20).all()
-
-        payload = []
-        for event in events:
-            event_date_parts = (event.event_date or '').split(' às ')
-            raw_event_date = event_date_parts[0] if event_date_parts and event_date_parts[0] else (event.event_date or '')
-            parsed = raw_event_date.split('-')
-            event_date_label = raw_event_date
-            if len(parsed) == 3:
-                event_date_label = f"{parsed[2]}/{parsed[1]}/{parsed[0]}"
-            payload.append({
-                'id': event.id,
-                'title': event.title,
-                'description': event.description,
-                'location': event.location,
-                'media_url': event.media_url,
-                'event_date_label': event_date_label,
-                'creator_username': event.creator.username if event.creator else ''
-            })
-
-        return jsonify({'category': category, 'query': query, 'users': [], 'events': payload})
-
-    users = User.query.filter(User.username.contains(query), User.is_admin == False).limit(20).all()
-    return jsonify({
-        'category': category,
-        'query': query,
-        'users': [{'username': u.username, 'name': u.name} for u in users],
-        'events': []
-    })
-
-@app.route('/postar', methods=['POST'])
-def postar():
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    content = (request.form.get('content') or '').strip()
-    if not content:
-        flash('A postagem não pode estar vazia.')
-        return redirect(url_for('feed'))
-    anon_mode = request.form.get('anon_mode') == 'true'
-    file = request.files.get('file'); filename = None
-    if file and file.filename != '':
-        # Generate a stable base name (no extension); the helper will produce .webp
-        filename_base = str(uuid.uuid4())
-        filename = save_and_optimize_image(file, filename_base)
-    new_post = Post(content=content, media_url=filename, user_id=session.get('user_id'), is_anonymous=anon_mode)
-    db.session.add(new_post)
-    db.session.flush() 
-    if not anon_mode:
-        notify_mentions(content, session.get('name'), new_post.id)
-    db.session.commit()
-    return redirect(url_for('feed'))
-
-@app.route('/excluir_post/<int:post_id>')
-def excluir_post(post_id):
-    post = Post.query.get_or_404(post_id)
-    if (post.user_id == session.get('user_id') and post.user_id is not None) or session.get('is_admin'):
-        db.session.delete(post)
-        db.session.commit()
-    return redirect(request.referrer or url_for('feed'))
-
-@app.route('/editar_post/<int:post_id>', methods=['POST'])
-def editar_post(post_id):
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    post = Post.query.get_or_404(post_id)
-    
-    # Verifica permissao: apenas o autor original pode editar sua postagem
-    if post.user_id != session.get('user_id') or post.user_id is None:
-        flash('Sem permissão para editar esta postagem.')
-        return redirect(request.referrer or url_for('feed'))
-        
-    new_content = (request.form.get('content') or '').strip()
-    if new_content:
-        post.content = new_content
-        db.session.commit()
-    else:
-        flash('A postagem não pode estar vazia.')
-        
-    return redirect(request.referrer or url_for('feed', _anchor=f"post-{post.id}"))
+# Post/comment routes moved to routes/feed.py blueprint
 
 @app.route('/denunciar', methods=['POST'])
 def denunciar():
@@ -1189,75 +1003,7 @@ def denunciar():
     return jsonify({'ok': True})
 
 
-@app.route('/like/<int:post_id>')
-def like(post_id):
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    post = Post.query.get_or_404(post_id)
-    user = User.query.get(session['user_id'])
-    if post not in user.liked_posts:
-        user.liked_posts.append(post)
-        post.likes += 1
-        if post.user_id and post.user_id != user.id:
-            db.session.add(Notification(user_id=post.user_id, sender_name=user.name, action_type="curtiu sua publicação", post_id=post.id))
-    else:
-        user.liked_posts.remove(post)
-        post.likes -= 1
-    db.session.commit()
-    # If the request is AJAX, return JSON so the client can update UI without full redirect.
-    try:
-        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.accept_json
-    except Exception:
-        is_ajax = False
-
-    liked = post.liked_by.filter_by(id=user.id).count() > 0
-    if is_ajax:
-        return jsonify({'ok': True, 'liked': liked, 'likes': post.likes})
-
-    return redirect(url_for('feed', _anchor=f"post-{post_id}"))
-
-@app.route('/comentar/<int:post_id>', methods=['POST'])
-def comentar(post_id):
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    content = request.form.get('comment_content'); post = Post.query.get_or_404(post_id)
-    if content:
-        autor_username = session.get('username')
-        user_id = session.get('user_id')
-        db.session.add(Comment(content=content, post_id=post_id, username=autor_username, user_id=user_id))
-        if post.user_id and post.user_id != session.get('user_id'):
-            db.session.add(Notification(user_id=post.user_id, sender_name=session.get('name'), action_type="comentou sua publicação", post_id=post.id))
-        notify_mentions(content, session.get('name'), post.id)
-        db.session.commit()
-    return redirect(url_for('feed', _anchor=f"post-{post_id}"))
-
-@app.route('/editar_comentario/<int:comment_id>', methods=['POST'])
-def editar_comentario(comment_id):
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    comment = Comment.query.get_or_404(comment_id)
-    
-    # Verifica permissao: o dono do comentario ou o admin do sistema
-    if comment.username != session.get('username') and not session.get('is_admin'):
-        flash('Sem permissão para editar este comentário.')
-        return redirect(url_for('feed', _anchor=f"post-{comment.post_id}"))
-    
-    new_content = (request.form.get('content') or '').strip()
-    if new_content:
-        comment.content = new_content
-        comment.is_edited = True
-        db.session.commit()
-    
-    return redirect(request.referrer or url_for('feed', _anchor=f"post-{comment.post_id}"))
-
-@app.route('/excluir_comentario/<int:comment_id>')
-def excluir_comentario(comment_id):
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    comment = Comment.query.get_or_404(comment_id)
-    post_id = comment.post_id
-    
-    if comment.username == session.get('username') or session.get('is_admin'):
-        db.session.delete(comment)
-        db.session.commit()
-        
-    return redirect(request.referrer or url_for('feed', _anchor=f"post-{post_id}"))
+# Like/comment routes moved to routes/feed.py blueprint
 
 @app.route('/perfil/<username>')
 def perfil(username):
@@ -1301,7 +1047,7 @@ def perfil_por_remetente():
     user = resolve_user_by_sender_name(sender_name)
     if not user:
         flash('Perfil do remetente nao encontrado.')
-        return redirect(request.referrer or url_for('feed'))
+        return redirect(request.referrer or url_for('feed.feed'))
 
 
     return redirect(url_for('perfil', username=user.username))
@@ -1869,10 +1615,10 @@ def build_direct_inbox_items(current_user_id, current_filter='all', search_query
 @app.route('/direct')
 def direct():
     if 'user_id' not in session:
-        return redirect(url_for('welcome'))
+         return redirect(url_for('welcome'))
     if is_direct_blocked_for_system_admin():
-        flash('Conta administradora do sistema nao possui acesso ao Direct.')
-        return redirect(url_for('feed'))
+         flash('Conta administradora do sistema nao possui acesso ao Direct.')
+         return redirect(url_for('feed.feed'))
 
     current_filter = (request.args.get('filter') or 'all').strip().lower()
     if current_filter not in {'all', 'unread'}:
@@ -2326,10 +2072,10 @@ def api_direct_set_member_admin(conversation_id, username):
 @app.route('/direct/conversa/<username>')
 def direct_conversation(username):
     if 'user_id' not in session:
-        return redirect(url_for('welcome'))
+         return redirect(url_for('welcome'))
     if is_direct_blocked_for_system_admin():
-        flash('Conta administradora do sistema nao possui acesso ao Direct.')
-        return redirect(url_for('feed'))
+         flash('Conta administradora do sistema nao possui acesso ao Direct.')
+         return redirect(url_for('feed.feed'))
 
     import time
     t0 = time.time()
@@ -2604,99 +2350,12 @@ def handle_direct_react(payload):
         'reactors': summary['reactors']
     }, room=conversation_room_name(conversation_id))
 
-@app.route('/eventos')
-def eventos():
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    all_events = Event.query.order_by(Event.created_at.desc()).all()
-    unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
-    return render_template('eventos.html', events=all_events, unread_count=unread)
-
-@app.route('/criar_evento', methods=['POST'])
-def criar_evento():
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    title = request.form.get('title')
-    description = normalize_event_description(request.form.get('description'))
-    date = request.form.get('date')
-    time = request.form.get('time')
-    location = request.form.get('location')
-
-    if not (title or '').strip() or not description or not (location or '').strip():
-        flash('Preencha todos os campos obrigatorios do evento.')
-        return redirect(url_for('eventos'))
-
-    _, datetime_error = parse_event_datetime(date, time)
-    if datetime_error:
-        flash(datetime_error)
-        return redirect(url_for('eventos'))
-    
-    file = request.files.get('file'); filename = None
-    if file and file.filename != '':
-        filename_base = str(uuid.uuid4())
-        filename = save_and_optimize_image(file, filename_base)
-    
-    full_date = f"{date} às {time}"
-    new_event = Event(title=title, description=description, event_date=full_date, location=location, media_url=filename, user_id=session['user_id'])
-    db.session.add(new_event)
-    
-    # Criar postagem no feed automaticamente
-    event_content = build_event_post_content(title, location, full_date, description, session['username'])
-    feed_post = Post(content=event_content, media_url=filename, user_id=session['user_id'], is_anonymous=False)
-    db.session.add(feed_post)
-    
-    db.session.commit()
-    return redirect(url_for('eventos'))
-
-
-@app.route('/editar_evento/<int:event_id>', methods=['POST'])
-def editar_evento(event_id):
-    if 'user_id' not in session:
-        return redirect(url_for('welcome'))
-
-    event = Event.query.get_or_404(event_id)
-    if event.user_id != session.get('user_id') and not session.get('is_admin'):
-        return redirect(url_for('eventos'))
-
-    old_title = event.title
-    old_location = event.location
-    old_event_date = event.event_date
-    old_description = event.description
-
-    title = (request.form.get('title') or '').strip()
-    description = normalize_event_description(request.form.get('description'))
-    date = (request.form.get('date') or '').strip()
-    time = (request.form.get('time') or '').strip()
-    location = (request.form.get('location') or '').strip()
-
-    if not title or not description or not date or not time or not location:
-        flash('Preencha todos os campos obrigatorios do evento.')
-        return redirect(url_for('eventos'))
-
-    _, datetime_error = parse_event_datetime(date, time)
-    if datetime_error:
-        flash(datetime_error)
-        return redirect(url_for('eventos'))
-
-    event.title = title[:100]
-    event.description = description
-    event.location = location[:100]
-    event.event_date = f"{date} às {time}"
-
-    sync_event_feed_post(event, old_title, old_location, old_event_date, old_description)
-    db.session.commit()
-    return redirect(url_for('eventos'))
-
-@app.route('/excluir_evento/<int:event_id>')
-def excluir_evento(event_id):
-    if 'user_id' not in session: return redirect(url_for('welcome'))
-    event = Event.query.get_or_404(event_id)
-    if event.user_id == session['user_id'] or session.get('is_admin'):
-        db.session.delete(event)
-        db.session.commit()
-    return redirect(url_for('eventos'))
+# Event routes moved to routes/feed.py blueprint
 
 @app.route('/logout')
 def logout():
     session.clear(); return redirect(url_for('welcome'))
+
 
 if __name__ == '__main__':
     # Allow runtime configuration via environment variables for local/dev runs
