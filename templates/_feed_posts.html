@@ -23,26 +23,30 @@
                             <span>{{ post.timestamp | post_time }}</span>
                         </div>
                     {% else %}
-                        <div class="flex items-center space-x-2">
-                            <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
-                                <span class="font-bold text-main text-[14px]">{{ post.author.name }}</span>
-                            </a>
-                            {% if post.author.is_admin %}
-                                <i class="fa-solid fa-circle-check text-yellow-400 text-[12px]" title="Administrador"></i>
-                            {% elif post.author.is_verified %}
-                                <i class="fa-solid fa-circle-check text-blue-500 text-[12px]" title="Verificado"></i>
-                            {% endif %}
+                        <div class="flex flex-col">
+                            <div class="flex items-center space-x-2">
+                                <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
+                                    <span class="font-bold text-main text-[14px]">{{ post.author.name }}</span>
+                                </a>
+                                {% if post.author.is_admin %}
+                                    <i class="fa-solid fa-circle-check text-yellow-400 text-[12px]" title="Administrador"></i>
+                                {% elif post.author.is_verified %}
+                                    <i class="fa-solid fa-circle-check text-blue-500 text-[12px]" title="Verificado"></i>
+                                {% endif %}
+                                <span class="text-secondary text-[12px]">{{ post.timestamp | post_time }}</span>
+                            </div>
                             {% if post.author.university %}
-                                <span class="bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">
+                            <div class="flex items-center">
+                                <span class="text-indigo-600 dark:text-indigo-400 text-[11px] px-0 py-0 font-bold uppercase">
                                     {{ post.author.university }}
                                 </span>
+                            </div>
                             {% endif %}
-                            <span class="text-secondary text-[12px]">{{ post.timestamp | post_time }}</span>
-                        </div>
-                        <div class="flex items-center space-x-1 text-[12px] text-secondary">
-                            <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
-                                <span>@{{ post.author.username }}</span>
-                            </a>
+                            <div class="flex items-center space-x-1 text-[12px] text-secondary">
+                                <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
+                                    <span>@{{ post.author.username }}</span>
+                                </a>
+                            </div>
                         </div>
                     {% endif %}
                 </div>
