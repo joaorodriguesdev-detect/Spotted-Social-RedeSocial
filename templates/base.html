@@ -40,7 +40,7 @@
       "url": "{{ request.url_root }}",
       "potentialAction": {
         "@type": "SearchAction",
-        "target": "{{ url_for('search', _external=True) }}?query={search_term_string}",
+        "target": "{{ url_for('feed.search', _external=True) }}?query={search_term_string}",
         "query-input": "required name=search_term_string"
       }
     }

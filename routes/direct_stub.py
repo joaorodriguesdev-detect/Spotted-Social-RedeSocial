@@ -23,5 +23,5 @@ def api_users():
 @direct_bp.route('/direct')
 def direct():
     # Simple redirect to feed while the full Direct blueprint is under repair.
-    return redirect(url_for('feed'))
+    return redirect(url_for('feed.feed'))
 

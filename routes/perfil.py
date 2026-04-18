@@ -52,10 +52,10 @@ def perfil_por_remetente():
     user = resolve_user_by_sender_name(sender_name)
     if not user:
         flash('Perfil do remetente nao encontrado.')
-        return redirect(request.referrer or url_for('feed'))
+        return redirect(request.referrer or url_for('feed.feed'))
 
     # Permitir que todos vejam o perfil de qualquer usuário
-    return redirect(url_for('perfil', username=user.username))
+    return redirect(url_for('perfil.perfil', username=user.username))
 
 @perfil_bp.route('/editar_perfil', methods=['POST'])
 def editar_perfil():
@@ -79,13 +79,13 @@ def editar_perfil():
         user.profile_pic = filename
         session['profile_pic'] = filename
     db.session.commit()
-    return redirect(url_for('perfil', username=user.username))
+    return redirect(url_for('perfil.perfil', username=user.username))
 
 @perfil_bp.route('/seguir/<username>')
 def seguir(username):
     from app import User, Notification, db
 
-    if 'user_id' not in session: return redirect(url_for('perfil', username=username))
+    if 'user_id' not in session: return redirect(url_for('perfil.perfil', username=username))
     user_to_follow = User.query.filter_by(username=username).first_or_404()
     me = User.query.get(session['user_id'])
     if user_to_follow.id != me.id:
@@ -95,7 +95,7 @@ def seguir(username):
         else:
             me.followed.remove(user_to_follow)
         db.session.commit()
-    return redirect(url_for('perfil', username=username))
+    return redirect(url_for('perfil.perfil', username=username))
 
 @perfil_bp.route('/enviar_recado/<int:user_id>', methods=['POST'])
 def enviar_recado(user_id):
@@ -108,7 +108,7 @@ def enviar_recado(user_id):
         db.session.add(Message(receiver_id=user_id, sender_name=sender, content=content))
         db.session.add(Notification(user_id=user_id, sender_name=sender, action_type="deixou um recado no mural"))
         db.session.commit()
-    return redirect(url_for('perfil', username=User.query.get(user_id).username))
+    return redirect(url_for('perfil.perfil', username=User.query.get(user_id).username))
 
 
 @perfil_bp.route('/toggle_verificacao/<username>', methods=['POST'])
@@ -122,7 +122,7 @@ def toggle_verificacao(username):
     admin_user = User.query.get(session['user_id'])
     if not admin_user or not admin_user.is_admin:
         flash('Acesso negado. Apenas administradores podem fazer isso.')
-        return redirect(url_for('perfil', username=username))
+        return redirect(url_for('perfil.perfil', username=username))
 
     # Encontrar o usuário a ser verificado
     user_to_verify = User.query.filter_by(username=username).first_or_404()
@@ -130,7 +130,7 @@ def toggle_verificacao(username):
     # Não permitir que o admin se desverifique
     if user_to_verify.is_admin:
         flash('Não é possível remover a verificação do admin.')
-        return redirect(url_for('perfil', username=username))
+        return redirect(url_for('perfil.perfil', username=username))
 
     # Toggle da verificação
     user_to_verify.is_verified = not user_to_verify.is_verified
@@ -138,6 +138,6 @@ def toggle_verificacao(username):
 
     status = "verificado" if user_to_verify.is_verified else "desverificado"
     flash(f'Usuário @{username} foi {status} com sucesso.')
-    return redirect(url_for('perfil', username=username))
+    return redirect(url_for('perfil.perfil', username=username))
 
 
