@@ -34,7 +34,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['PUBLIC_FOLDER'] = os.path.join(app.root_path, 'static', 'public')
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # Aumentado para 50MB para permitir uploads maiores
+# Limite aumentado para 30MB (limite comum do nginx é 1MB por padrão, precisamos aumentar tanto no Flask quanto no nginx)
+app.config['MAX_CONTENT_LENGTH'] = 30 * 1024 * 1024
 # Feature flag: force the Direct (messaging) system to be enabled for all
 # non-admin users. Per requirement, messaging must remain active for regular
 # users and disabled only for admin users. We therefore force DIRECT_ENABLED
