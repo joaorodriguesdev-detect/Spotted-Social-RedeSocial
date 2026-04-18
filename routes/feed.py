@@ -221,8 +221,9 @@ def comentar(post_id):
     from app import Comment, Post, db, notify_mentions, Notification
     content = request.form.get('comment_content'); post = Post.query.get_or_404(post_id)
     if content:
-        autor_username = session.get('username') 
-        db.session.add(Comment(content=content, post_id=post_id, username=autor_username))
+        autor_username = session.get('username')
+        user_id = session.get('user_id')
+        db.session.add(Comment(content=content, post_id=post_id, username=autor_username, user_id=user_id))
         if post.user_id and post.user_id != session.get('user_id'):
             db.session.add(Notification(user_id=post.user_id, sender_name=session.get('name'), action_type="comentou sua publicação", post_id=post.id))
         notify_mentions(content, session.get('name'), post.id)
