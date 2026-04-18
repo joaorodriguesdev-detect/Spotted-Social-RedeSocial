@@ -138,29 +138,36 @@
                     {% endif %}
                     {% endfor %}
                 </div>
-                <div class="mt-2">
-                    <!-- <form action="/comentar/{{ post.id }}" method="POST" onsubmit="ajaxComment(event, this, {{ post.id }})" class="flex items-center gap-2">
+                <!-- <div class="mt-2">
+                    <form action="/comentar/{{ post.id }}" method="POST" onsubmit="ajaxComment(event, this, {{ post.id }})" class="flex items-center gap-2">
                         <input type="text" name="comment_content" id="in-{{post.id}}" placeholder="Escreva um comentário..." class="form-field flex-1 text-sm p-2 rounded-lg" autocomplete="off">
                         <button type="submit" class="interactive-control bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-sm font-bold">Comentar</button>
-                    </form> -->
-                    <form action="/comentar/{{ post.id }}" method="POST" 
-                        onsubmit="ajaxComment(event, this, {{ post.id }})" 
-                        class="flex items-center bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-full px-4 py-1.5 transition-colors">
+                    </form>
+                    <p data-comment-error class="text-red-500 text-xs mt-1 hidden"></p>
+                </div> -->
+                <div class="mt-2">
+                    <form action="/comentar/{{ post.id }}" method="POST"
+                        onsubmit="ajaxComment(event, this, {{ post.id }})"
+                        class="flex items-center bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-full px-5 py-2 transition-all">
 
                         <input 
                             type="text" 
                             name="comment_content" 
                             id="in-{{post.id}}" 
                             placeholder="Comente algo..." 
-                            class="flex-1 bg-transparent outline-none text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-zinc-500"
+                            class="flex-1 bg-transparent outline-none text-sm 
+                                text-gray-900 dark:text-zinc-100 
+                                placeholder-gray-400 dark:placeholder-zinc-500"
                             autocomplete="off">
                         
                         <button 
-                            type="submit" 
-                            class="ml-2 text-indigo-600 dark:text-indigo-400 font-semibold text-sm hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors">
+                            type="submit"
+                            class="ml-3 text-indigo-600 dark:text-indigo-400 font-semibold text-sm 
+                                hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors">
                             Enviar
                         </button>
                     </form>
+                    
                     <p data-comment-error class="text-red-500 text-xs mt-1 hidden"></p>
                 </div>
             </div>
