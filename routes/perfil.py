@@ -10,7 +10,10 @@ def perfil(username):
     from app import User, Post, Event, Message, Notification
 
     user = User.query.filter_by(username=username).first_or_404()
-    if user.is_admin and not session.get('is_admin'): return redirect(url_for('feed'))
+    # Permitir que todos vejam o perfil do admin, incluindo não-admins
+    if user.is_admin and not session.get('is_admin'):
+        # Não bloquear acesso, apenas mostrar versão pública
+        pass
     if user.is_admin:
         posts = Post.query.filter(
             Post.user_id == user.id,
@@ -51,9 +54,7 @@ def perfil_por_remetente():
         flash('Perfil do remetente nao encontrado.')
         return redirect(request.referrer or url_for('feed'))
 
-    if user.is_admin and not session.get('is_admin'):
-        return redirect(url_for('feed'))
-
+    # Permitir que todos vejam o perfil de qualquer usuário
     return redirect(url_for('perfil', username=user.username))
 
 @perfil_bp.route('/editar_perfil', methods=['POST'])
@@ -101,10 +102,42 @@ def enviar_recado(user_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
     content = request.form.get('content')
     if content:
-        from app import Message, Notification, db
+        from app import Message, Notification, db, User
 
         sender = session.get('username')
         db.session.add(Message(receiver_id=user_id, sender_name=sender, content=content))
         db.session.add(Notification(user_id=user_id, sender_name=sender, action_type="deixou um recado no mural"))
         db.session.commit()
     return redirect(url_for('perfil', username=User.query.get(user_id).username))
+
+
+@perfil_bp.route('/toggle_verificacao/<username>', methods=['POST'])
+def toggle_verificacao(username):
+    if 'user_id' not in session:
+        return redirect(url_for('welcome'))
+
+    from app import User, db
+
+    # Verificar se o usuário atual é administrador
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or not admin_user.is_admin:
+        flash('Acesso negado. Apenas administradores podem fazer isso.')
+        return redirect(url_for('perfil', username=username))
+
+    # Encontrar o usuário a ser verificado
+    user_to_verify = User.query.filter_by(username=username).first_or_404()
+
+    # Não permitir que o admin se desverifique
+    if user_to_verify.is_admin:
+        flash('Não é possível remover a verificação do admin.')
+        return redirect(url_for('perfil', username=username))
+
+    # Toggle da verificação
+    user_to_verify.is_verified = not user_to_verify.is_verified
+    db.session.commit()
+
+    status = "verificado" if user_to_verify.is_verified else "desverificado"
+    flash(f'Usuário @{username} foi {status} com sucesso.')
+    return redirect(url_for('perfil', username=username))
+
+

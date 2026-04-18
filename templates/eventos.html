@@ -55,9 +55,14 @@
                 </div>
                 <div class="mt-3">
                     <a href="/perfil/{{ event.creator.username }}"
-                        class="event-author-link inline-flex items-center transition-colors">
-                        <i class="fa-regular fa-circle-user mr-2 text-[13px]"></i>Criado por @{{ event.creator.username
-                        }}
+                        class="event-author-link inline-flex items-center gap-1 transition-colors">
+                        <i class="fa-regular fa-circle-user mr-2 text-[13px]"></i>
+                        <span>Criado por @{{ event.creator.username }}</span>
+                        {% if event.creator.is_admin %}
+                            <i class="fa-solid fa-circle-check text-yellow-400 text-[12px]" title="Administrador"></i>
+                        {% elif event.creator.is_verified %}
+                            <i class="fa-solid fa-circle-check text-blue-500 text-[12px]" title="Verificado"></i>
+                        {% endif %}
                     </a>
                 </div>
             </div>

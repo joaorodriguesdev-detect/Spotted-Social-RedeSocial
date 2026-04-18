@@ -292,6 +292,8 @@
                 </div>
                 {% if user.is_admin %}
                 <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 admin-badge bg-yellow-400 text-black text-[10px] font-black px-3 py-1 rounded-full shadow-lg uppercase border-2 border-white z-10">Admin</div>
+                {% elif user.is_verified %}
+                <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 admin-badge bg-blue-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg uppercase border-2 border-white z-10">✓ Verificado</div>
                 {% endif %}
             </div>
 
@@ -335,6 +337,8 @@
                     <div class="flex items-center space-x-2">
                         <h2 class="text-2xl font-black truncate max-w-[250px]">{{ user.name if user.name else user.username }}</h2>
                         {% if user.is_admin %}
+                            <i class="fa-solid fa-circle-check text-yellow-400 text-xl" title="Administrador"></i>
+                        {% elif user.is_verified %}
                             <i class="fa-solid fa-circle-check text-blue-500 text-xl" title="Verificado"></i>
                         {% endif %}
                     </div>
@@ -344,12 +348,26 @@
                                 <!--    <i class="fa-solid fa-pen-to-square" aria-hidden="true" style="margin-right:8px;color:#fff;font-size:14px"></i>-->
                                 <!--    <span>Editar Conta</span>-->
                                 <!--</a>-->
-                    {% elif me and me.id != user.id and not user.is_admin %}
-                        <div class="flex items-center gap-2 mt-2 md:mt-0">
-                            <a href="{{ url_for('seguir', username=user.username) }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
-                            <a href="{{ url_for('direct_conversation', username=user.username) }}" title="Enviar mensagem" aria-label="Enviar mensagem para {{ user.username }}" class="interactive-control send-message-btn compact" data-action="send-message">Enviar mensagem</a>
-                        </div>
-                    {% endif %}
+                     {% elif me and me.id != user.id and not user.is_admin %}
+                         <div class="flex items-center gap-2 mt-2 md:mt-0">
+                             <a href="{{ url_for('seguir', username=user.username) }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
+                             <a href="{{ url_for('direct_conversation', username=user.username) }}" title="Enviar mensagem" aria-label="Enviar mensagem para {{ user.username }}" class="interactive-control send-message-btn compact" data-action="send-message">Enviar mensagem</a>
+                             {% if me.is_admin %}
+                             <form action="{{ url_for('perfil.toggle_verificacao', username=user.username) }}" method="POST" style="display: inline;">
+                                 {% if user.is_verified %}
+                                 <button type="submit" class="interactive-control bg-red-500 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg hover:bg-red-600 transition" title="Remover verificação">Desverificar</button>
+                                 {% else %}
+                                 <button type="submit" class="interactive-control bg-green-500 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg hover:bg-green-600 transition" title="Adicionar verificação">Verificar</button>
+                                 {% endif %}
+                             </form>
+                             {% endif %}
+                         </div>
+                     {% elif me and me.is_admin and user.id != me.id and user.is_admin %}
+                         <!-- Admin viewing another admin profile -->
+                         <div class="flex items-center gap-2 mt-2 md:mt-0">
+                             <a href="{{ url_for('direct_conversation', username=user.username) }}" title="Enviar mensagem" aria-label="Enviar mensagem para {{ user.username }}" class="interactive-control send-message-btn compact" data-action="send-message">Enviar mensagem</a>
+                         </div>
+                     {% endif %}
                 </div>
                 <div class="mb-6">
                     {% if not user.is_admin %}

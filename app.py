@@ -34,7 +34,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['PUBLIC_FOLDER'] = os.path.join(app.root_path, 'static', 'public')
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+# Limite aumentado para 30MB (limite comum do nginx é 1MB por padrão, precisamos aumentar tanto no Flask quanto no nginx)
+app.config['MAX_CONTENT_LENGTH'] = 30 * 1024 * 1024
 # Feature flag: force the Direct (messaging) system to be enabled for all
 # non-admin users. Per requirement, messaging must remain active for regular
 # users and disabled only for admin users. We therefore force DIRECT_ENABLED
@@ -397,6 +398,15 @@ def ensure_user_created_at_column():
         conn.exec_driver_sql('ALTER TABLE user ADD COLUMN created_at DATETIME')
 
 
+def ensure_user_is_verified_column():
+    inspector = inspect(db.engine)
+    user_columns = {col['name'] for col in inspector.get_columns('user')}
+    if 'is_verified' in user_columns:
+        return
+    with db.engine.begin() as conn:
+        conn.exec_driver_sql('ALTER TABLE user ADD COLUMN is_verified BOOLEAN DEFAULT 0')
+
+
 def ensure_conversation_member_last_read_column():
     inspector = inspect(db.engine)
     member_columns = {col['name'] for col in inspector.get_columns('conversation_member')}
@@ -450,6 +460,19 @@ def ensure_comment_is_edited_column():
         return
     with db.engine.begin() as conn:
         conn.exec_driver_sql("ALTER TABLE comment ADD COLUMN is_edited BOOLEAN DEFAULT 0 NOT NULL")
+
+
+def ensure_comment_user_id_column():
+    inspector = inspect(db.engine)
+    try:
+        cols = {col['name'] for col in inspector.get_columns('comment')}
+    except Exception:
+        cols = set()
+    if 'user_id' in cols:
+        return
+    with db.engine.begin() as conn:
+        conn.exec_driver_sql("ALTER TABLE comment ADD COLUMN user_id INTEGER")
+
 
 @app.template_filter('joined_month_year')
 def joined_month_year_filter(ts):
@@ -601,6 +624,7 @@ class User(db.Model):
     bio = db.Column(db.String(150), default="Estudante no Spotted University 🎓")
     profile_pic = db.Column(db.String(200), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
+    is_verified = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=br_time, nullable=True)
     posts = db.relationship('Post', backref='author', lazy=True)
     notifications = db.relationship('Notification', backref='receiver', lazy=True, cascade="all, delete-orphan")
@@ -627,7 +651,9 @@ class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'))
     content = db.Column(db.String(200), nullable=False)
-    username = db.Column(db.String(80), default="Anônimo") 
+    username = db.Column(db.String(80), default="Anônimo")
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    user = db.relationship('User', backref='comments')
     timestamp = db.Column(db.DateTime, default=br_time)
     is_edited = db.Column(db.Boolean, default=False)
 
@@ -708,11 +734,13 @@ class Event(db.Model):
 with app.app_context():
     db.create_all()
     ensure_user_created_at_column()
+    ensure_user_is_verified_column()
     ensure_conversation_member_last_read_column()
     ensure_conversation_pinned_message_column()
     ensure_direct_chat_message_all_read_column()
     ensure_notification_category_column()
     ensure_comment_is_edited_column()
+    ensure_comment_user_id_column()
     missing_created_at = User.query.filter(User.created_at.is_(None)).all()
     for user in missing_created_at:
         user.created_at = br_time()
@@ -1192,8 +1220,9 @@ def comentar(post_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
     content = request.form.get('comment_content'); post = Post.query.get_or_404(post_id)
     if content:
-        autor_username = session.get('username') 
-        db.session.add(Comment(content=content, post_id=post_id, username=autor_username))
+        autor_username = session.get('username')
+        user_id = session.get('user_id')
+        db.session.add(Comment(content=content, post_id=post_id, username=autor_username, user_id=user_id))
         if post.user_id and post.user_id != session.get('user_id'):
             db.session.add(Notification(user_id=post.user_id, sender_name=session.get('name'), action_type="comentou sua publicação", post_id=post.id))
         notify_mentions(content, session.get('name'), post.id)
