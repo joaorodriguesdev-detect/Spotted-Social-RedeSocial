@@ -359,14 +359,78 @@
         });
     }
 
-    // Executa ao carregar a página
+    // Função para abrir modal de evento
+    function openEventModal(postId) {
+        const postContent = document.getElementById(`post-content-view-${postId}`);
+        if (postContent && postContent.textContent.includes('📢 NOVO EVENTO:')) {
+            const modal = document.getElementById('event-detail-modal');
+            const modalContent = document.getElementById('event-modal-content');
+
+            // Copiar conteúdo do post para o modal
+            const postElement = document.getElementById(`post-${postId}`);
+            const mediaImg = postElement?.querySelector('img[src*="/uploads/"]');
+            const contentText = postContent.textContent;
+
+            // Extrair informações
+            let eventInfo = '<div class="space-y-4">';
+            if (mediaImg) {
+                eventInfo += `<div class="w-full h-64 rounded-2xl overflow-hidden mb-4">
+                    <img src="${mediaImg.src}" alt="Evento" class="w-full h-full object-cover">
+                </div>`;
+            }
+            eventInfo += `<div class="text-main">${contentText}</div></div>`;
+
+            modalContent.innerHTML = eventInfo;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+    }
+
+    function closeEventModal() {
+        const modal = document.getElementById('event-detail-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    // Adicionar listeners para posts de eventos
     document.addEventListener('DOMContentLoaded', function() {
         makePostLinksClickable();
+
+        document.querySelectorAll('[id^="post-content-view-"]').forEach(function(el) {
+            if (el.textContent.includes('📢 NOVO EVENTO:')) {
+                const postId = el.id.replace('post-content-view-', '');
+                const postCard = document.getElementById(`post-${postId}`);
+                if (postCard && !postCard.classList.contains('cursor-pointer')) {
+                    postCard.classList.add('cursor-pointer', 'hover:shadow-lg');
+                    postCard.style.transition = 'box-shadow 0.2s';
+                    postCard.onclick = (e) => {
+                        if (!e.target.closest('a, button, form, textarea')) {
+                            openEventModal(postId);
+                        }
+                    };
+                }
+            }
+        });
     });
 
     </script>
 
-<!-- ==================== ESTILOS DO TEMA ==================== -->
+    <!-- MODAL DE EVENTO DETALHADO -->
+    <div id="event-detail-modal" class="hidden fixed inset-0 bg-black/50 z-[200] items-center justify-center p-4 overflow-y-auto" style="display: none;">
+        <div class="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b dark:border-zinc-700 flex justify-between items-center sticky top-0 bg-white dark:bg-zinc-900">
+                <h2 class="text-2xl font-black text-main">Detalhes do Evento</h2>
+                <button onclick="closeEventModal()" class="interactive-control text-secondary hover:text-main text-2xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="event-modal-content" class="p-6">
+                <!-- Conteúdo será inserido aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ESTILOS DO TEMA ==================== -->
 <style>
     .text-main {
         color: #111827; /* modo claro */
