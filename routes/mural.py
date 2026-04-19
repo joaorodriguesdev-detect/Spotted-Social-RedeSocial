@@ -1,12 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from markupsafe import escape
 
-mural_bp = Blueprint('mural', __name__, url_prefix='/mural')
+from extensions import socketio
+from models import MuralPost, Notification, User, br_time, db
+from services.notification_service import create_notification
 
-# Import inside functions to avoid circular imports
-def get_db_models():
-    from app import db, MuralPost, User, Notification, br_time, create_notification, socketio
-    return db, MuralPost, User, Notification, br_time, create_notification, socketio
+mural_bp = Blueprint('mural', __name__, url_prefix='/mural')
 
 # List of allowed categories for mural posts
 ALLOWED_CATEGORIES = ['Emprego', 'Saúde', 'Geral', 'Educação', 'Moradia', 'Eventos', 'Carona']
@@ -23,7 +22,7 @@ def sanitize_input(text):
 @mural_bp.route('/')
 def mural_list():
     """Display all mural posts paginated."""
-    db, MuralPost, User, Notification, br_time, _, _ = get_db_models()
+    # models/services are imported at module level
 
     if 'user_id' not in session:
         return redirect(url_for('welcome'))
@@ -63,7 +62,7 @@ def mural_list():
 @mural_bp.route('/criar', methods=['GET', 'POST'])
 def criar_mural_post():
     """Create a new mural post."""
-    db, MuralPost, User, Notification, br_time, create_notification, socketio = get_db_models()
+    # models/services are imported at module level
 
     if 'user_id' not in session:
         return redirect(url_for('welcome'))
@@ -132,7 +131,7 @@ def criar_mural_post():
                     'category': category,
                     'username': username,
                     'timestamp': post.timestamp.isoformat() if post.timestamp else None
-                }, broadcast=True)
+                })
             except Exception:
                 # Don't fail if socket emit fails
                 pass
@@ -154,7 +153,7 @@ def criar_mural_post():
 @mural_bp.route('/<int:post_id>/editar', methods=['GET', 'POST'])
 def editar_mural_post(post_id):
     """Edit a mural post (only by author)."""
-    db, MuralPost, User, Notification, br_time, _, _ = get_db_models()
+    # models/services are imported at module level
 
     if 'user_id' not in session:
         return redirect(url_for('welcome'))
@@ -215,7 +214,7 @@ def editar_mural_post(post_id):
 @mural_bp.route('/<int:post_id>/deletar', methods=['POST'])
 def deletar_mural_post(post_id):
     """Delete a mural post (only by author or admin)."""
-    db, MuralPost, User, Notification, br_time, _, _ = get_db_models()
+    # models/services are imported at module level
 
     if 'user_id' not in session:
         return redirect(url_for('welcome'))
@@ -241,7 +240,7 @@ def deletar_mural_post(post_id):
 @mural_bp.route('/api/search')
 def api_search_mural():
     """API endpoint for searching mural posts."""
-    db, MuralPost, User, Notification, br_time, _, _ = get_db_models()
+    # models/services are imported at module level
 
     if 'user_id' not in session:
         return jsonify({'error': 'não autenticado'}), 401
