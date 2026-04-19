@@ -5,6 +5,8 @@
 {% block meta_description %}Mural de anúncios - encontre vagas de emprego, consultas com psicólogos e muito mais na comunidade Spotted.{% endblock %}
 
 {% block content %}
+{% include "_top_tabs.html" %}
+
 <div class="w-full max-w-[600px] mx-auto px-4 py-6 pb-24">
     <!-- Header -->
     <div class="mb-8">
@@ -13,8 +15,8 @@
                 <h1 class="text-2xl font-bold text-main">Mural</h1>
                 <p class="text-sm text-secondary mt-1">Divulgue serviços e encontre oportunidades</p>
             </div>
-            <a href="{{ url_for('mural.criar_mural_post') }}" class="px-4 py-2 bg-indigo-500 text-white rounded-lg font-semibold hover:bg-indigo-600 transition active:scale-95">
-                <i class="fas fa-plus mr-2"></i>Novo Anúncio
+            <a href="{{ url_for('mural.criar_mural_post') }}" class="px-4 py-2 bg-indigo-500 text-white rounded-full font-semibold hover:bg-indigo-600 transition active:scale-95 inline-flex items-center gap-1 text-sm">
+                <i class="fas fa-plus"></i><span class="hidden sm:inline">Novo Anúncio</span>
             </a>
         </div>
 
