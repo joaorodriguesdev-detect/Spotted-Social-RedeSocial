@@ -1,6 +1,6 @@
 // JS for welcome/register modal: autocomplete, validation, modal open/close
 (function(){
-    const universities = ["UFPR","UTFPR","PUCPR","UP","UTP","UniCuritiba","FAE","Outra"];
+    const universities = ["UFPR","UTFPR","PUCPR","UP","UTP","UniCuritiba","FAE"];
 
     const openBtn = document.getElementById('open-reg-modal');
     const modal = document.getElementById('modal-registro');
@@ -182,7 +182,6 @@
     }
 
     function selectUniversity(val){
-        // If user selects 'Outra', reveal the free input
         // hide both inline list and portal (portal used when appended to body)
         if(uniPortal){
             uniPortal.classList.remove('open');
