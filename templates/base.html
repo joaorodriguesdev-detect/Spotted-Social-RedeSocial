@@ -400,7 +400,6 @@
 
         <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
-        <a href="/mural" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/mural') %}text-indigo-500{% else %}text-main{% endif %}" title="Mural"><i class="fa-solid fa-bullhorn"></i>{% if current_path.startswith('/mural') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
         <!-- Use a stable literal path for the Direct link so the navbar works even
              if the Direct blueprint/view registration changes. Keep the
              original template-based url_for for clarity in a data attribute. -->
