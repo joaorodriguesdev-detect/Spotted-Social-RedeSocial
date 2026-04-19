@@ -390,6 +390,8 @@
         {% if not user.is_admin %}
         <div class="space-y-6">
             <h3 class="font-black text-secondary uppercase text-xs tracking-widest mb-4">Mural</h3>
+            
+            <!-- Formulário para enviar recado -->
             <form id="wall-message-form" action="/enviar_recado/{{ user.id }}" method="POST" class="bg-white p-4 rounded-3xl border shadow-sm space-y-3" novalidate>
                 <div class="flex items-center justify-between">
                     <p class="text-[11px] font-black uppercase tracking-widest text-indigo-500">Deixe um recado</p>
@@ -399,18 +401,43 @@
                 <p id="wall-error" class="form-error hidden text-[11px] font-semibold">Escreva um recado antes de enviar.</p>
                 <button class="interactive-control w-full bg-indigo-50 text-indigo-600 font-black py-2.5 rounded-xl text-xs hover:bg-indigo-100 transition">Enviar</button>
             </form>
+
+            <!-- Lista de recados com opção de excluir -->
             {% for msg in messages %}
             <div class="bg-white p-4 rounded-2xl border text-xs shadow-sm">
-                <p class="font-black text-indigo-400 uppercase mb-1">
-                    {% if msg.sender_name %}
-                    <a href="{{ url_for('perfil_por_remetente', sender_name=msg.sender_name) }}" class="hover:underline hover:text-indigo-500 transition">{{ msg.sender_name }}</a>
-                    {% else %}
-                    usuário
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="font-black text-indigo-400 uppercase mb-1">
+                            {% if msg.sender_name %}
+                            <a href="{{ url_for('perfil_por_remetente', sender_name=msg.sender_name) }}" class="hover:underline hover:text-indigo-500 transition">{{ msg.sender_name }}</a>
+                            {% else %}
+                            usuário
+                            {% endif %}
+                        </p>
+                        <p class="leading-tight break-words">{{ msg.content }}</p>
+                    </div>
+
+                    <!-- Botão de excluir (mesma lógica dos eventos) -->
+                    {% if (me and me.id == user.id) or session.get('is_admin') %}
+                    <a href="/excluir_recado/{{ msg.id }}" 
+                    data-confirm-delete="true" 
+                    data-confirm-message="Tem certeza que deseja excluir este recado?" 
+                    class="interactive-control text-secondary hover:text-red-500 p-1 transition flex-shrink-0 mt-0.5" 
+                    title="Excluir recado">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </a>
                     {% endif %}
-                </p>
-                <p class="leading-tight break-words">{{ msg.content }}</p>
+                </div>
             </div>
             {% endfor %}
+
+            <!-- Caso não tenha nenhum recado -->
+            {% if not messages %}
+            <div class="bg-white border twitter-border rounded-2xl p-6 text-center text-secondary text-sm">
+                Nenhum recado no mural ainda.
+            </div>
+            {% endif %}
+
         </div>
         {% endif %}
 
