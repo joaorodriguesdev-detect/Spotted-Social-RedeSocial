@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from flask import current_app
 from sqlalchemy import func
 
@@ -9,20 +8,13 @@ from models import (
     ConversationMember,
     DirectChatMessage,
     MessageReaction,
-    Notification,
     User,
     db,
 )
-from services.notification_service import create_notification
 
+GROUP_CHAT_PARTICIPANTS = {}
 
-GROUP_CHAT_PARTICIPANTS = {
-    'bruno_eventos': ['bruno_eventos', 'vsfdds', 'ana_atletica']
-}
-
-GROUP_CHAT_ADMINS = {
-    'bruno_eventos': ['bruno_eventos', 'vsfdds']
-}
+GROUP_CHAT_ADMINS = {}
 
 
 def is_direct_blocked_for_system_admin():

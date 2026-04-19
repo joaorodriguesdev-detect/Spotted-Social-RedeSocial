@@ -175,38 +175,39 @@
                     <p data-comment-error class="text-red-500 text-xs mt-1 hidden"></p>
                 </div> -->
                 <div class="mt-2">
-                    <form action="/comentar/{{ post.id }}" 
+                    <form
+                        action="/comentar/{{ post.id }}"
                         method="POST"
                         onsubmit="ajaxComment(event, this, {{ post.id }})"
-                        class="flex items-center 
-                                bg-white dark:bg-zinc-800 
-                                border border-gray-300 dark:border-zinc-700 
-                                focus-within:border-indigo-400 dark:focus-within:border-indigo-500
-                                rounded-full px-5 py-2 
-                                transition-all duration-200">
+                        class="flex items-center cursor-pointer
+                            bg-white
+                            border border-gray-300
+                            focus-within:border-indigo-400
+                            rounded-full px-3 py-1
+                            transition-all duration-200"
+                        onclick="if (event.target.tagName !== 'BUTTON') this.querySelector('input').focus();">
 
                         <input
                             type="text"
                             name="comment_content"
                             id="in-{{post.id}}"
                             placeholder="Comente algo..."
-                            class="flex-1 bg-transparent outline-none text-sm 
-                                text-main 
-                                placeholder:text-secondary
+                            class="flex-1 bg-transparent outline-none text-base
+                                text-[#0f172a]
+                                placeholder:text-[#5b6b82]
                                 transition-colors"
-                            autocomplete="off">
+                            autocomplete="off"
+                            style="font-size: 16px;">
 
                         <button
                             type="submit"
-                            class="interactive-control ml-3 px-4 py-1 text-sm font-medium 
-                                text-indigo-600 dark:text-indigo-400 
-                                hover:text-indigo-700 dark:hover:text-indigo-300 
-                                hover:bg-indigo-50 dark:hover:bg-zinc-700 
+                            class="interactive-control ml-3 px-4 py-1 text-sm font-medium
+                                text-indigo-600
                                 rounded-full transition-all">
                             Enviar
                         </button>
                     </form>
-                
+                    
                     <p data-comment-error class="text-red-500 text-xs mt-1 hidden"></p>
                 </div>
             </div>
