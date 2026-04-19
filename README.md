@@ -18,18 +18,36 @@ pip install -r requirements.txt
 No diretório do projeto:
 
 ```powershell
-# inicia o servidor em dev (usa config hardcoded em app.py por padrão)
+# inicia o servidor usando o perfil definido em SPOTTED_ENV (.env.dev/.env.prod)
 python app.py
 ```
 
 A aplicação roda por padrão em http://127.0.0.1:5000
+
+Perfis de ambiente:
+
+- `SPOTTED_ENV=dev` carrega `.env.dev` (default).
+- `SPOTTED_ENV=prod` carrega `.env.prod`.
+- `.env` continua aceitando sobrescritas manuais (carregado antes do perfil).
+
+Exemplo para alternar perfil no PowerShell:
+
+```powershell
+$env:SPOTTED_ENV = 'dev'
+python app.py
+
+$env:SPOTTED_ENV = 'prod'
+python app.py
+```
 
 ## Variáveis de ambiente importantes
 
 - `DATABASE_URL` — string de conexão para o banco (ex.: `sqlite:///spotted.db`). Se não definida, usa `sqlite:///spotted.db` por padrão.
 - `SECRET_KEY` — chave de sessão/CSRF. Troque para um valor seguro em produção.
 - `FEED_PAGE_SIZE` — controla a paginação do feed; valores permitidos: `6`, `8`, `12` (qualquer outro cai para `8`).
-- `ADMIN_PASSWORD` — (recomendado) se definido, será usado pelo seeding/seed inicial do admin em vez do valor hardcoded. Configure em ambientes de desenvolvimento para evitar senhas públicas.
+- `ADMIN_SEED_ENABLED` — habilita criação automática do admin no bootstrap (`true`/`false`).
+- `ADMIN_USERNAME` — login do admin criado automaticamente (padrão `admin`).
+- `ADMIN_PASSWORD` — senha do admin usado no seed. Sem esse valor, o seed é ignorado.
 
 Exemplo (PowerShell):
 
@@ -41,12 +59,13 @@ python app.py
 
 ## Nota importante sobre o admin seed
 
-Por conveniência o arquivo `app.py` pode criar automaticamente um usuário `admin` com uma senha hardcoded quando o banco não contém um admin. Isto facilita testes locais, mas é perigoso para produção. Antes de deploy em qualquer ambiente público:
+O seed do admin agora e controlado por variaveis de ambiente em `services/startup_service.py`:
 
-- Remova ou comente o seeding automático; ou
-- Certifique-se de definir `ADMIN_PASSWORD` via variável de ambiente e rotacionar a senha imediatamente.
+- `ADMIN_SEED_ENABLED=true` habilita a criacao automatica do admin no startup.
+- `ADMIN_PASSWORD` e obrigatoria para criar o usuario.
+- Sem `ADMIN_PASSWORD`, o app registra warning e ignora o seed.
 
-Se quiser desabilitar o seeding em ambientes automatizados, exporte uma variável como `DISABLE_ADMIN_SEED=1` (implemente na sua implantação) ou modifique `app.py` para condicionalmente pular o seed.
+Para producao, mantenha `ADMIN_SEED_ENABLED=false` apos bootstrap inicial.
 
 ## Uploads e segurança de arquivos
 

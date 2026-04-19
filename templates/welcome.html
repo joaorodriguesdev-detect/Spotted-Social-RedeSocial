@@ -115,27 +115,34 @@
             </div>
 
             <div class="autocomplete">
-                <label for="reg-university" class="sr-only">Universidade</label>
-                <div class="input-with-icon">
-                    <span class="icon" data-feather="book"></span>
-                    <input id="reg-university" name="university" type="text" placeholder="Digite sua universidade (ex: UFPR)" autocomplete="off" aria-describedby="err-university" class="welcome-input w-full p-2 border rounded-lg text-xs pl-10">
+                <label for="reg-university" class="block text-xs font-semibold welcome-subtitle mb-2">Selecione a instituicao:</label>
+                <div class="input-with-icon welcome-uni-with-icon">
+                    <span class="icon" data-feather="search"></span>
+                    <input id="reg-university" name="university" type="text" placeholder="Digite sua Instituicao de ensino" autocomplete="off" aria-describedby="err-university" class="welcome-input welcome-uni-input w-full p-2 border rounded-lg text-xs pl-10">
                 </div>
-                <div id="uni-list" class="autocomplete-list hidden" role="listbox" aria-label="Sugestões de universidades"></div>
+                <div id="uni-list" class="autocomplete-list hidden" role="listbox" aria-label="Sugestoes de universidades"></div>
                 <div id="uni-chip-wrapper" class="hidden mt-2"></div>
-                <p id="err-university" class="text-[11px] text-red-600 italic mt-1 hidden">Preencha sua universidade.</p>
+                <p id="err-university" class="text-[11px] text-red-600 italic mt-1 hidden">Informe sua instituicao.</p>
 
                 <!-- Quando o usuário escolher 'Outra', mostramos um campo livre -->
                 <div id="other-uni-wrapper" class="hidden mt-2">
                     <label for="reg-university-other" class="sr-only">Universidade (outra)</label>
-                    <input id="reg-university-other" type="text" placeholder="Digite o nome da sua universidade" aria-describedby="err-university-other" class="welcome-input w-full p-2 border rounded-lg text-xs">
-                    <p id="err-university-other" class="text-[11px] text-red-600 italic mt-1 hidden">Informe sua universidade.</p>
+                    <input id="reg-university-other" type="text" placeholder="Digite o nome da sua instituicao" aria-describedby="err-university-other" class="welcome-input w-full p-2 border rounded-lg text-xs">
+                    <p id="err-university-other" class="text-[11px] text-red-600 italic mt-1 hidden">Informe sua instituicao.</p>
                 </div>
             </div>
 
             <div>
                 <label for="reg-password" class="sr-only">Senha</label>
-                <input id="reg-password" type="password" name="password" placeholder="Senha (mín. 6 caracteres)" required aria-describedby="err-password" class="welcome-input w-full p-2 border rounded-lg text-xs">
-                <p id="err-password" class="text-[11px] text-red-600 italic mt-1 hidden">Senha deve ter ao menos 6 caracteres.</p>
+                <input id="reg-password" type="password" name="password" placeholder="Senha (mín. 8 caracteres)" required aria-describedby="password-hint err-password" class="welcome-input w-full p-2 border rounded-lg text-xs">
+                <p id="password-hint" class="text-[11px] welcome-password-hint mt-1">Use pelo menos 8 caracteres e inclua um caractere especial: # @ $ % *</p>
+                <p id="err-password" class="text-[11px] text-red-600 italic mt-1 hidden">Senha inválida. Use 8+ caracteres e ao menos um de: # @ $ % *</p>
+            </div>
+
+            <div>
+                <label for="reg-confirm-password" class="sr-only">Confirmar senha</label>
+                <input id="reg-confirm-password" type="password" name="confirm_password" placeholder="Confirmar senha" required aria-describedby="err-confirm-password" class="welcome-input w-full p-2 border rounded-lg text-xs">
+                <p id="err-confirm-password" class="text-[11px] text-red-600 italic mt-1 hidden">As senhas não coincidem.</p>
             </div>
 
             <button id="registro-submit" type="submit" class="w-full bg-blue-500 text-white py-1.5 rounded-md font-bold text-sm disabled:opacity-60 disabled:cursor-not-allowed" disabled>

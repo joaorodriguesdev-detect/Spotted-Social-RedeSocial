@@ -1,11 +1,10 @@
 import uuid
 
 from flask import Blueprint, request, redirect, url_for, flash, session, render_template, current_app
-from markupsafe import escape
-
 from models import Event, Message, Notification, Post, User, db
 from services.image_service import save_and_optimize_image
 from services.notification_service import resolve_user_by_sender_name
+from services.security_service import sanitize_user_text
 
 perfil_bp = Blueprint('perfil', __name__)
 
@@ -66,7 +65,7 @@ def editar_perfil():
     user = User.query.get(session['user_id'])
     name_post = request.form.get('name')
     university_post = request.form.get('university')
-    bio_post = escape(request.form.get('bio'))  # Sanitize input
+    bio_post = sanitize_user_text(request.form.get('bio'), max_len=150)
     if name_post:
         user.name = name_post[:80]
         session['name'] = user.name
@@ -98,9 +97,10 @@ def seguir(username):
 @perfil_bp.route('/enviar_recado/<int:user_id>', methods=['POST'])
 def enviar_recado(user_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    content = request.form.get('content')
+    content = sanitize_user_text(request.form.get('content'), max_len=500)
     if content:
-        sender = session.get('username')
+        anon_mode = request.form.get('anon_mode') == 'true'
+        sender = 'Anonimo' if anon_mode else session.get('username')
         db.session.add(Message(receiver_id=user_id, sender_name=sender, content=content))
         db.session.add(Notification(user_id=user_id, sender_name=sender, action_type="deixou um recado no mural"))
         db.session.commit()

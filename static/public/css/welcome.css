@@ -15,14 +15,24 @@ html, body { height: 100%; font-family: Inter, system-ui, -apple-system, 'Segoe 
 
 /* Card and text */
 .welcome-subtitle { color: var(--muted); }
-.welcome-card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border: 1px solid rgba(255,255,255,0.04); color: #e6eef9; box-shadow: 0 12px 40px rgba(2,6,23,0.6); border-radius: 12px; }
-.welcome-input { background: transparent; border: 1px solid rgba(255,255,255,0.06); color: #e6eef9; }
+.welcome-card {
+  background: #0f1724;
+  border: 1px solid rgba(148,163,184,0.2);
+  color: #e6eef9;
+  box-shadow: 0 18px 48px rgba(2,6,23,0.72);
+  border-radius: 12px;
+}
+.welcome-input {
+  background: rgba(15,23,36,0.9);
+  border: 1px solid rgba(148,163,184,0.24);
+  color: #e6eef9;
+}
 .welcome-divider { color: #7c8ba1; }
 .welcome-footer { color: #8fa0ba; }
 
 /* Inputs and placeholders */
 .welcome-input { padding: 12px 12px; border-radius: 10px; font-size: 14px; outline: none; width: 100%; box-sizing: border-box; }
-.welcome-input::placeholder { color: rgba(230,238,249,0.35); }
+.welcome-input::placeholder { color: rgba(230,238,249,0.5); }
 .welcome-input:focus { border-color: var(--accent); box-shadow: 0 6px 20px rgba(99,102,241,0.08), 0 0 0 3px rgba(99,102,241,0.06); }
 
 /* Screen reader only */
@@ -33,8 +43,16 @@ html, body { height: 100%; font-family: Inter, system-ui, -apple-system, 'Segoe 
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Modal backdrop and card */
-#modal-registro { backdrop-filter: blur(6px); }
-.welcome-card.rounded-xl { padding: 26px; max-width: 420px; width: 100%; }
+#modal-registro {
+  backdrop-filter: blur(3px);
+  background-color: rgba(2, 6, 23, 0.9);
+}
+.welcome-card.rounded-xl {
+  padding: 26px;
+  max-width: 420px;
+  width: 100%;
+  border-color: rgba(148, 163, 184, 0.26);
+}
 
 /* constrain modal height and allow internal scrolling */
 .welcome-card { max-height: calc(100vh - 80px); overflow-y: auto; }
@@ -42,19 +60,28 @@ html, body { height: 100%; font-family: Inter, system-ui, -apple-system, 'Segoe 
 /* Autocomplete - portal ready */
 .autocomplete { position: relative; }
 .autocomplete-list, .autocomplete-list-portal {
-    background: #0b0f14; color: #e6eef9; border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; box-shadow: 0 12px 40px rgba(2,6,23,0.6);
-    max-height: 220px; overflow-y: auto; padding: 6px 0; min-width: 220px;
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.2);
+    max-height: 220px;
+    overflow-y: auto;
+    padding: 4px 0;
+    min-width: 220px;
 }
 .autocomplete-list-portal { position: absolute; z-index: 3200; }
-.autocomplete-item { padding: 10px 14px; cursor: pointer; font-size: 14px; color: #e6eef9; }
-.autocomplete-item:hover, .autocomplete-item.active { background: rgba(99,102,241,0.08); color: white; }
+.autocomplete-item { padding: 10px 14px; cursor: pointer; font-size: 14px; color: #0f172a; border-bottom: 1px solid #f1f5f9; }
+.autocomplete-item:last-child { border-bottom: 0; }
+.autocomplete-item:hover, .autocomplete-item.active { background: #f3f4f6; color: #0f172a; }
 
 /* item check icon */
 .autocomplete-item { position: relative; }
-.item-check { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0.9; }
+.item-check { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0.9; color: #4f46e5; }
 
-/* ensure feather icons inherit color and are visible on dark bg */
-.icon, .item-check, .chip-edit-icon { color: rgba(230,238,249,0.85); }
+/* ensure feather icons inherit color and are visible */
+.icon, .chip-edit-icon { color: rgba(230,238,249,0.85); }
+.item-check { color: #4f46e5; }
 .icon svg, .item-check svg, .chip-edit-icon svg { stroke: currentColor !important; fill: none !important; }
 
 /* input with icon */
@@ -63,7 +90,7 @@ html, body { height: 100%; font-family: Inter, system-ui, -apple-system, 'Segoe 
 .input-with-icon .welcome-input { padding-left: 36px; }
 
 /* make modal backdrop less transparent */
-#modal-registro { background-color: rgba(0,0,0,0.78); }
+#modal-registro { background-color: rgba(2, 6, 23, 0.9); }
 
 /* dropdown animation */
 .autocomplete-list-portal{
@@ -105,3 +132,35 @@ html, body { height: 100%; font-family: Inter, system-ui, -apple-system, 'Segoe 
 @keyframes modalEnter { from{ opacity: 0; transform: translateY(-8px) scale(.98);} to{ opacity:1; transform: none;} }
 .welcome-card { animation: modalEnter 180ms ease both; }
 
+.welcome-password-hint {
+  color: #a5b4fc;
+  font-style: normal;
+}
+
+.welcome-uni-input {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.welcome-uni-input::placeholder {
+  color: #94a3b8;
+}
+
+.welcome-uni-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+}
+
+.welcome-uni-with-icon .icon {
+  color: #64748b;
+}
+
+#uni-chip-wrapper .selected-chip {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+#uni-chip-wrapper .selected-chip button {
+  color: #4338ca;
+}

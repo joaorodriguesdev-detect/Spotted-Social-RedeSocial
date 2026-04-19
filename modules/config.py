@@ -6,7 +6,7 @@ from datetime import timedelta
 def get_config():
     """Retorna todas as configurações da aplicação."""
     config = {
-        'SECRET_KEY': os.environ.get('SECRET_KEY', 'spotted_university_ultra_v8_final_fix'),
+        'SECRET_KEY': os.environ.get('SECRET_KEY'),
         'SQLALCHEMY_DATABASE_URI': os.environ.get('DATABASE_URL', 'sqlite:///spotted.db'),
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
         'UPLOAD_FOLDER': 'static/uploads',

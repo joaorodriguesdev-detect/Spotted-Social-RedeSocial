@@ -3,7 +3,7 @@
 {% block title %}Editar Anúncio - Mural - Spotted{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-[600px] mx-auto px-4 py-6 pb-24">
+<div class="w-full max-w-[600px] mx-auto px-4 py-6 pb-24 mural-form-surface rounded-xl">
     <!-- Header -->
     <div class="mb-8">
         <a href="{{ url_for('mural.mural_list') }}" class="text-indigo-500 font-semibold text-sm hover:underline mb-4 inline-flex items-center gap-1">
@@ -14,7 +14,7 @@
     </div>
 
     <!-- Form -->
-    <form method="POST" class="bg-white dark:bg-gray-900 rounded-lg border twitter-border p-6 shadow-sm">
+    <form method="POST" class="mural-form-card rounded-lg border twitter-border p-6 shadow-sm">
         <!-- Título -->
         <div class="mb-6">
             <label for="title" class="block text-sm font-semibold text-main mb-2">
@@ -76,7 +76,7 @@
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
-                <div class="mb-6 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+                <div class="mb-6 px-4 py-3 rounded-lg mural-alert border text-sm">
                     <i class="fas fa-exclamation-circle mr-2"></i>{{ message }}
                 </div>
                 {% endfor %}
@@ -86,7 +86,7 @@
         <!-- Actions -->
         <div class="flex gap-3">
             <a href="{{ url_for('mural.mural_list') }}"
-               class="flex-1 px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-800 text-main font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition text-center">
+               class="flex-1 px-4 py-3 rounded-lg mural-cancel-btn text-main font-semibold transition text-center">
                 Cancelar
             </a>
             <button type="submit"
@@ -97,7 +97,7 @@
     </form>
 
     <!-- Info Box -->
-    <div class="mt-8 px-4 py-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm">
+    <div class="mt-8 px-4 py-4 rounded-lg mural-info-box border text-sm">
         <p class="font-semibold mb-2">
             <i class="fas fa-info-circle mr-2"></i>Dicas para um bom anúncio
         </p>
@@ -157,6 +157,20 @@
         }
     });
 </script>
+
+<style>
+    .mural-form-surface { background: rgba(255, 255, 255, 0.95); }
+    .mural-form-card { background: #ffffff; }
+    .mural-alert { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .mural-cancel-btn { background: #e5e7eb; }
+    .mural-cancel-btn:hover { background: #d1d5db; }
+    .mural-info-box { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+
+    body.dark-mode .mural-form-surface { background: rgba(15, 17, 21, 0.96); }
+    body.dark-mode .mural-form-card { background: #16181c; border-color: #2f3336; }
+    body.dark-mode .mural-alert { background: rgba(127, 29, 29, 0.28); border-color: #7f1d1d; color: #fecaca; }
+    body.dark-mode .mural-cancel-btn { background: #1f2937; color: #e5e7eb; }
+    body.dark-mode .mural-cancel-btn:hover { background: #374151; }
+    body.dark-mode .mural-info-box { background: rgba(30, 58, 138, 0.28); border-color: #1e3a8a; color: #bfdbfe; }
+</style>
 {% endblock %}
-
-

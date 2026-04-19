@@ -3,7 +3,6 @@ import uuid
 from datetime import datetime
 
 from flask import Blueprint, request, redirect, url_for, flash, jsonify, render_template, session
-from markupsafe import escape
 from sqlalchemy import or_
 
 from models import Comment, Event, Notification, Post, User, db
@@ -18,6 +17,7 @@ from services.feed_service import (
 )
 from services.image_service import save_and_optimize_image
 from services.notification_service import notify_mentions
+from services.security_service import build_contains_pattern, sanitize_user_text
 
 feed_bp = Blueprint('feed', __name__)
 
@@ -73,8 +73,9 @@ def feed_more():
 def search():
     if 'user_id' not in session: return redirect(url_for('welcome'))
 
-    query = request.args.get('query', '').lower().strip().replace('@', '')
+    query = sanitize_user_text(request.args.get('query', ''), max_len=80).lower().replace('@', '')
     category = normalize_search_category(request.args.get('category'))
+    search_pattern = build_contains_pattern(query)
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
     if not query:
         posts = Post.query.order_by(Post.timestamp.desc()).all()
@@ -92,9 +93,9 @@ def search():
     if category == 'eventos':
         event_results = Event.query.filter(
             or_(
-                Event.title.ilike(f'%{query}%'),
-                Event.location.ilike(f'%{query}%'),
-                Event.description.ilike(f'%{query}%')
+                Event.title.ilike(search_pattern, escape='\\'),
+                Event.location.ilike(search_pattern, escape='\\'),
+                Event.description.ilike(search_pattern, escape='\\')
             )
         ).order_by(Event.created_at.desc()).all()
         return render_template(
@@ -107,7 +108,7 @@ def search():
             search_category=category
         )
 
-    results = User.query.filter(User.username.contains(query), User.is_admin == False).all()
+    results = User.query.filter(User.username.ilike(search_pattern, escape='\\'), User.is_admin == False).all()
     return render_template(
         'index.html',
         search_results=results,
@@ -124,8 +125,9 @@ def api_search():
     if 'user_id' not in session:
         return jsonify({'error': 'nao autenticado'}), 401
 
-    query = (request.args.get('query') or '').lower().strip().replace('@', '')
+    query = sanitize_user_text(request.args.get('query') or '', max_len=80).lower().replace('@', '')
     category = normalize_search_category(request.args.get('category'))
+    search_pattern = build_contains_pattern(query)
 
     if not query:
         return jsonify({'category': category, 'query': query, 'users': [], 'events': []})
@@ -133,9 +135,9 @@ def api_search():
     if category == 'eventos':
         events = Event.query.filter(
             or_(
-                Event.title.ilike(f'%{query}%'),
-                Event.location.ilike(f'%{query}%'),
-                Event.description.ilike(f'%{query}%')
+                Event.title.ilike(search_pattern, escape='\\'),
+                Event.location.ilike(search_pattern, escape='\\'),
+                Event.description.ilike(search_pattern, escape='\\')
             )
         ).order_by(Event.created_at.desc()).limit(20).all()
 
@@ -159,7 +161,7 @@ def api_search():
 
         return jsonify({'category': category, 'query': query, 'users': [], 'events': payload})
 
-    users = User.query.filter(User.username.contains(query), User.is_admin == False).limit(20).all()
+    users = User.query.filter(User.username.ilike(search_pattern, escape='\\'), User.is_admin == False).limit(20).all()
     return jsonify({
         'category': category,
         'query': query,
@@ -171,7 +173,7 @@ def api_search():
 def postar():
     if 'user_id' not in session: return redirect(url_for('welcome'))
 
-    content = escape(request.form.get('content'))  # Sanitize input
+    content = sanitize_user_text(request.form.get('content'), max_len=5000)
     anon_mode = request.form.get('anon_mode') == 'true'
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
@@ -225,7 +227,7 @@ def comentar(post_id):
     if 'user_id' not in session: 
         return redirect(url_for('welcome'))
 
-    content = escape(request.form.get('comment_content'))  # Sanitize input
+    content = sanitize_user_text(request.form.get('comment_content'), max_len=500)
     post = Post.query.get_or_404(post_id)
     
     if not content or not content.strip():
@@ -378,7 +380,7 @@ def api_edit_comment(comment_id):
 
     # Get new content from JSON payload
     data = request.get_json(silent=True) or {}
-    new_content = (data.get('content') or '').strip()
+    new_content = sanitize_user_text(data.get('content') or '', max_len=500)
 
     if not new_content:
         return jsonify({'error': 'Comentário não pode estar vazio', 'ok': False}), 400
@@ -449,7 +451,7 @@ def editar_comentario(comment_id):
         flash('Você não tem permissão para editar este comentário.')
         return redirect(url_for('feed.feed'))
 
-    content = request.form.get('content', '').strip()
+    content = sanitize_user_text(request.form.get('content', ''), max_len=500)
     if not content:
         flash('O comentário não pode estar vazio.')
         return redirect(url_for('feed.feed'))

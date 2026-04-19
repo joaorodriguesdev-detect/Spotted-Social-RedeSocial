@@ -26,12 +26,12 @@
                         @{{ target_username }}
                     {% endif %}
                 </p>
-                <p id="conversation-group-count" class="text-secondary text-xs inline-flex items-center gap-1.5">
+                <p id="conversation-group-count" class="conversation-subtitle text-secondary text-xs inline-flex items-center gap-1.5">
                     <span class="conversation-presence-dot" aria-hidden="true"></span>
                     {% if is_group_chat %}
                         {{ participant_usernames|length }} participantes
                     {% else %}
-                        Ativo(a) recentemente
+                        Nao criptografado
                     {% endif %}
                 </p>
             </div>
@@ -39,17 +39,17 @@
 
         <div class="conversation-header-actions relative flex items-center gap-2">
             {% if is_group_chat %}
-            <button type="button" class="interactive-control w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Buscar na conversa" data-conversation-search-toggle>
+            <button type="button" class="interactive-control conversation-header-btn w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Buscar na conversa" data-conversation-search-toggle>
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
-            <button id="conversation-info-trigger" type="button" class="interactive-control w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Info da conversa">
+            <button id="conversation-info-trigger" type="button" class="interactive-control conversation-header-btn w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Info da conversa">
                 <i class="fa-solid fa-circle-info"></i>
             </button>
             {% else %}
-            <button type="button" class="interactive-control w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Buscar na conversa" data-conversation-search-toggle>
+            <button type="button" class="interactive-control conversation-header-btn w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Buscar na conversa" data-conversation-search-toggle>
                 <i class="fa-solid fa-magnifying-glass"></i>
             </button>
-            <button id="conversation-info-trigger" type="button" class="interactive-control w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Info da conversa">
+            <button id="conversation-info-trigger" type="button" class="interactive-control conversation-header-btn w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Info da conversa">
                 <i class="fa-solid fa-circle-info"></i>
             </button>
             {% endif %}
@@ -99,13 +99,13 @@
         </div>
 
         <form id="conversation-composer-form" class="flex items-center gap-2" aria-label="Composer de mensagem (UI)">
-            <button type="button" class="interactive-control w-9 h-9 rounded-full border twitter-border text-main" aria-label="Anexar" disabled>
-                <i class="fa-regular fa-image"></i>
+            <button type="button" class="interactive-control conversation-attach-btn w-9 h-9 rounded-full border twitter-border text-main" aria-label="Anexar" disabled>
+                <i class="fa-solid fa-plus"></i>
             </button>
             <label for="direct-message-input" class="sr-only">Mensagem</label>
-            <input id="direct-message-input" type="text" class="form-field flex-1 rounded-full py-2 px-3 text-sm" placeholder="Digite uma mensagem" autocomplete="off">
-            <button id="conversation-send-button" type="submit" class="interactive-control px-4 py-2 rounded-full text-xs font-bold composer-send-btn" disabled>
-                Enviar
+            <input id="direct-message-input" type="text" class="form-field conversation-message-input flex-1 rounded-full py-2 px-3 text-sm" placeholder="Mensagem nao criptografada" autocomplete="off">
+            <button id="conversation-send-button" type="submit" class="interactive-control conversation-send-btn conversation-send-icon px-4 py-2 rounded-full text-xs font-bold" aria-label="Enviar mensagem" disabled>
+                <i class="fa-solid fa-paper-plane"></i>
             </button>
         </form>
     </div>

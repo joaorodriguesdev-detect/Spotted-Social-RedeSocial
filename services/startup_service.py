@@ -1,3 +1,4 @@
+from flask import current_app
 from sqlalchemy import inspect
 from werkzeug.security import generate_password_hash
 
@@ -103,11 +104,24 @@ def initialize_database():
     for user in missing_created_at:
         user.created_at = br_time()
 
-    admin_master = User.query.filter_by(username='admin').first()
-    if not admin_master:
-        nova_senha_hash = generate_password_hash('Migo@2026!#')
-        admin_master = User(name='Spotted Social', username='admin', password=nova_senha_hash, is_admin=True, bio='Sistema')
-        db.session.add(admin_master)
+    if current_app.config.get('ADMIN_SEED_ENABLED', False):
+        admin_username = current_app.config.get('ADMIN_USERNAME', 'admin')
+        admin_password = current_app.config.get('ADMIN_PASSWORD', '')
+
+        admin_master = User.query.filter_by(username=admin_username).first()
+        if not admin_master:
+            if not admin_password:
+                current_app.logger.warning('ADMIN_SEED_ENABLED=true, mas ADMIN_PASSWORD nao foi definido. Seed do admin ignorado.')
+            else:
+                nova_senha_hash = generate_password_hash(admin_password)
+                admin_master = User(
+                    name='Spotted Social',
+                    username=admin_username,
+                    password=nova_senha_hash,
+                    is_admin=True,
+                    bio='Sistema',
+                )
+                db.session.add(admin_master)
 
     db.session.commit()
 

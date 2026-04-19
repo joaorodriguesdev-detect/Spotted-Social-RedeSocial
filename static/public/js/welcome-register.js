@@ -11,6 +11,7 @@
     const uniEl = document.getElementById('reg-university');
     const uniList = document.getElementById('uni-list');
     const passEl = document.getElementById('reg-password');
+    const confirmPassEl = document.getElementById('reg-confirm-password');
     const submitBtn = document.getElementById('registro-submit');
     const otherWrapper = document.getElementById('other-uni-wrapper');
     const otherInput = document.getElementById('reg-university-other');
@@ -20,6 +21,7 @@
     const errUser = document.getElementById('err-username');
     const errUni = document.getElementById('err-university');
     const errPass = document.getElementById('err-password');
+    const errConfirmPass = document.getElementById('err-confirm-password');
 
     let _focusHandler = null;
     let _previousActive = null;
@@ -217,18 +219,25 @@
         validateAll();
     }
 
+    uniEl.addEventListener('focus', ()=>{
+        const current = (uniEl.value || '').trim().toLowerCase();
+        const filtered = current
+            ? universities.filter(u => u.toLowerCase().includes(current))
+            : universities.slice();
+        showList(filtered);
+    });
+
     uniEl.addEventListener('input', (e)=>{
         const v = e.target.value.trim();
         if(!v){ if(uniPortal) { uniPortal.classList.add('hidden'); } validateField(uniEl); validateAll(); return; }
         const filtered = universities.filter(u => u.toLowerCase().includes(v.toLowerCase()));
         // debounce showList to avoid rapid DOM updates
-        debounceShowList(filtered);
-        // If user typed 'outra' explicitly, show other input
+        debounceShowList(filtered.length ? filtered : universities.slice(0, 6));
+        // Only show free-input field when user explicitly selects/uses "Outra"
         if(v.toLowerCase() === 'outra'){
             uniEl.removeAttribute('name');
             otherInput.setAttribute('name','university');
             otherWrapper.classList.remove('hidden');
-            otherInput.focus();
         } else {
             // ensure other input hidden
             otherWrapper.classList.add('hidden');
@@ -292,7 +301,8 @@
     });
 
     nameEl.addEventListener('input', ()=> { validateField(nameEl); validateAll(); });
-    passEl.addEventListener('input', ()=> { validateField(passEl); validateAll(); });
+    passEl.addEventListener('input', ()=> { validateField(passEl); validateField(confirmPassEl); validateAll(); });
+    confirmPassEl && confirmPassEl.addEventListener('input', ()=> { validateField(confirmPassEl); validateAll(); });
 
     function validateField(el){
         if(el === nameEl){
@@ -312,14 +322,13 @@
             if(v.toLowerCase() === 'outra'){
                 const okOther = otherInput && otherInput.value.trim().length >= 2;
                 otherErr && otherErr.classList.toggle('hidden', okOther);
-                errUni.textContent = okOther ? 'Preencha sua universidade.' : 'Escolha uma universidade da lista.';
-                // hide main err if other is okay
+                errUni.textContent = okOther ? 'Informe sua instituicao.' : 'Informe sua instituicao.';
                 errUni.classList.toggle('hidden', okOther);
                 return okOther;
             }
-            // Force selection: must exactly match one known university (case-insensitive)
-            const ok = universities.some(u => u.toLowerCase() === v.toLowerCase());
-            errUni.textContent = ok ? 'Preencha sua universidade.' : 'Escolha uma universidade da lista.';
+            // User can type or choose from options.
+            const ok = v.length >= 2;
+            errUni.textContent = ok ? 'Informe sua instituicao.' : 'Digite ao menos 2 caracteres da instituicao.';
             errUni.classList.toggle('hidden', ok);
             return ok;
         }
@@ -329,8 +338,15 @@
             return ok;
         }
         if(el === passEl){
-            const ok = el.value.length >= 6;
+            const hasSpecial = /[#@$%*]/.test(el.value || '');
+            const ok = el.value.length >= 8 && hasSpecial;
             errPass.classList.toggle('hidden', ok);
+            return ok;
+        }
+        if(el === confirmPassEl){
+            if(!confirmPassEl) return true;
+            const ok = (confirmPassEl.value || '') === (passEl.value || '') && confirmPassEl.value.length > 0;
+            errConfirmPass && errConfirmPass.classList.toggle('hidden', ok);
             return ok;
         }
         return false;
@@ -338,12 +354,12 @@
 
     function validateAll(){
         const uniValid = validateField(uniEl) || (otherInput && validateField(otherInput));
-        const all = validateField(nameEl) && validateField(usernameEl) && uniValid && validateField(passEl);
+        const all = validateField(nameEl) && validateField(usernameEl) && uniValid && validateField(passEl) && validateField(confirmPassEl);
         submitBtn.disabled = !all;
     }
 
     // run on changes
-    [nameEl, usernameEl, uniEl, passEl, otherInput].forEach(i => i && i.addEventListener('input', validateAll));
+    [nameEl, usernameEl, uniEl, passEl, confirmPassEl, otherInput].forEach(i => i && i.addEventListener('input', validateAll));
 
     // initial run
     validateAll();
@@ -353,4 +369,3 @@
     form && form.addEventListener('submit', function(e){ if(submitBtn.disabled){ e.preventDefault(); } });
 
 })();
-

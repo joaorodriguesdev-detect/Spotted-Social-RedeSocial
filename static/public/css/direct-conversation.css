@@ -1805,3 +1805,180 @@ body.dark-mode {
     opacity: 0.6;
 }
 
+/* Clean conversation theme with light + dark compatibility */
+.conversation-shell {
+    background: #f7f9fc;
+}
+
+.conversation-header {
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid #e5e9f2;
+    box-shadow: none;
+}
+
+.conversation-subtitle {
+    color: #64748b;
+}
+
+.conversation-header-btn {
+    border-color: #dbe2f0;
+    background: #f8fafc;
+    color: #334155;
+}
+
+.conversation-body {
+    background: #f7f9fc;
+    padding-top: 0.75rem;
+    padding-bottom: calc(var(--direct-composer-h) + 0.5rem);
+}
+
+.conversation-day-divider {
+    color: #64748b;
+    font-weight: 600;
+}
+
+.conversation-bubble {
+    border: 1px solid transparent;
+    box-shadow: none;
+    border-radius: 1.2rem;
+    padding: 0.56rem 0.82rem;
+}
+
+.conversation-bubble-in {
+    background: #ffffff;
+    border-color: #dbe2f0;
+    color: #0f172a;
+    border-top-left-radius: 0.45rem;
+}
+
+.conversation-bubble-out {
+    background: #1d9bf0;
+    border-color: #1d9bf0;
+    color: #ffffff;
+    border-top-right-radius: 0.45rem;
+}
+
+.conversation-sender-label {
+    color: #64748b;
+    font-size: 10px;
+    letter-spacing: 0;
+}
+
+.conversation-status {
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.conversation-pinned,
+.conversation-search-panel {
+    background: rgba(255, 255, 255, 0.96);
+    border-color: #e5e9f2;
+}
+
+.conversation-pinned-card {
+    background: #f8fafc;
+    border-color: #dbe2f0;
+}
+
+.conversation-search-clear {
+    border: 1px solid #dbe2f0;
+    background: #f8fafc;
+    color: #334155;
+    border-radius: 999px;
+    padding: 0.34rem 0.65rem;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.conversation-composer {
+    background: rgba(255, 255, 255, 0.98);
+    border-top: 1px solid #e5e9f2;
+    box-shadow: none;
+    padding-top: 0.55rem;
+}
+
+.conversation-attach-btn {
+    border-color: #dbe2f0;
+    background: #f8fafc;
+    color: #475569;
+}
+
+.conversation-message-input {
+    background: #ffffff;
+    border: 1px solid #dbe2f0;
+    color: #0f172a;
+}
+
+.conversation-message-input::placeholder {
+    color: #94a3b8;
+}
+
+.conversation-message-input:focus {
+    border-color: #1d9bf0;
+    box-shadow: 0 0 0 1px #1d9bf0;
+}
+
+#conversation-send-button.conversation-send-btn.conversation-send-icon {
+    min-width: 42px;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 999px;
+    background: #1d9bf0;
+    box-shadow: none;
+}
+
+#conversation-send-button.conversation-send-btn.conversation-send-icon:not(:disabled):hover {
+    background: #1a8cd8;
+    transform: none;
+}
+
+body.dark-mode .conversation-shell,
+body.dark-mode .conversation-body,
+body.dark-mode .conversation-header,
+body.dark-mode .conversation-composer,
+body.dark-mode .conversation-pinned,
+body.dark-mode .conversation-search-panel {
+    background: #000000;
+}
+
+body.dark-mode .conversation-header,
+body.dark-mode .conversation-composer,
+body.dark-mode .conversation-pinned,
+body.dark-mode .conversation-search-panel {
+    border-color: #2f3336;
+}
+
+body.dark-mode .conversation-message-input,
+body.dark-mode .conversation-attach-btn,
+body.dark-mode .conversation-header-btn,
+body.dark-mode .conversation-search-clear,
+body.dark-mode .conversation-pinned-card {
+    background: #111318;
+    border-color: #2f3336;
+}
+
+body.dark-mode .conversation-subtitle,
+body.dark-mode .conversation-day-divider,
+body.dark-mode .conversation-sender-label {
+    color: #8b98a5;
+}
+
+body.dark-mode .conversation-message-input {
+    color: #e7e9ea;
+}
+
+body.dark-mode .conversation-message-input::placeholder {
+    color: #71767b;
+}
+
+body.dark-mode .conversation-bubble-in {
+    background: #16181c;
+    border-color: #2f3336;
+}
+
+body.dark-mode .conversation-bubble-out {
+    background: #1d9bf0;
+    border-color: #1d9bf0;
+}
+

@@ -35,14 +35,16 @@ from services.direct_service import (
     users_follow_each_other,
 )
 from services.notification_service import create_notification
+from services.security_service import build_contains_pattern, build_prefix_pattern
 
 direct_bp = Blueprint('direct', __name__)
 
 @direct_bp.route('/api/users')
 def api_users():
-    q = request.args.get('q', '').lower()
+    q = (request.args.get('q') or '').strip().lower()
     if not q: return jsonify([])
-    users = User.query.filter(User.username.like(f'{q}%'), User.is_admin == False).limit(5).all()
+    prefix_pattern = build_prefix_pattern(q)
+    users = User.query.filter(User.username.ilike(prefix_pattern, escape='\\'), User.is_admin == False).limit(5).all()
     return jsonify([{'username': u.username, 'name': u.name} for u in users])
 
 
@@ -63,10 +65,11 @@ def api_direct_users():
     )
 
     if q:
+        safe_pattern = build_contains_pattern(q)
         query = query.filter(
             or_(
-                User.username.ilike(f'%{q}%'),
-                User.name.ilike(f'%{q}%')
+                User.username.ilike(safe_pattern, escape='\\'),
+                User.name.ilike(safe_pattern, escape='\\')
             )
         )
 
@@ -386,8 +389,6 @@ def api_direct_send_message(conversation_id):
     if len(content) > 500:
         return jsonify({'error': 'mensagem muito longa'}), 400
 
-    import time
-    t0 = time.time()
     message = DirectChatMessage(conversation_id=conversation_id, sender_id=current_user_id, content=content)
     db.session.add(message)
     db.session.flush()
@@ -414,15 +415,12 @@ def api_direct_send_message(conversation_id):
     if sender_membership:
         sender_membership.last_read_message_id = message.id
 
-    db_commit_start = time.time()
     try:
         db.session.commit()
     except Exception:
         db.session.rollback()
         current_app.logger.exception('Failed to commit direct message and notifications')
         return jsonify({'error': 'falha ao enviar mensagem'}), 500
-    db_commit_end = time.time()
-
     serialized = serialize_direct_message(message, current_user_id)
 
     # Emit message and notifications asynchronously so the request doesn't block on socket I/O
@@ -458,9 +456,6 @@ def api_direct_send_message(conversation_id):
     except Exception:
         current_app.logger.exception('Failed to start background emit tasks')
 
-    socketio_emit_end = time.time()
-    t1 = time.time()
-    current_app.logger.info(f"[PERF] POST /api/direct/conversations/{conversation_id}/messages total: {(t1-t0)*1000:.1f}ms | commit: {(db_commit_end-db_commit_start)*1000:.1f}ms | socketio-bg: {(socketio_emit_end-db_commit_end)*1000:.1f}ms")
     return jsonify({'message': serialized}), 201
 
 
@@ -671,8 +666,6 @@ def direct_conversation(username):
         flash('Conta administradora do sistema nao possui acesso ao Direct.')
         return redirect(url_for('feed'))
 
-    import time
-    t0 = time.time()
     clean_username = (username or '').strip().lower()
     if not clean_username:
         return redirect(url_for('direct'))
@@ -747,8 +740,6 @@ def direct_conversation(username):
         participant_cards=participant_cards
         , direct_enabled=current_app.config.get('DIRECT_ENABLED', True)
     )
-    t1 = time.time()
-    print(f"[PERF] /direct/conversa/{{username}} total: {{(t1-t0)*1000:.1f}}ms")
     return resp
     # NOTE: render_template already returns the response above; ensure direct_enabled passed via context
 

@@ -120,9 +120,15 @@
                     <div class="text-[13px] mb-2 group relative flex justify-between items-start" id="comment-view-{{ c.id }}" data-comment-id="{{ c.id }}">
                         <div class="flex-1 comment-content-wrapper">
                             <div class="flex items-center gap-1 flex-wrap">
+                                {% if c.user and c.user.is_admin %}
+                                <a href="{{ url_for('perfil', username=c.user.username) }}" class="hover:underline">
+                                    <span class="font-bold text-main">{{ c.user.name if c.user.name else c.user.username }}</span>
+                                </a>
+                                {% else %}
                                 <a href="{{ url_for('perfil', username=c.username) }}" class="hover:underline">
                                     <span class="font-bold text-main">{{ c.username }}</span>
                                 </a>
+                                {% endif %}
                                 {% if c.user %}
                                     {% if c.user.is_admin %}
                                         <i class="fa-solid fa-circle-check text-yellow-400 text-[11px]" title="Administrador"></i>

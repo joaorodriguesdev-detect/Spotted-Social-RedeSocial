@@ -1,23 +1,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
-from markupsafe import escape
-
 from extensions import socketio
 from models import MuralPost, Notification, User, br_time, db
 from services.notification_service import create_notification
+from services.security_service import build_contains_pattern, sanitize_user_text
 
 mural_bp = Blueprint('mural', __name__, url_prefix='/mural')
 
 # List of allowed categories for mural posts
 ALLOWED_CATEGORIES = ['Emprego', 'Saúde', 'Geral', 'Educação', 'Moradia', 'Eventos', 'Carona']
-
-def sanitize_input(text):
-    """Sanitize user input by escaping HTML special characters."""
-    if not text:
-        return ''
-    # Strip whitespace and limit length
-    clean_text = str(text).strip()[:1000]
-    # Escape HTML entities
-    return escape(clean_text)
 
 @mural_bp.route('/')
 def mural_list():
@@ -69,10 +59,10 @@ def criar_mural_post():
 
     if request.method == 'POST':
         # Get and sanitize form inputs
-        title = sanitize_input(request.form.get('title', ''))
-        content = sanitize_input(request.form.get('content', ''))
+        title = sanitize_user_text(request.form.get('title', ''), max_len=120)
+        content = sanitize_user_text(request.form.get('content', ''), max_len=2000)
         category = (request.form.get('category') or 'Geral').strip()
-        contact_info = sanitize_input(request.form.get('contact_info', ''))
+        contact_info = sanitize_user_text(request.form.get('contact_info', ''), max_len=160)
 
         # Validate inputs
         if not title or len(title) < 5:
@@ -138,9 +128,9 @@ def criar_mural_post():
 
             flash('Anúncio publicado com sucesso!')
             return redirect(url_for('mural.mural_list'))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            flash(f'Erro ao publicar anúncio: {str(e)}')
+            flash('Erro ao publicar anúncio.')
             return redirect(url_for('mural.criar_mural_post'))
 
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
@@ -167,10 +157,10 @@ def editar_mural_post(post_id):
 
     if request.method == 'POST':
         # Get and sanitize form inputs
-        title = sanitize_input(request.form.get('title', ''))
-        content = sanitize_input(request.form.get('content', ''))
+        title = sanitize_user_text(request.form.get('title', ''), max_len=120)
+        content = sanitize_user_text(request.form.get('content', ''), max_len=2000)
         category = (request.form.get('category') or post.category).strip()
-        contact_info = sanitize_input(request.form.get('contact_info', ''))
+        contact_info = sanitize_user_text(request.form.get('contact_info', ''), max_len=160)
 
         # Validate inputs
         if not title or len(title) < 5:
@@ -198,9 +188,9 @@ def editar_mural_post(post_id):
             db.session.commit()
             flash('Anúncio atualizado com sucesso!')
             return redirect(url_for('mural.mural_list'))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            flash(f'Erro ao atualizar anúncio: {str(e)}')
+            flash('Erro ao atualizar anúncio.')
             return redirect(url_for('mural.editar_mural_post', post_id=post_id))
 
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
@@ -231,9 +221,9 @@ def deletar_mural_post(post_id):
         db.session.delete(post)
         db.session.commit()
         flash('Anúncio deletado com sucesso!')
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        flash(f'Erro ao deletar anúncio: {str(e)}')
+        flash('Erro ao deletar anúncio.')
 
     return redirect(url_for('mural.mural_list'))
 
@@ -245,7 +235,7 @@ def api_search_mural():
     if 'user_id' not in session:
         return jsonify({'error': 'não autenticado'}), 401
 
-    q = (request.args.get('q') or '').strip().lower()
+    q = sanitize_user_text(request.args.get('q') or '', max_len=80).lower()
     category = (request.args.get('category') or '').strip()
 
     if not q:
@@ -258,9 +248,10 @@ def api_search_mural():
         query = query.filter_by(category=category)
 
     # Search in title and content
+    safe_pattern = build_contains_pattern(q)
     query = query.filter(
-        (MuralPost.title.ilike(f'%{q}%')) |
-        (MuralPost.content.ilike(f'%{q}%'))
+        (MuralPost.title.ilike(safe_pattern, escape='\\')) |
+        (MuralPost.content.ilike(safe_pattern, escape='\\'))
     ).order_by(MuralPost.timestamp.desc()).limit(20)
 
     results = query.all()

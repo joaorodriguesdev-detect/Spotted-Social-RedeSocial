@@ -38,15 +38,21 @@ def login():
 def registro():
     name = (request.form.get('name') or '').strip()
     username = (request.form.get('username') or '').lower().strip()
-    password = request.form.get('password')
+    password = request.form.get('password') or ''
+    confirm_password = request.form.get('confirm_password') or ''
     university = request.form.get('university')
 
     if ' ' in username:
         flash('O usuário não pode conter espaços.')
         return redirect(url_for('welcome'))
 
-    if not password or len(password) < 8 or not re.search(r"[!@#$%^&*()]", password):
-        flash('Senha inválida.')
+    if password != confirm_password:
+        flash('As senhas não coincidem.')
+        return redirect(url_for('welcome'))
+
+    # Require at least 8 chars and one special char from the allowed hint set.
+    if len(password) < 8 or not re.search(r'[#@$%*]', password):
+        flash('Senha inválida. Use 8+ caracteres e inclua ao menos um de: # @ $ % *')
         return redirect(url_for('welcome'))
 
     if User.query.filter_by(username=username).first():
@@ -72,4 +78,3 @@ def logout():
     session.clear()
     flash('Você foi desconectado com sucesso.')
     return redirect(url_for('welcome'))
-

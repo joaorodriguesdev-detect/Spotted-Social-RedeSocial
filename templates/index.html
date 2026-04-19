@@ -146,11 +146,12 @@
 <script>
     window.__INDEX_PAGE__ = {
         username: {{ session.get('username', '')|tojson }},
-    is_admin: {{ session.get('is_admin', false)|tojson }},
-    searching: {{ searching|default(false)|tojson }},
-    has_more: {{ has_more|default(false)|tojson }},
-    next_cursor_ts: {{ next_cursor_ts|default(None)|tojson }},
-    next_cursor_id: {{ next_cursor_id|default(None)|tojson }}
+        display_name: {{ session.get('name', '')|tojson }},
+        is_admin: {{ session.get('is_admin', false)|tojson }},
+        searching: {{ searching|default(false)|tojson }},
+        has_more: {{ has_more|default(false)|tojson }},
+        next_cursor_ts: {{ next_cursor_ts|default(None)|tojson }},
+        next_cursor_id: {{ next_cursor_id|default(None)|tojson }}
     };
 </script>
 <script src="{{ url_for('public_files', filename='js/index-search.js') }}"></script>

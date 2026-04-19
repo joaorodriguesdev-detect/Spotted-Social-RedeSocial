@@ -94,6 +94,8 @@ def create_app() -> Flask:
     sys.modules.setdefault('app', sys.modules[__name__])
 
     app.config.from_object(Config)
+    if not app.config.get('SECRET_KEY'):
+        raise RuntimeError('SECRET_KEY ausente. Defina SECRET_KEY no arquivo .env antes de iniciar a aplicacao.')
     app.permanent_session_lifetime = Config.PERMANENT_SESSION_LIFETIME
 
     if not os.path.isabs(app.config['PUBLIC_FOLDER']):
@@ -129,4 +131,6 @@ app = create_app()
 
 
 if __name__ == '__main__':
-    socketio.run(app, host='127.0.0.1', port=5000, debug=False)
+    auto_reload = os.getenv('APP_AUTO_RELOAD', 'true').strip().lower() in ('1', 'true', 'yes')
+    debug_mode = os.getenv('FLASK_DEBUG', 'true' if auto_reload else 'false').strip().lower() in ('1', 'true', 'yes')
+    socketio.run(app, host='127.0.0.1', port=5000, debug=debug_mode, use_reloader=auto_reload)

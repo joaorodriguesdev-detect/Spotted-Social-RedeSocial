@@ -1,4 +1,5 @@
 from flask import Blueprint, request, redirect, url_for, jsonify
+from services.security_service import build_prefix_pattern
 
 # Minimal Direct blueprint stub for local debugging.
 # This keeps the server startup fast and avoids circular import issues
@@ -9,12 +10,13 @@ direct_bp = Blueprint('direct', __name__)
 
 @direct_bp.route('/api/users')
 def api_users():
-    q = request.args.get('q', '').lower()
+    q = (request.args.get('q') or '').strip().lower()
     if not q:
         return jsonify([])
     try:
         from app import User
-        users = User.query.filter(User.username.like(f'{q}%'), User.is_admin == False).limit(5).all()
+        prefix_pattern = build_prefix_pattern(q)
+        users = User.query.filter(User.username.ilike(prefix_pattern, escape='\\'), User.is_admin == False).limit(5).all()
         return jsonify([{'username': u.username, 'name': u.name} for u in users])
     except Exception:
         return jsonify([])

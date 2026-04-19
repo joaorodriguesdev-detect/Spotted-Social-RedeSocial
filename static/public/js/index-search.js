@@ -128,16 +128,18 @@ function ajaxComment(event, form, postId) {
         const newComment = document.createElement('div');
         newComment.className = 'text-[13px] mb-1';
         const username = (window.__INDEX_PAGE__ && window.__INDEX_PAGE__.username) || '';
+        const displayName = (window.__INDEX_PAGE__ && window.__INDEX_PAGE__.display_name) || username;
         const isAdmin = Boolean(window.__INDEX_PAGE__ && window.__INDEX_PAGE__.is_admin);
-        const verifiedBadge = isAdmin
-            ? '<i class="fa-solid fa-circle-check text-blue-500 text-[11px] ml-1" title="Conta verificada"></i>'
+        const badgeHtml = isAdmin
+            ? '<i class="fa-solid fa-circle-check text-yellow-400 text-[11px] ml-1" title="Administrador"></i>'
             : '';
+        const shownName = isAdmin ? displayName : username;
 
         newComment.innerHTML = `
             <a href="/perfil/${username}" class="hover:underline">
-                <span class="font-bold text-main">${username}</span>
+                <span class="font-bold text-main">${shownName}</span>
             </a>
-            ${verifiedBadge}
+            ${badgeHtml}
             <span class="text-main ml-1">${content}</span>
             <span class="text-secondary text-[11px] ml-1">&middot; agora</span>
         `;
