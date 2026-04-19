@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Anúncio - Mural - Spotted{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-[600px] mx-auto px-4 py-6 pb-24">
+    <!-- Header -->
+    <div class="mb-8">
+        <a href="{{ url_for('mural.mural_list') }}" class="text-indigo-500 font-semibold text-sm hover:underline mb-4 inline-flex items-center gap-1">
+            <i class="fas fa-chevron-left"></i> Voltar
+        </a>
+        <h1 class="text-2xl font-bold text-main">Criar Novo Anúncio</h1>
+        <p class="text-sm text-secondary mt-2">Preencha os campos abaixo para publicar seu anúncio</p>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" class="bg-white dark:bg-gray-900 rounded-lg border twitter-border p-6 shadow-sm">
+        <!-- Título -->
+        <div class="mb-6">
+            <label for="title" class="block text-sm font-semibold text-main mb-2">
+                <i class="fas fa-heading mr-2"></i>Título *
+            </label>
+            <input type="text" id="title" name="title" maxlength="150"
+                   class="w-full px-4 py-2 rounded-lg form-field"
+                   placeholder="Ex: Dividir aluguel, Carona para tal lugar"
+                   required>
+            <p class="text-xs text-secondary mt-1">Mínimo 5 caracteres</p>
+        </div>
+
+        <!-- Categoria -->
+        <div class="mb-6">
+            <label for="category" class="block text-sm font-semibold text-main mb-2">
+                <i class="fas fa-tag mr-2"></i>Categoria *
+            </label>
+            <select id="category" name="category" class="w-full px-4 py-2 rounded-lg form-field" required>
+                <option value="">Selecione uma categoria</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}">
+                    {% if cat == 'Carona' %}
+                        <i class="fas fa-car"></i> {{ cat }}
+                    {% else %}
+                        {{ cat }}
+                    {% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Descrição -->
+        <div class="mb-6">
+            <label for="content" class="block text-sm font-semibold text-main mb-2">
+                <i class="fas fa-align-left mr-2"></i>Descrição *
+            </label>
+            <textarea id="content" name="content" maxlength="1000" rows="6"
+                      class="w-full px-4 py-2 rounded-lg form-field resize-none"
+                      placeholder="Descreva detalhes sobre sua oferta, serviço ou oportunidade..."
+                      required></textarea>
+            <p class="text-xs text-secondary mt-1">Mínimo 10 caracteres, máximo 1000</p>
+        </div>
+
+        <!-- Contato -->
+        <div class="mb-6">
+            <label for="contact_info" class="block text-sm font-semibold text-main mb-2">
+                <i class="fas fa-phone mr-2"></i>Informação de Contato *
+            </label>
+            <input type="text" id="contact_info" name="contact_info" maxlength="200"
+                   class="w-full px-4 py-2 rounded-lg form-field"
+                   placeholder="Ex: @seu_usuario | (XX) 9XXXX-XXXX | seu_email@domain.com"
+                   required>
+            <p class="text-xs text-secondary mt-1">Como as pessoas podem contatá-lo (mínimo 5 caracteres)</p>
+        </div>
+
+        <!-- Alerts -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                <div class="mb-6 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm">
+                    <i class="fas fa-exclamation-circle mr-2"></i>{{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+            <a href="{{ url_for('mural.mural_list') }}"
+               class="flex-1 px-4 py-3 rounded-lg bg-gray-200 dark:bg-gray-800 text-main font-semibold hover:bg-gray-300 dark:hover:bg-gray-700 transition text-center">
+                Cancelar
+            </a>
+            <button type="submit"
+                    class="flex-1 px-4 py-3 rounded-lg bg-indigo-500 text-white font-semibold hover:bg-indigo-600 transition active:scale-95">
+                <i class="fas fa-paper-plane mr-2"></i>Publicar
+            </button>
+        </div>
+    </form>
+
+    <!-- Info Box -->
+    <div class="mt-8 px-4 py-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-sm">
+        <p class="font-semibold mb-2">
+            <i class="fas fa-info-circle mr-2"></i>Dicas para um bom anúncio
+        </p>
+        <ul class="list-disc list-inside space-y-1 text-xs">
+            <li>Seja claro e conciso no título e descrição</li>
+            <li>Inclua informações de contato precisas</li>
+            <li>Escolha a categoria correta para melhor visibilidade</li>
+            <li>Evite caracteres especiais ou formatação excessiva</li>
+            <li>Respeite as regras da comunidade</li>
+        </ul>
+    </div>
+</div>
+
+<script>
+    // Real-time character count display
+    document.getElementById('title').addEventListener('input', function() {
+        const count = this.value.length;
+        console.log(`Título: ${count}/150 caracteres`);
+    });
+
+    document.getElementById('content').addEventListener('input', function() {
+        const count = this.value.length;
+        console.log(`Descrição: ${count}/1000 caracteres`);
+    });
+
+    document.getElementById('contact_info').addEventListener('input', function() {
+        const count = this.value.length;
+        console.log(`Contato: ${count}/200 caracteres`);
+    });
+
+    // Form validation before submit
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const title = document.getElementById('title').value.trim();
+        const content = document.getElementById('content').value.trim();
+        const category = document.getElementById('category').value;
+        const contact = document.getElementById('contact_info').value.trim();
+
+        if (title.length < 5) {
+            e.preventDefault();
+            alert('Título deve ter pelo menos 5 caracteres');
+            return false;
+        }
+        if (content.length < 10) {
+            e.preventDefault();
+            alert('Descrição deve ter pelo menos 10 caracteres');
+            return false;
+        }
+        if (!category) {
+            e.preventDefault();
+            alert('Selecione uma categoria');
+            return false;
+        }
+        if (contact.length < 5) {
+            e.preventDefault();
+            alert('Informação de contato deve ter pelo menos 5 caracteres');
+            return false;
+        }
+    });
+</script>
+{% endblock %}
+

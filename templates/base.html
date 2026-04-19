@@ -302,6 +302,50 @@
             }
         }
 
+        /* Mural toast notification styles */
+        .mural-toast {
+            background: white;
+            border: 1px solid #dbe2f0;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+            animation: slideIn 0.3s ease-out;
+        }
+        body.dark-mode .mural-toast {
+            background: #1f2937;
+            border-color: #374151;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .animate-slide-out {
+            animation: slideOut 0.3s ease-in;
+        }
+
     </style>
     {% block head_extra %}{% endblock %}
 </head>
@@ -355,6 +399,8 @@
         <a href="/feed" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path == '/feed' %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-house"></i>{% if current_path == '/feed' %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
         <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
+
+        <a href="/mural" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/mural') %}text-indigo-500{% else %}text-main{% endif %}" title="Mural"><i class="fa-solid fa-bullhorn"></i>{% if current_path.startswith('/mural') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
         <!-- Use a stable literal path for the Direct link so the navbar works even
              if the Direct blueprint/view registration changes. Keep the
              original template-based url_for for clarity in a data attribute. -->
@@ -732,6 +778,17 @@
                     console.error('Failed to handle notification:marked-read', e);
                 }
             });
+
+            // Handle new mural post notifications (broadcast to all connected clients)
+            socket.on('mural:new-post', (payload) => {
+                try {
+                    console.log('Novo post no mural recebido', payload);
+                    // Show a toast notification for new mural post
+                    showMuralNotification(payload);
+                } catch (e) {
+                    console.error('Failed to handle mural:new-post', e);
+                }
+            });
         } else {
             console.warn('Realtime notifications disabled on host:', _host);
         }
@@ -765,6 +822,47 @@
             // ignore
         }
     })();
+</script>
+<script>
+    // Toast notification for new mural posts
+    function showMuralNotification(payload) {
+        const container = document.getElementById('mural-toast-container') || createMuralToastContainer();
+
+        const toast = document.createElement('div');
+        toast.className = 'mural-toast animate-slide-in';
+        toast.innerHTML = `
+            <div class="flex items-start gap-3">
+                <div class="flex-1">
+                    <p class="font-semibold text-sm">📢 Novo anúncio no Mural</p>
+                    <p class="text-xs text-gray-600 mt-1"><strong>${payload.username}</strong> postou:</p>
+                    <p class="text-xs mt-1 line-clamp-2">${payload.title}</p>
+                    <p class="text-xs text-indigo-600 mt-2">Categoria: <strong>${payload.category}</strong></p>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600" onclick="this.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+
+        container.appendChild(toast);
+
+        // Auto-remove after 6 seconds
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.remove('animate-slide-in');
+                toast.classList.add('animate-slide-out');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 6000);
+    }
+
+    function createMuralToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'mural-toast-container';
+        container.className = 'fixed bottom-24 right-4 z-[999] space-y-2 max-w-sm';
+        document.body.appendChild(container);
+        return container;
+    }
 </script>
 <script>
     // Fallback: force navigation for anchors that use the Direct link template

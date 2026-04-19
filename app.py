@@ -731,6 +731,16 @@ class Event(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     creator = db.relationship('User', backref='my_events')
 
+class MuralPost(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(150), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), nullable=False, default='Geral')  # Ex: Emprego, Saúde, Geral
+    contact_info = db.Column(db.String(200), nullable=False)
+    timestamp = db.Column(db.DateTime, default=br_time)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    author = db.relationship('User', backref='mural_posts')
+
 with app.app_context():
     db.create_all()
     ensure_user_created_at_column()
@@ -971,6 +981,12 @@ def registro():
     # Persist session for the configured permanent lifetime (e.g. 7 days)
     session.permanent = True
     return redirect(url_for('feed.feed'))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Você foi desconectado com sucesso.')
+    return redirect(url_for('welcome'))
 
 # Feed routes moved to routes/feed.py blueprint
 
@@ -2161,6 +2177,7 @@ def direct_conversation(username):
 # Register blueprints
 from routes.feed import feed_bp
 from routes.perfil import perfil_bp
+from routes.mural import mural_bp
 try:
     # Prefer the full `routes.direct` blueprint when available. If the
     # full implementation is temporarily corrupted, fall back to a small
@@ -2171,6 +2188,7 @@ except Exception:
 
 app.register_blueprint(feed_bp)
 app.register_blueprint(perfil_bp)
+app.register_blueprint(mural_bp)
 app.register_blueprint(direct_bp)
 
 @socketio.on('connect')
@@ -2350,16 +2368,7 @@ def handle_direct_react(payload):
         'reactors': summary['reactors']
     }, room=conversation_room_name(conversation_id))
 
-# Event routes moved to routes/feed.py blueprint
-
-@app.route('/logout')
-def logout():
-    session.clear(); return redirect(url_for('welcome'))
-
 
 if __name__ == '__main__':
-    # Allow runtime configuration via environment variables for local/dev runs
-    debug = os.environ.get('FLASK_DEBUG', 'False').lower() in ('1', 'true', 'yes')
-    host = os.environ.get('FLASK_RUN_HOST', '127.0.0.1')
-    port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, debug=debug, host=host, port=port)
+    socketio.run(app, host='127.0.0.1', port=5000, debug=False)
+

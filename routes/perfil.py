@@ -1,4 +1,5 @@
 from flask import Blueprint, request, redirect, url_for, flash, session, render_template
+from markupsafe import escape
 
 # Defer imports from `app` into handlers to avoid circular import at module import time.
 
@@ -65,7 +66,7 @@ def editar_perfil():
     user = User.query.get(session['user_id'])
     name_post = request.form.get('name')
     university_post = request.form.get('university')
-    bio_post = request.form.get('bio')
+    bio_post = escape(request.form.get('bio'))  # Sanitize input
     if name_post:
         user.name = name_post[:80]
         session['name'] = user.name
@@ -139,5 +140,3 @@ def toggle_verificacao(username):
     status = "verificado" if user_to_verify.is_verified else "desverificado"
     flash(f'Usuário @{username} foi {status} com sucesso.')
     return redirect(url_for('perfil.perfil', username=username))
-
-

@@ -1,5 +1,6 @@
 from flask import Blueprint, request, redirect, url_for, flash, jsonify, render_template, session
 from sqlalchemy import or_
+from markupsafe import escape
 
 # Avoid importing `app` at module import time to prevent circular imports.
 # Import necessary symbols from `app` inside route handlers where needed.
@@ -163,7 +164,7 @@ def postar():
     if 'user_id' not in session: return redirect(url_for('welcome'))
     from app import Post, db, uuid, os, notify_mentions
 
-    content = request.form.get('content')
+    content = escape(request.form.get('content'))  # Sanitize input
     anon_mode = request.form.get('anon_mode') == 'true'
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
@@ -221,7 +222,7 @@ def comentar(post_id):
         return redirect(url_for('welcome'))
     from app import Comment, Post, db, notify_mentions, Notification
     
-    content = request.form.get('comment_content')
+    content = escape(request.form.get('comment_content'))  # Sanitize input
     post = Post.query.get_or_404(post_id)
     
     if not content or not content.strip():
@@ -489,4 +490,3 @@ def excluir_comentario(comment_id):
     db.session.commit()
 
     return redirect(url_for('feed.feed', _anchor=f"post-{post_id}"))
-
