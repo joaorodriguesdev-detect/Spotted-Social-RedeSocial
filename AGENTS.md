@@ -1,15 +1,15 @@
 # AGENTS Guide - spotted-social
 
 ## Snapshot
-- Monolith Flask app: models, filters, and startup setup remain in `app.py`, but HTTP route handlers are partially organized into blueprints under the `routes/` package (see `routes/feed.py`, `routes/perfil.py`, `routes/direct.py`). `app.py` still contains many routes, the SocketIO handlers, and the import-time initialization logic.
+  - Monolith Flask app scaffold: `app.py` now primarily wires the Flask application, registers blueprints and SocketIO, and delegates models and domain helpers to dedicated packages. HTTP route handlers are organized as blueprints under `routes/` (see `routes/feed.py`, `routes/perfil.py`, `routes/direct.py`, `routes/mural.py`, `routes/admin.py`, `routes/auth.py`, `routes/notifications.py`, `routes/public.py`). Many formerly in-file helpers and DB startup logic have been moved into the `services/` package and `models/` package (see notes below). `app.py` still contains some legacy routes and real-time SocketIO handlers but is no longer the single file holding all models/helpers.
 - Server-rendered Jinja views live in `templates/`.
 - User uploads are in `static/uploads/`; app-level public assets are in `static/public/` and served by the app.
 - Public assets are enumerated by `/public/` and served at `/public/<path:filename>`.
 - DB is Flask-SQLAlchemy with SQLite by default (`sqlite:///spotted.db`), overridable via `DATABASE_URL`.
 
 ## Core Architecture and Data Flow
-- `app.py` models: `User`, `Post`, `Comment`, `Notification`, `Message`, `Event`, plus messaging models `Conversation`, `ConversationMember`, and `DirectChatMessage` for the Direct/group chat feature.
-- Import-time startup runs `db.create_all()` and additional schema helpers (`ensure_*`) which may ALTER tables at runtime; the app also backfills nulls and seeds an `admin` user when missing.
+ - Models are defined in the `models/` package (`models/__init__.py`) and include: `User`, `Post`, `Comment`, `Notification`, `Message`, `Event`, `MuralPost`, plus messaging models `Conversation`, `ConversationMember`, `DirectChatMessage`, and `MessageReaction`. `models.__init__` also exposes `db`, `post_likes`, `followers` and helper `br_time()` used throughout the app.
+- Import-time startup is handled by `services.startup_service.initialize_database()` which runs `db.create_all()` and a set of `ensure_*` schema fixers (ALTER TABLE helpers), backfills nulls, and seeds an `admin` user when missing. `app.py` calls `initialize_database()` inside the application context during app creation.
 - Feed:
   - `/feed` renders initial chunk (`get_feed_chunk`).
   - `/feed/more` returns HTML partial (`_feed_posts.html`) for infinite scroll.
@@ -26,15 +26,12 @@ Note: blueprint registration is performed near the end of `app.py` (the file imp
 
 ### Key helper functions (quick pointers)
 
-- `get_feed_chunk(cursor_ts=None, cursor_id=None, limit=FEED_PAGE_SIZE)` — defined in `app.py`. Used by `/feed` and `/feed/more` to fetch a page of posts. Returns `(posts, has_more, next_cursor_ts, next_cursor_id)`. Example: `posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk()`.
-- `annotate_posts_with_like_info(posts, user_id)` — in `app.py`. Adds `liked_by_me` boolean to Post objects to avoid per-post queries before rendering partials/templates.
-- `build_event_post_content(title, location, event_date, description, username)` — in `app.py`. Produces the mirrored feed post body for events (marker: `📢 NOVO EVENTO:`). Used when creating events and when syncing edits.
-- `sync_event_feed_post(event, old_title, old_location, old_event_date, old_description)` — in `app.py`. Attempts to find and update the mirrored feed post when an `Event` is edited.
-- `ensure_group_conversation(slug)` — in `app.py`. Creates/synchronizes server-controlled group conversations using `GROUP_CHAT_PARTICIPANTS` / `GROUP_CHAT_ADMINS`. Called at import-time and by conversation routes.
-- `get_or_create_dm_conversation(current_user_id, target_user_id)` — in `app.py`. Finds an existing 1:1 conversation or creates a new one and membership rows.
-- `mark_conversation_read(conversation_id, user_id)` — in `app.py`. Updates the member's `last_read_message_id` and marks the latest message `all_read` when every member has seen it.
-- `is_direct_blocked_for_system_admin()`, `is_direct_temporarily_disabled_for_users()`, `is_direct_globally_disabled()` — helpers in `app.py` that govern Direct availability. The ad-hoc `@app.before_request` maintenance hook has been removed; Direct availability is now determined by `app.config['DIRECT_ENABLED']` (checked via `is_direct_globally_disabled()`). The other helper functions remain for compatibility and currently return False in the codebase.
-- `br_time()` — small helper in `app.py` returning a Brazil timezone-aware datetime (UTC-3). Used as default factory for model timestamps.
+- `get_feed_chunk(cursor_ts=None, cursor_id=None, limit=FEED_PAGE_SIZE)` — now defined in `services/feed_service.py`. Used by `/feed` and `/feed/more` to fetch a page of posts. Returns `(posts, has_more, next_cursor_ts, next_cursor_id)`. Example: `posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk()` (importable via `from services import get_feed_chunk`).
+- `annotate_posts_with_like_info(posts, user_id)` — in `services/feed_service.py`. Adds `liked_by_me` boolean to Post objects to avoid per-post queries before rendering partials/templates.
+- `build_event_post_content(title, location, event_date, description, username)` and `sync_event_feed_post(...)` — in `services/feed_service.py`. Produces and syncs the mirrored feed post body for events (marker: `📢 NOVO EVENTO:`).
+- Conversation / Direct helpers — moved to `services/direct_service.py`: `ensure_group_conversation(slug)`, `get_or_create_dm_conversation(current_user_id, target_user_id)`, `mark_conversation_read(conversation_id, user_id)`, `build_direct_inbox_items(...)`, `get_unread_message_count(...)`, `get_direct_unread_total(...)`, and related membership/serialization helpers.
+- Direct availability helpers (`is_direct_blocked_for_system_admin()`, `is_direct_temporarily_disabled_for_users()`, `is_direct_globally_disabled()`) now live in `services/direct_service.py` and consult `current_app.config['DIRECT_ENABLED']` where appropriate.
+- `br_time()` — small helper moved to `models/__init__.py` as `br_time()` and is used as the default factory for model timestamps.
 
 ## Real-time / Direct Chat
 - Uses `Flask-SocketIO` for presence, typing, and message broadcast events. Socket handlers live in `app.py` and use session auth.
@@ -53,9 +50,9 @@ Note: blueprint registration is performed near the end of `app.py` (the file imp
   - `FEED_PAGE_SIZE` — controls page size; allowed values are `6`, `8`, `12` (other values fallback to `8`).
 
   - `DIRECT_MAINTENANCE` — (retired) previously used to temporarily block non-admin users from Direct during maintenance; this environment variable is no longer consumed by the application. The temporary maintenance-before-request hook was removed and related helpers now return False for compatibility.
-  - Uploads / limits: `app.py` sets `UPLOAD_FOLDER` (`static/uploads`) and `MAX_CONTENT_LENGTH` (16MB). Be aware uploads are saved directly and there is no extension/content-type whitelist in the current code.
+  - Uploads / limits: configuration lives in `config.py` (see `Config.UPLOAD_FOLDER` and `Config.MAX_CONTENT_LENGTH`). By default uploads are stored under `static/uploads` and MAX_CONTENT_LENGTH has been increased from earlier notes (the repo default is 30MB via `Config`). Be aware uploads are saved directly and there is no extension/content-type whitelist in the current code (see `services/image_service.py` for image helper utilities used by upload flows).
 
-    - `DIRECT_ENABLED` — the application sets `app.config['DIRECT_ENABLED'] = True` at startup in `app.py`. Direct availability is now determined by `is_direct_globally_disabled()` which checks this config. Note: because `DIRECT_ENABLED` is forced True in the current code, disabling Direct globally requires changing `app.py` or configuration at runtime.
+    - `DIRECT_ENABLED` — controlled via `config.py` (`Config.DIRECT_ENABLED`, environ var `DIRECT_ENABLED`) and consulted by `services/direct_service.is_direct_globally_disabled()`. Disabling Direct globally is done via configuration rather than editing `app.py`.
 
 ## Project Conventions That Matter
 - Session contract used across templates/routes: `user_id`, `username`, `name`, `is_admin`, `profile_pic`.
@@ -80,7 +77,7 @@ These are items found during review that need attention before production use:
 
 - Rate limiting & brute-force protections: login and APIs do not implement rate limiting. Add a rate limiter (Flask-Limiter) to protect sensitive endpoints.
 
-- Ad-hoc migration / fix scripts present: `migrar.py` and `corrigir_vazios.py` are included in the repo to perform SQLite DDL/cleanup. Both reference a hardcoded `DB_PATH` (`/home/SpottedSocial/...`) and should be inspected/edited before running on your machine. Prefer using a disposable DB or proper migration tooling instead.
+ - Ad-hoc scripts present in `scripts/`: `scripts/check_feed.py` (simple smoke test using Flask's `test_client` that fetches `/feed`) and `scripts/convert_uploads_to_webp.py` (converts image files under `static/uploads` to WebP and can optionally update DB image links). There are no `migrar.py` / `corrigir_vazios.py` files in this repository snapshot; if you rely on ad-hoc DDL/fix scripts, search the repo or implement migration steps carefully. Prefer using proper migration tooling (Alembic / Flask-Migrate) instead.
 
 - A basic end-to-end test exists at `tests/run_direct_all_read_test.py` which exercises the Direct "all read" flow using Flask's `test_client` and Flask-SocketIO's `test_client`. Run it from the repository root with:
 
@@ -113,7 +110,7 @@ These are items found during review that need attention before production use:
   python -u tests/run_direct_all_read_test.py
   ```
 
-- Migration helpers (ad-hoc): `migrar.py` and `corrigir_vazios.py` exist to apply DDL and fix nulls for SQLite. They contain a `DB_PATH` constant that points at `/home/SpottedSocial/...` by default - edit this path before running on your environment. Prefer running these against a copy of the DB.
+ - Migration helpers (ad-hoc): database initialization and ALTER helpers are implemented in `services/startup_service.py` (called by `app.create_app()` via `initialize_database()`). There are no `migrar.py` / `corrigir_vazios.py` files in this workspace snapshot; inspect `services/startup_service.py` if you need to understand runtime ALTER TABLE helpers and which columns are backfilled. Prefer running any destructive scripts against a copy of the DB.
 
 ## Recommended Immediate Improvements (actionable checklist)
 1. Replace hardcoded admin seeding with environment-driven value or document the default admin behavior clearly and rotate the password before production.
@@ -131,7 +128,7 @@ These are items found during review that need attention before production use:
 - Keep route/template pairs in sync; this codebase is tightly coupled by context variables.
 - If moving/renaming public assets, update `url_for('public_files', filename=...)` references in templates.
 
-- Change safety: the ad-hoc scripts (`migrar.py`, `corrigir_vazios.py`) and the tests in `tests/` will modify the SQLite DB (`instance/spotted.db`). Always work on a copy or disposable DB and update hardcoded `DB_PATH` constants in those scripts before running.
+- Change safety: the ad-hoc scripts in `scripts/` (for example `convert_uploads_to_webp.py`) and the tests in `tests/` will modify the SQLite DB (`instance/spotted.db`). Always work on a copy or disposable DB and inspect any script before running.
 
 If you want, I can open a PR with a small set of changes: (a) update the mutual-follow error message in `app.py`, (b) add a minimal ALLOWED_EXTENSIONS check for uploads, and (c) add documentation to `README.md` describing env vars and the seeded admin note. Tell me which items you'd like implemented and I'll apply them.
 
