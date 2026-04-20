@@ -7,7 +7,7 @@
 {% block content %}
 {% include "_top_tabs.html" %}
 
-<div class="w-full max-w-[600px] mx-auto px-4 py-6 pb-24 mural-surface rounded-xl">
+<div class="app-page-shell app-content-wrap mural-surface rounded-xl">
     <!-- Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between mb-6">
@@ -39,9 +39,9 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {% if posts %}
             {% for post in posts %}
-            <div class="mural-card rounded-lg border twitter-border shadow-sm hover:shadow-md transition overflow-hidden">
+            <div class="mural-card shadow-sm hover:shadow-md transition overflow-hidden">
                 <!-- Card Header -->
-                <div class="p-4 border-b twitter-border">
+                <div class="app-card-section border-b twitter-border">
                     <div class="flex items-start justify-between mb-3">
                         <div class="flex-1">
                             <h3 class="text-lg font-bold mural-title leading-tight line-clamp-2">{{ post.title }}</h3>
@@ -73,12 +73,12 @@
                 </div>
 
                 <!-- Card Body -->
-                <div class="p-4">
+                <div class="app-card-section">
                     <p class="text-sm mural-title line-clamp-3 leading-relaxed">{{ post.content }}</p>
                 </div>
 
                 <!-- Card Footer -->
-                <div class="px-4 py-3 mural-card-footer border-t twitter-border space-y-3">
+                <div class="app-card-section mural-card-footer border-t twitter-border space-y-3">
                     <!-- Contact Info -->
                     <div class="text-xs mural-contact p-2 rounded">
                         <i class="fas fa-phone mr-2"></i>
@@ -162,12 +162,12 @@
         display: none;
     }
 
-    .mural-surface { background: rgba(255, 255, 255, 0.95); }
+    .mural-surface { background: transparent; }
     .mural-title { color: #0f172a; }
     .mural-muted { color: #64748b; }
     .mural-chip { background: #e2e8f0; color: #334155; }
     .mural-chip:hover { background: #cbd5e1; }
-    .mural-card { background: #ffffff; }
+    .mural-card { background: var(--sp-card-bg); border-color: var(--sp-card-border); border-radius: var(--sp-card-radius); }
     .mural-card-footer { background: #f8fafc; }
     .mural-contact { background: #eef2ff; color: #4338ca; }
     .mural-dropdown { background: #ffffff; }
@@ -175,12 +175,12 @@
     .mural-page-btn { background: #f1f5f9; }
     .mural-page-btn:hover { background: #e2e8f0; }
 
-    body.dark-mode .mural-surface { background: rgba(15, 17, 21, 0.96); }
+    body.dark-mode .mural-surface { background: transparent; }
     body.dark-mode .mural-title { color: #e7e9ea; }
     body.dark-mode .mural-muted { color: #8b98a5; }
     body.dark-mode .mural-chip { background: #2f3336; color: #e7e9ea; }
     body.dark-mode .mural-chip:hover { background: #3a3f45; }
-    body.dark-mode .mural-card { background: #16181c; border-color: #2f3336; }
+    body.dark-mode .mural-card { background: var(--sp-card-bg); border-color: var(--sp-card-border); }
     body.dark-mode .mural-card-footer { background: #0f1115; }
     body.dark-mode .mural-contact { background: rgba(99, 102, 241, 0.18); color: #c7d2fe; }
     body.dark-mode .mural-dropdown { background: #16181c; border-color: #2f3336; }

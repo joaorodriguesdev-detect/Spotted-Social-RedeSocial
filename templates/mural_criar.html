@@ -3,7 +3,7 @@
 {% block title %}Criar Anúncio - Mural - Spotted{% endblock %}
 
 {% block content %}
-<div class="w-full max-w-[600px] mx-auto px-4 py-6 pb-24 mural-form-surface rounded-xl">
+<div class="app-page-shell app-content-wrap mural-form-surface rounded-xl">
     <!-- Header -->
     <div class="mb-8">
         <a href="{{ url_for('mural.mural_list') }}" class="text-indigo-500 font-semibold text-sm hover:underline mb-4 inline-flex items-center gap-1">
@@ -14,7 +14,7 @@
     </div>
 
     <!-- Form -->
-    <form method="POST" class="mural-form-card rounded-lg border twitter-border p-6 shadow-sm">
+    <form method="POST" class="mural-form-card app-card-section border twitter-border shadow-sm">
         <!-- Título -->
         <div class="mb-6">
             <label for="title" class="block text-sm font-semibold text-main mb-2">
@@ -158,14 +158,14 @@
 
 <style>
     .mural-form-surface { background: rgba(255, 255, 255, 0.95); }
-    .mural-form-card { background: #ffffff; }
+    .mural-form-card { background: var(--sp-card-bg); border-color: var(--sp-card-border); border-radius: var(--sp-card-radius); }
     .mural-alert { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
     .mural-cancel-btn { background: #e5e7eb; }
     .mural-cancel-btn:hover { background: #d1d5db; }
     .mural-info-box { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
 
     body.dark-mode .mural-form-surface { background: rgba(15, 17, 21, 0.96); }
-    body.dark-mode .mural-form-card { background: #16181c; border-color: #2f3336; }
+    body.dark-mode .mural-form-card { background: var(--sp-card-bg); border-color: var(--sp-card-border); }
     body.dark-mode .mural-alert { background: rgba(127, 29, 29, 0.28); border-color: #7f1d1d; color: #fecaca; }
     body.dark-mode .mural-cancel-btn { background: #1f2937; color: #e5e7eb; }
     body.dark-mode .mural-cancel-btn:hover { background: #374151; }

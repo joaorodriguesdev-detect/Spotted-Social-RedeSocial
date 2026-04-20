@@ -126,22 +126,62 @@ function ajaxComment(event, form, postId) {
         }
 
         const newComment = document.createElement('div');
-        newComment.className = 'text-[13px] mb-1';
+        newComment.className = 'comment-item text-[13px] mb-2 group relative flex justify-between items-start';
         const username = (window.__INDEX_PAGE__ && window.__INDEX_PAGE__.username) || '';
         const displayName = (window.__INDEX_PAGE__ && window.__INDEX_PAGE__.display_name) || username;
         const isAdmin = Boolean(window.__INDEX_PAGE__ && window.__INDEX_PAGE__.is_admin);
+        const safeUsername = String(username || '').replace(/[^a-zA-Z0-9_]/g, '');
+        const initial = (safeUsername || 'u').charAt(0).toUpperCase();
+        const safeContent = String(content || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
         const badgeHtml = isAdmin
             ? '<i class="fa-solid fa-circle-check text-yellow-400 text-[11px] ml-1" title="Administrador"></i>'
             : '';
         const shownName = isAdmin ? displayName : username;
+        const safeShownName = String(shownName || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+        const safeHandle = String(safeUsername || username || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#039;');
 
         newComment.innerHTML = `
-            <a href="/perfil/${username}" class="hover:underline">
-                <span class="font-bold text-main">${shownName}</span>
-            </a>
-            ${badgeHtml}
-            <span class="text-main ml-1">${content}</span>
-            <span class="text-secondary text-[11px] ml-1">&middot; agora</span>
+            <div class="comment-avatar-col" aria-hidden="true">
+                <span class="comment-avatar">${initial}</span>
+            </div>
+            <div class="flex-1 comment-content-wrapper">
+                <div class="comment-meta-row flex items-center gap-1 flex-wrap">
+                    <a href="/perfil/${encodeURIComponent(username)}" class="hover:underline">
+                        <span class="font-bold text-main">${safeShownName}</span>
+                    </a>
+                    ${badgeHtml}
+                    <a href="/perfil/${encodeURIComponent(username)}" class="text-secondary text-[12px] hover:underline">@${safeHandle}</a>
+                    <span class="text-secondary text-[11px]">&middot;</span>
+                    <span class="text-secondary text-[11px]">agora</span>
+                </div>
+                <p class="comment-text text-main mt-1 leading-relaxed">${safeContent}</p>
+                <div class="comment-engagement-row mt-2 flex items-center gap-6 text-secondary">
+                    <button type="button" class="comment-engagement-btn interactive-control" aria-label="Curtir comentário">
+                        <i class="fa-regular fa-heart text-[13px]"></i>
+                    </button>
+                    <button type="button" class="comment-engagement-btn interactive-control" aria-label="Responder comentário">
+                        <i class="fa-regular fa-comment text-[13px]"></i>
+                    </button>
+                    <button type="button" class="comment-engagement-btn interactive-control" aria-label="Compartilhar comentário">
+                        <i class="fa-solid fa-retweet text-[13px]"></i>
+                    </button>
+                </div>
+            </div>
         `;
 
         container.appendChild(newComment);

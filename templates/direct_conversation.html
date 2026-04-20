@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="conversation-shell max-w-[600px] mx-auto flex flex-col min-h-0" data-target-username="{{ target_username }}" data-current-username="{{ session.get('username', '') }}" data-current-user-id="{{ current_user_id or session.get('user_id', '') }}" data-conversation-id="{{ conversation_id or '' }}" data-is-group-admin="{{ 'true' if is_group_admin else 'false' }}">
+<div class="app-page-shell conversation-shell max-w-[600px] mx-auto flex flex-col min-h-0" data-target-username="{{ target_username }}" data-current-username="{{ session.get('username', '') }}" data-current-user-id="{{ current_user_id or session.get('user_id', '') }}" data-conversation-id="{{ conversation_id or '' }}" data-is-group-admin="{{ 'true' if is_group_admin else 'false' }}">
     <div class="conversation-header px-4 py-3 border-b twitter-border flex items-center justify-between gap-3">
         <div class="flex items-center gap-3 min-w-0">
             <a href="{{ url_for('direct') }}" class="interactive-control w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Voltar para DM">

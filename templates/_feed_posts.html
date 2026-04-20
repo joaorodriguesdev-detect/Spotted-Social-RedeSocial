@@ -1,6 +1,6 @@
 {% for post in posts %}
-<div id="post-{{ post.id }}" class="twitter-card transition">
-    <div class="flex space-x-3 p-4">
+<div id="post-{{ post.id }}" class="twitter-card feed-post-card transition">
+    <div class="flex space-x-3 app-card-section">
         <div class="w-9 h-9 rounded-full bg-indigo-600 flex-shrink-0 flex items-center justify-center text-white font-bold uppercase overflow-hidden text-base">
             {% if post.is_anonymous %}
                 ?
@@ -114,21 +114,29 @@
                 </div>
             </div>
             <!-- COMMENTS -->
-            <div id="comments-{{ post.id }}" class="mt-3">
-                <div id="comments-container-{{ post.id }}">
+            <div id="comments-{{ post.id }}" class="mt-3 comment-thread">
+                <div id="comments-container-{{ post.id }}" class="comment-thread-list">
                     {% for c in post.comments %}
-                    <div class="text-[13px] mb-2 group relative flex justify-between items-start" id="comment-view-{{ c.id }}" data-comment-id="{{ c.id }}">
-                        <div class="flex-1 comment-content-wrapper">
-                            <div class="flex items-center gap-1 flex-wrap">
-                                {% if c.user and c.user.is_admin %}
-                                <a href="{{ url_for('perfil', username=c.user.username) }}" class="hover:underline">
-                                    <span class="font-bold text-main">{{ c.user.name if c.user.name else c.user.username }}</span>
-                                </a>
+                    {% set comment_username = c.user.username if c.user else c.username %}
+                    {% set comment_name = c.user.name if c.user and c.user.name else c.username %}
+                    <div class="comment-item text-[13px] mb-2 group relative flex justify-between items-start" id="comment-view-{{ c.id }}" data-comment-id="{{ c.id }}">
+                        <div class="comment-avatar-col" aria-hidden="true">
+                            <span class="comment-avatar">
+                                {% if c.user and c.user.profile_pic %}
+                                <img src="{{ url_for('static', filename='uploads/' + c.user.profile_pic) }}" alt="Avatar de {{ comment_username }}" class="w-full h-full object-cover">
                                 {% else %}
-                                <a href="{{ url_for('perfil', username=c.username) }}" class="hover:underline">
-                                    <span class="font-bold text-main">{{ c.username }}</span>
-                                </a>
+                                {{ (comment_username or 'u')[0]|upper }}
                                 {% endif %}
+                            </span>
+                            {% if not loop.last %}
+                            <span class="comment-thread-segment"></span>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 comment-content-wrapper">
+                            <div class="comment-meta-row flex items-center gap-1 flex-wrap">
+                                <a href="{{ url_for('perfil', username=comment_username) }}" class="hover:underline">
+                                    <span class="font-bold text-main">{{ comment_name }}</span>
+                                </a>
                                 {% if c.user %}
                                     {% if c.user.is_admin %}
                                         <i class="fa-solid fa-circle-check text-yellow-400 text-[11px]" title="Administrador"></i>
@@ -136,19 +144,31 @@
                                         <i class="fa-solid fa-circle-check text-blue-500 text-[11px]" title="Verificado"></i>
                                     {% endif %}
                                 {% endif %}
-                                 <span class="text-main" id="comment-content-{{ c.id }}">{{ c.content }}</span>
-                                 {% if c.is_edited %}<span class="text-secondary text-[11px] ml-1">( editado )</span>{% endif %}
-                                 <span class="text-secondary text-[11px]">&middot;</span>
-                                 <span class="text-secondary text-[11px]">{{ c.timestamp | post_time }}</span>
+                                <a href="{{ url_for('perfil', username=comment_username) }}" class="text-secondary text-[12px] hover:underline">@{{ comment_username }}</a>
+                                <span class="text-secondary text-[11px]">&middot;</span>
+                                <span class="text-secondary text-[11px]">{{ c.timestamp | post_time }}</span>
+                            </div>
+                            <p class="comment-text text-main mt-1 leading-relaxed" id="comment-content-{{ c.id }}">{{ c.content }}</p>
+                            {% if c.is_edited %}<p class="text-secondary text-[11px] mt-0.5">( editado )</p>{% endif %}
+                            <div class="comment-engagement-row mt-2 flex items-center gap-6 text-secondary">
+                                <button type="button" class="comment-engagement-btn interactive-control" aria-label="Curtir comentário">
+                                    <i class="fa-regular fa-heart text-[13px]"></i>
+                                </button>
+                                <button type="button" class="comment-engagement-btn interactive-control" aria-label="Responder comentário">
+                                    <i class="fa-regular fa-comment text-[13px]"></i>
+                                </button>
+                                <button type="button" class="comment-engagement-btn interactive-control" aria-label="Compartilhar comentário">
+                                    <i class="fa-solid fa-retweet text-[13px]"></i>
+                                </button>
                             </div>
                         </div>
                         {% if session.get('username') == c.username %}
                         <!-- Menu de 3 pontinhos para opções de comentário -->
-                        <div class="relative ml-2">
+                        <div class="comment-actions-wrap">
                             <button type="button" onclick="toggleCommentMenu({{ c.id }})" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-700 transition" title="Opções">
                                 <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
                             </button>
-                            <div id="comment-menu-{{ c.id }}" class="hidden absolute right-0 mt-1 bg-white dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-50 min-w-48">
+                            <div id="comment-menu-{{ c.id }}" class="feed-comment-menu hidden bg-white dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg min-w-48">
                                 <button type="button" onclick="enableEditComment({{ c.id }})" class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-600 flex items-center gap-2 transition rounded-t-lg">
                                     <i class="fa-solid fa-pen text-indigo-500"></i> Editar
                                 </button>
@@ -162,7 +182,7 @@
                     </div>
                     {% if session.get('username') == c.username %}
                     <!-- Formulário de edição (inicialmente escondido) -->
-                    <div id="comment-edit-{{ c.id }}" class="hidden mt-2 mb-2 p-2 bg-indigo-50 dark:bg-zinc-700 rounded-lg">
+                    <div id="comment-edit-{{ c.id }}" class="feed-comment-edit-panel hidden mt-2 mb-2 p-2 bg-indigo-50 dark:bg-zinc-700 rounded-lg">
                         <div class="flex items-center gap-2">
                             <input type="text" id="comment-input-{{ c.id }}" maxlength="500" value="{{ c.content }}" class="form-field flex-1 text-[13px] p-1.5 rounded-lg border border-gray-200 dark:border-zinc-600 dark:bg-zinc-800" autocomplete="off" placeholder="Edite seu comentário...">
                             <button type="button" onclick="saveEditComment({{ c.id }})" class="interactive-control bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-[13px] font-bold hover:bg-indigo-600 transition">Salvar</button>
@@ -185,12 +205,7 @@
                         action="/comentar/{{ post.id }}"
                         method="POST"
                         onsubmit="ajaxComment(event, this, {{ post.id }})"
-                        class="flex items-center cursor-pointer
-                            bg-white
-                            border border-gray-300
-                            focus-within:border-indigo-400
-                            rounded-full px-3 py-1
-                            transition-all duration-200"
+                        class="comment-composer flex w-full items-center cursor-pointer rounded-full px-3 py-1 transition-all duration-200"
                         onclick="if (event.target.tagName !== 'BUTTON') this.querySelector('input').focus();">
 
                         <input
@@ -198,18 +213,13 @@
                             name="comment_content"
                             id="in-{{post.id}}"
                             placeholder="Comente algo..."
-                            class="flex-1 bg-transparent outline-none text-base
-                                text-[#0f172a]
-                                placeholder:text-[#5b6b82]
-                                transition-colors"
+                            class="comment-composer-input flex-1 bg-transparent outline-none text-base transition-colors"
                             autocomplete="off"
                             style="font-size: 16px;">
 
                         <button
                             type="submit"
-                            class="interactive-control ml-3 px-4 py-1 text-sm font-medium
-                                text-indigo-600
-                                rounded-full transition-all">
+                            class="interactive-control comment-composer-submit ml-3 px-4 py-1 text-sm rounded-full transition-all">
                             Enviar
                         </button>
                     </form>
