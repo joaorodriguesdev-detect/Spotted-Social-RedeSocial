@@ -3,14 +3,17 @@ name: Deploy para Produção (Main)
 on:
   push:
     branches:
-      - main # O robô só acorda quando tem código novo na branch principal
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   testar_codigo:
     name: 🧪 Rodar Testes
     runs-on: ubuntu-latest
     steps:
-      - name: Puxar o código do repositório
+      - name: Puxar o código
         uses: actions/checkout@v4
 
       - name: Configurar Python
@@ -18,20 +21,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+      - name: Instalar libs de imagem no Runner
+        run: sudo apt-get update && sudo apt-get install -y libjpeg-dev zlib1g-dev libwebp-dev
+
       - name: Instalar dependências
         run: |
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --only-binary=:all: Pillow
           python -m pip install --no-cache-dir -r requirements.txt
+
   atualizar_servidor:
     name: 🚀 Deploy na VPS (Produção)
-    # needs: testar_codigo
+    needs: testar_codigo
     runs-on: ubuntu-latest
     environment: production
 
@@ -43,55 +44,67 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_SSH_PORT || '22' }}
-          # descomente só se sua chave privada tiver senha:
-          # passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
-          # recomendado:
-          # fingerprint: ${{ secrets.SERVER_FINGERPRINT }}
           script: |
             set -euo pipefail
-            APP_DIR="${{ secrets.APP_DIR || '/opt/spotted' }}"
-            PM2_PROCESS="${{ secrets.PM2_NAME || 'spotted-app' }}"
+
+            APP_DIR="${{ secrets.APP_DIR || '/opt/spotted-main' }}"
+            PM2_PROCESS="${{ secrets.PM2_NAME || 'spotted-main' }}"
             PORT="${{ secrets.PORT || '5000' }}"
             PM2_BIN="${{ secrets.PM2_BIN_PATH || '/root/.bun/bin/pm2' }}"
+            TARGET_BRANCH="main"
 
             echo "Preparando deploy de PRODUÇÃO para $APP_DIR na porta $PORT (processo $PM2_PROCESS)"
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
+            # Corrige ownership quando a pasta foi criada por outro usuário em deploy anterior
+            chown -R "$(whoami)":"$(whoami)" "$APP_DIR" || true
+
+            # Evita erro de dubious ownership do Git
+            git config --global --add safe.directory "$APP_DIR"
+
             if [ ! -d ".git" ]; then
               if [ -z "$(ls -A .)" ]; then
                 echo "Diretório vazio — clonando repositório pela primeira vez..."
-                git clone -b main https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git .
+                git clone -b "$TARGET_BRANCH" https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git .
               else
-                echo "Diretório existente sem .git — inicializando repositório e resetando para origin/main"
+                echo "Diretório existente sem .git — inicializando repositório e resetando para origin/$TARGET_BRANCH"
                 git init
                 git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" || true
                 git fetch --all --prune
-                git reset --hard origin/main
+                git reset --hard "origin/$TARGET_BRANCH"
               fi
             else
-              echo "Repositório Git detectado — buscando novidades da origin/main..."
+              echo "Repositório Git detectado — buscando novidades da origin/$TARGET_BRANCH..."
               git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
               git fetch --all --prune
+              git reset --hard "origin/$TARGET_BRANCH"
               git remote set-url origin "https://github.com/${{ github.repository }}.git"
             fi
 
             TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t deploy-test)
             echo "Criando árvore de teste em $TMP_DIR"
-            git archive origin/main | tar -x -C "$TMP_DIR"
+            git archive "origin/$TARGET_BRANCH" | tar -x -C "$TMP_DIR"
 
             if [ ! -d venv ]; then
               echo "Criando venv live..."
-              python3 -m venv venv || true
+              python3 -m venv venv
             fi
 
             source venv/bin/activate
-            python -m pip install --upgrade pip || true
-            python -m pip install --no-cache-dir -r requirements.txt || true
+            python -m pip install --upgrade pip
+            python -m pip install --no-cache-dir -r requirements.txt
 
             echo "Reiniciando processo $PM2_PROCESS (pm2 bin: $PM2_BIN)"
             $PM2_BIN restart "$PM2_PROCESS" --update-env || \
-            $PM2_BIN start ./venv/bin/gunicorn --interpreter ./venv/bin/python --name "$PM2_PROCESS" -- --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --workers 1 --bind 127.0.0.1:$PORT app:app
+            $PM2_BIN start ./venv/bin/gunicorn \
+              --interpreter ./venv/bin/python \
+              --name "$PM2_PROCESS" \
+              -- \
+              --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker \
+              --workers 1 \
+              --bind 127.0.0.1:$PORT \
+              app:app
 
             $PM2_BIN save || true
             echo "Deploy finalizado"
