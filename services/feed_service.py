@@ -31,8 +31,14 @@ def get_feed_chunk(cursor_ts=None, cursor_id=None, limit=8):
     next_cursor_ts = None
     next_cursor_id = None
     if posts:
-        next_cursor_ts = posts[-1].timestamp.isoformat()
-        next_cursor_id = posts[-1].id
+        last_post = posts[-1]
+        ts = getattr(last_post, 'timestamp', None)
+        try:
+            next_cursor_ts = ts.isoformat() if ts else None
+        except Exception:
+            # fallback seguro se timestamp for inesperado
+            next_cursor_ts = None
+        next_cursor_id = getattr(last_post, 'id', None)
 
     return posts, has_more, next_cursor_ts, next_cursor_id
 
@@ -49,13 +55,18 @@ def annotate_posts_with_like_info(posts, user_id):
     post_ids = [p.id for p in posts if p and getattr(p, 'id', None) is not None]
     liked_ids = set()
     if uid and post_ids:
-        rows = db.session.execute(
-            select(post_likes.c.post_id).where(
-                post_likes.c.user_id == uid,
-                post_likes.c.post_id.in_(post_ids),
-            )
-        ).all()
-        liked_ids = {r[0] for r in rows}
+        try:
+            rows = db.session.execute(
+                select(post_likes.c.post_id).where(
+                    post_likes.c.user_id == uid,
+                    post_likes.c.post_id.in_(post_ids),
+                )
+            ).all()
+            liked_ids = {r[0] for r in rows}
+        except Exception:
+            # Se houver qualquer problema com a tabela post_likes (schema inconsistente,
+            # tabela ausente, etc.), não interrompemos o carregamento do feed.
+            liked_ids = set()
 
     for p in posts:
         try:

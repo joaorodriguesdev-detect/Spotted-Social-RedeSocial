@@ -147,6 +147,7 @@
                                 <span class="text-secondary text-[11px]">&middot;</span>
                                 <span class="text-secondary text-[11px]">{{ c.timestamp | post_time }}</span>
                             </div>
+                            {% endif %}
                             <p class="comment-text text-main mt-1 leading-relaxed" id="comment-content-{{ c.id }}">{{ c.content }}</p>
                             {% if c.is_edited %}<p class="text-secondary text-[11px] mt-0.5">( editado )</p>{% endif %}
                             <div class="comment-engagement-row mt-2 flex items-center gap-6 text-secondary">
@@ -748,7 +749,7 @@
             }
         })
             .then(response => response.json())
-            .then(data => {
+            .then data => {
                 if (data.ok) {
                     // Remove the comment from DOM
                     const commentElement = document.getElementById(`comment-view-${commentId}`);

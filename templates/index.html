@@ -51,7 +51,7 @@
             {% if event_results %}
             <div class="grid gap-4">
                 {% for event in event_results %}
-                {% set event_date_parts = event.event_date.split(' Ã s ') %}
+                                {% set event_date_parts = event.event_date.split(' às ') %}
                 {% set raw_event_date = event_date_parts[0] if event_date_parts|length > 0 else event.event_date %}
                 {% set parsed_event_date = raw_event_date.split('-') %}
                 {% set event_date_label = raw_event_date %}
