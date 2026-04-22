@@ -138,16 +138,16 @@
                                     <span class="font-bold text-main">{{ comment_name }}</span>
                                 </a>
                                 {% if c.user %}
-                                {% if c.user.is_admin %}
-                                <i class="fa-solid fa-circle-check text-yellow-400 text-[11px]" title="Administrador"></i>
-                                {% elif c.user.is_verified %}
-                                <i class="fa-solid fa-circle-check text-blue-500 text-[11px]" title="Verificado"></i>
+                                    {% if c.user.is_admin %}
+                                    <i class="fa-solid fa-circle-check text-yellow-400 text-[11px]" title="Administrador"></i>
+                                    {% elif c.user.is_verified %}
+                                    <i class="fa-solid fa-circle-check text-blue-500 text-[11px]" title="Verificado"></i>
+                                    {% endif %}
+                                    <a href="{{ url_for('perfil', username=comment_username) }}" class="text-secondary text-[12px] hover:underline">@{{ comment_username }}</a>
+                                    <span class="text-secondary text-[11px]">&middot;</span>
+                                    <span class="text-secondary text-[11px]">{{ c.timestamp | post_time }}</span>
                                 {% endif %}
-                                <a href="{{ url_for('perfil', username=comment_username) }}" class="text-secondary text-[12px] hover:underline">@{{ comment_username }}</a>
-                                <span class="text-secondary text-[11px]">&middot;</span>
-                                <span class="text-secondary text-[11px]">{{ c.timestamp | post_time }}</span>
                             </div>
-                            {% endif %}
                             <p class="comment-text text-main mt-1 leading-relaxed" id="comment-content-{{ c.id }}">{{ c.content }}</p>
                             {% if c.is_edited %}<p class="text-secondary text-[11px] mt-0.5">( editado )</p>{% endif %}
                             <div class="comment-engagement-row mt-2 flex items-center gap-6 text-secondary">
@@ -160,38 +160,35 @@
                                 <button type="button" class="comment-engagement-btn interactive-control" aria-label="Compartilhar comentário">
                                     <i class="fa-solid fa-retweet text-[13px]"></i>
                                 </button>
-
                             </div>
                         </div>
                         {% if session.get('username') == c.username %}
-                        <!-- Menu de 3 pontinhos para opções de comentário -->
-                        <div class="comment-actions-wrap">
-                            <button type="button" onclick="toggleCommentMenu({{ c.id }})" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-700 transition" title="Opções">
-                                <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
-                            </button>
-                            <div id="comment-menu-{{ c.id }}" class="feed-comment-menu hidden bg-white dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg min-w-48">
-                                <button type="button" onclick="enableEditComment({{ c.id }})" class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-600 flex items-center gap-2 transition rounded-t-lg">
-                                    <i class="fa-solid fa-pen text-indigo-500"></i> Editar
+                            <!-- Menu de 3 pontinhos para opções de comentário -->
+                            <div class="comment-actions-wrap">
+                                <button type="button" onclick="toggleCommentMenu({{ c.id }})" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-700 transition" title="Opções">
+                                    <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
                                 </button>
-                                <div class="h-px bg-gray-200 dark:bg-zinc-600"></div>
-                                <button type="button" onclick="deleteComment({{ c.id }})" class="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition rounded-b-lg">
-                                    <i class="fa-solid fa-trash"></i> Deletar
-                                </button>
+                                <div id="comment-menu-{{ c.id }}" class="feed-comment-menu hidden bg-white dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg min-w-48">
+                                    <button type="button" onclick="enableEditComment({{ c.id }})" class="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-600 flex items-center gap-2 transition rounded-t-lg">
+                                        <i class="fa-solid fa-pen text-indigo-500"></i> Editar
+                                    </button>
+                                    <div class="h-px bg-gray-200 dark:bg-zinc-600"></div>
+                                    <button type="button" onclick="deleteComment({{ c.id }})" class="w-full px-4 py-2 text-left text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition rounded-b-lg">
+                                        <i class="fa-solid fa-trash"></i> Deletar
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                            <!-- Formulário de edição (inicialmente escondido) -->
+                            <div id="comment-edit-{{ c.id }}" class="feed-comment-edit-panel hidden mt-2 mb-2 p-2 bg-indigo-50 dark:bg-zinc-700 rounded-lg">
+                                <div class="flex items-center gap-2">
+                                    <input type="text" id="comment-input-{{ c.id }}" maxlength="500" value="{{ c.content }}" class="form-field flex-1 text-[13px] p-1.5 rounded-lg border border-gray-200 dark:border-zinc-600 dark:bg-zinc-800" autocomplete="off" placeholder="Edite seu comentário...">
+                                    <button type="button" onclick="saveEditComment({{ c.id }})" class="interactive-control bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-[13px] font-bold hover:bg-indigo-600 transition">Salvar</button>
+                                    <button type="button" onclick="cancelEditComment({{ c.id }})" class="interactive-control text-gray-600 dark:text-gray-400 px-3 py-1.5 rounded-lg text-[13px] hover:bg-gray-200 dark:hover:bg-zinc-600 transition">Cancelar</button>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">Máximo 500 caracteres</div>
+                            </div>
                         {% endif %}
                     </div>
-                    {% if session.get('username') == c.username %}
-                    <!-- Formulário de edição (inicialmente escondido) -->
-                    <div id="comment-edit-{{ c.id }}" class="feed-comment-edit-panel hidden mt-2 mb-2 p-2 bg-indigo-50 dark:bg-zinc-700 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <input type="text" id="comment-input-{{ c.id }}" maxlength="500" value="{{ c.content }}" class="form-field flex-1 text-[13px] p-1.5 rounded-lg border border-gray-200 dark:border-zinc-600 dark:bg-zinc-800" autocomplete="off" placeholder="Edite seu comentário...">
-                            <button type="button" onclick="saveEditComment({{ c.id }})" class="interactive-control bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-[13px] font-bold hover:bg-indigo-600 transition">Salvar</button>
-                            <button type="button" onclick="cancelEditComment({{ c.id }})" class="interactive-control text-gray-600 dark:text-gray-400 px-3 py-1.5 rounded-lg text-[13px] hover:bg-gray-200 dark:hover:bg-zinc-600 transition">Cancelar</button>
-                        </div>
-                        <div class="text-xs text-gray-500 mt-1">Máximo 500 caracteres</div>
-                    </div>
-                    {% endif %}
                     {% endfor %}
                 </div>
                 <!-- <div class="mt-2">
