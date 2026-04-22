@@ -1,7 +1,6 @@
 import os
 import uuid
 from datetime import datetime
-
 from flask import Blueprint, request, redirect, url_for, flash, jsonify, render_template, session
 from sqlalchemy import or_
 
@@ -23,19 +22,25 @@ feed_bp = Blueprint('feed', __name__)
 
 @feed_bp.route('/feed')
 def feed():
-    if 'user_id' not in session: return redirect(url_for('welcome'))
+    if 'user_id' not in session:
+        return redirect(url_for('welcome'))
 
-    posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk()
-    annotate_posts_with_like_info(posts, session.get('user_id'))
-    unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
-    return render_template(
-        'index.html',
-        posts=posts,
-        unread_count=unread,
-        has_more=has_more,
-        next_cursor_ts=next_cursor_ts,
-        next_cursor_id=next_cursor_id
-    )
+    try:
+        posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk()
+        annotate_posts_with_like_info(posts, session.get('user_id'))
+        unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
+        return render_template(
+            'index.html',
+            posts=posts,
+            unread_count=unread,
+            has_more=has_more,
+            next_cursor_ts=next_cursor_ts,
+            next_cursor_id=next_cursor_id
+        )
+    except Exception:
+        from flask import current_app
+        current_app.logger.exception("Erro ao renderizar feed")
+        return "<h1> Erro interno ao carregar o Feed. </h1>", 500
 
 
 @feed_bp.route('/feed/more')
