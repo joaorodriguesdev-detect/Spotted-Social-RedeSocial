@@ -467,24 +467,19 @@
             : avatarText;
 
         return (
-            '<a href="' + buildDirectUrl(item) + '" class="dm-card-link block no-underline">' +
-                '<div class="dm-card rounded-xl p-3 mb-2">' +
-                    '<div class="flex items-center gap-3">' +
-                        '<div class="relative">' +
-                            '<div class="dm-avatar w-11 h-11 rounded-full bg-indigo-600/90 text-white flex items-center justify-center font-bold overflow-hidden">' +
-                                avatarHtml +
-                            '</div>' +
-                            '<span class="dm-online-dot dm-status-dot dm-status-dot--offline absolute -right-0.5 -bottom-0.5"></span>' +
+            '<a href="' + buildDirectUrl(item) + '" class="dm-row block no-underline px-4 py-3">' +
+                '<div class="flex items-center gap-3">' +
+                    '<div class="dm-avatar w-14 h-14 rounded-full bg-indigo-600/90 text-white flex items-center justify-center font-bold overflow-hidden">' +
+                        avatarHtml +
+                    '</div>' +
+                    '<div class="flex-1 min-w-0">' +
+                        '<div class="flex items-center justify-between gap-2">' +
+                            '<p class="text-main font-bold text-[17px] truncate">' + titlePrefix + title + '</p>' +
+                            '<span class="dm-row-time text-secondary text-xs">' + timeLabel + '</span>' +
                         '</div>' +
-                        '<div class="flex-1 min-w-0">' +
-                            '<div class="flex items-center justify-between gap-2">' +
-                                '<p class="text-main font-bold text-sm truncate">' + titlePrefix + title + '</p>' +
-                                '<div class="flex items-center gap-2">' +
-                                    unreadBadge +
-                                    '<span class="text-secondary text-[11px]">' + timeLabel + '</span>' +
-                                '</div>' +
-                            '</div>' +
-                            '<p class="text-secondary text-xs truncate">' + preview + '</p>' +
+                        '<div class="flex items-center justify-between gap-2 mt-0.5">' +
+                            '<p class="text-secondary text-[15px] leading-[1.2] truncate">' + preview + '</p>' +
+                            unreadBadge +
                         '</div>' +
                     '</div>' +
                 '</div>' +

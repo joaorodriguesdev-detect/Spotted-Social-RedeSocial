@@ -1,15 +1,29 @@
+import os
+import uuid
+from datetime import datetime
+
 from flask import Blueprint, request, redirect, url_for, flash, jsonify, render_template, session
 from sqlalchemy import or_
 
-# Avoid importing `app` at module import time to prevent circular imports.
-# Import necessary symbols from `app` inside route handlers where needed.
+from models import Comment, Event, Notification, Post, User, db
+from services.feed_service import (
+    annotate_posts_with_like_info,
+    build_event_post_content,
+    get_feed_chunk,
+    normalize_event_description,
+    normalize_search_category,
+    parse_event_datetime,
+    sync_event_feed_post,
+)
+from services.image_service import save_and_optimize_image
+from services.notification_service import notify_mentions
+from services.security_service import build_contains_pattern, sanitize_user_text
 
 feed_bp = Blueprint('feed', __name__)
 
 @feed_bp.route('/feed')
 def feed():
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    from app import get_feed_chunk, annotate_posts_with_like_info, Notification
 
     posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk()
     annotate_posts_with_like_info(posts, session.get('user_id'))
@@ -36,13 +50,10 @@ def feed_more():
     cursor_id = None
     if cursor_ts_raw and cursor_id_raw:
         try:
-            from app import datetime
             cursor_ts = datetime.fromisoformat(cursor_ts_raw)
             cursor_id = int(cursor_id_raw)
         except (TypeError, ValueError):
             return jsonify({'error': 'cursor invalido'}), 400
-
-    from app import get_feed_chunk, annotate_posts_with_like_info
 
     posts, has_more, next_cursor_ts, next_cursor_id = get_feed_chunk(
         cursor_ts=cursor_ts,
@@ -61,10 +72,10 @@ def feed_more():
 @feed_bp.route('/search')
 def search():
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    from app import normalize_search_category, Notification, Post, Event, User
 
-    query = request.args.get('query', '').lower().strip().replace('@', '')
+    query = sanitize_user_text(request.args.get('query', ''), max_len=80).lower().replace('@', '')
     category = normalize_search_category(request.args.get('category'))
+    search_pattern = build_contains_pattern(query)
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
     if not query:
         posts = Post.query.order_by(Post.timestamp.desc()).all()
@@ -82,9 +93,9 @@ def search():
     if category == 'eventos':
         event_results = Event.query.filter(
             or_(
-                Event.title.ilike(f'%{query}%'),
-                Event.location.ilike(f'%{query}%'),
-                Event.description.ilike(f'%{query}%')
+                Event.title.ilike(search_pattern, escape='\\'),
+                Event.location.ilike(search_pattern, escape='\\'),
+                Event.description.ilike(search_pattern, escape='\\')
             )
         ).order_by(Event.created_at.desc()).all()
         return render_template(
@@ -97,7 +108,7 @@ def search():
             search_category=category
         )
 
-    results = User.query.filter(User.username.contains(query), User.is_admin == False).all()
+    results = User.query.filter(User.username.ilike(search_pattern, escape='\\'), User.is_admin == False).all()
     return render_template(
         'index.html',
         search_results=results,
@@ -113,10 +124,10 @@ def search():
 def api_search():
     if 'user_id' not in session:
         return jsonify({'error': 'nao autenticado'}), 401
-    from app import normalize_search_category, Event, User
 
-    query = (request.args.get('query') or '').lower().strip().replace('@', '')
+    query = sanitize_user_text(request.args.get('query') or '', max_len=80).lower().replace('@', '')
     category = normalize_search_category(request.args.get('category'))
+    search_pattern = build_contains_pattern(query)
 
     if not query:
         return jsonify({'category': category, 'query': query, 'users': [], 'events': []})
@@ -124,9 +135,9 @@ def api_search():
     if category == 'eventos':
         events = Event.query.filter(
             or_(
-                Event.title.ilike(f'%{query}%'),
-                Event.location.ilike(f'%{query}%'),
-                Event.description.ilike(f'%{query}%')
+                Event.title.ilike(search_pattern, escape='\\'),
+                Event.location.ilike(search_pattern, escape='\\'),
+                Event.description.ilike(search_pattern, escape='\\')
             )
         ).order_by(Event.created_at.desc()).limit(20).all()
 
@@ -150,7 +161,7 @@ def api_search():
 
         return jsonify({'category': category, 'query': query, 'users': [], 'events': payload})
 
-    users = User.query.filter(User.username.contains(query), User.is_admin == False).limit(20).all()
+    users = User.query.filter(User.username.ilike(search_pattern, escape='\\'), User.is_admin == False).limit(20).all()
     return jsonify({
         'category': category,
         'query': query,
@@ -161,15 +172,13 @@ def api_search():
 @feed_bp.route('/postar', methods=['POST'])
 def postar():
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    from app import Post, db, uuid, os, notify_mentions
 
-    content = request.form.get('content')
+    content = sanitize_user_text(request.form.get('content'), max_len=5000)
     anon_mode = request.form.get('anon_mode') == 'true'
     file = request.files.get('file'); filename = None
     if file and file.filename != '':
         # Convert uploaded image to webp and use returned filename
         filename_base = str(uuid.uuid4())
-        from app import save_and_optimize_image
         filename = save_and_optimize_image(file, filename_base)
     new_post = Post(content=content, media_url=filename, user_id=session.get('user_id'), is_anonymous=anon_mode)
     db.session.add(new_post)
@@ -181,7 +190,6 @@ def postar():
 
 @feed_bp.route('/excluir_post/<int:post_id>')
 def excluir_post(post_id):
-    from app import Post, db
     post = Post.query.get_or_404(post_id)
     if (post.user_id == session.get('user_id') and post.user_id is not None) or session.get('is_admin'):
         db.session.delete(post)
@@ -191,7 +199,6 @@ def excluir_post(post_id):
 @feed_bp.route('/like/<int:post_id>')
 def like(post_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    from app import Post, User, db, Notification
     post = Post.query.get_or_404(post_id)
     user = User.query.get(session['user_id'])
     if post not in user.liked_posts:
@@ -219,9 +226,8 @@ def like(post_id):
 def comentar(post_id):
     if 'user_id' not in session: 
         return redirect(url_for('welcome'))
-    from app import Comment, Post, db, notify_mentions, Notification
-    
-    content = request.form.get('comment_content')
+
+    content = sanitize_user_text(request.form.get('comment_content'), max_len=500)
     post = Post.query.get_or_404(post_id)
     
     if not content or not content.strip():
@@ -260,7 +266,6 @@ def comentar(post_id):
 @feed_bp.route('/eventos')
 def eventos():
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    from app import Event, Notification
 
     all_events = Event.query.order_by(Event.created_at.desc()).all()
     unread = Notification.query.filter_by(user_id=session.get('user_id'), is_read=False).count()
@@ -269,7 +274,6 @@ def eventos():
 @feed_bp.route('/criar_evento', methods=['POST'])
 def criar_evento():
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    from app import Event, Post, db, uuid, save_and_optimize_image, build_event_post_content, normalize_event_description, parse_event_datetime
 
     title = request.form.get('title')
     description = normalize_event_description(request.form.get('description'))
@@ -308,7 +312,6 @@ def criar_evento():
 def editar_evento(event_id):
     if 'user_id' not in session:
         return redirect(url_for('welcome'))
-    from app import Event, db, normalize_event_description, parse_event_datetime, sync_event_feed_post
 
     event = Event.query.get_or_404(event_id)
     if event.user_id != session.get('user_id') and not session.get('is_admin'):
@@ -347,7 +350,6 @@ def editar_evento(event_id):
 @feed_bp.route('/excluir_evento/<int:event_id>')
 def excluir_evento(event_id):
     if 'user_id' not in session: return redirect(url_for('welcome'))
-    from app import Event, db
     event = Event.query.get_or_404(event_id)
     if event.user_id == session['user_id'] or session.get('is_admin'):
         db.session.delete(event)
@@ -359,8 +361,6 @@ def api_edit_comment(comment_id):
     """API endpoint to edit a comment. Returns JSON response."""
     if 'user_id' not in session:
         return jsonify({'error': 'Não autenticado', 'ok': False}), 401
-
-    from app import Comment, db
 
     comment = Comment.query.get_or_404(comment_id)
 
@@ -380,7 +380,7 @@ def api_edit_comment(comment_id):
 
     # Get new content from JSON payload
     data = request.get_json(silent=True) or {}
-    new_content = (data.get('content') or '').strip()
+    new_content = sanitize_user_text(data.get('content') or '', max_len=500)
 
     if not new_content:
         return jsonify({'error': 'Comentário não pode estar vazio', 'ok': False}), 400
@@ -406,8 +406,6 @@ def api_delete_comment(comment_id):
     """API endpoint to delete a comment. Returns JSON response."""
     if 'user_id' not in session:
         return jsonify({'error': 'Não autenticado', 'ok': False}), 401
-
-    from app import Comment, db
 
     comment = Comment.query.get_or_404(comment_id)
 
@@ -435,8 +433,6 @@ def editar_comentario(comment_id):
     """Legacy route - redirects to feed after editing."""
     if 'user_id' not in session:
         return redirect(url_for('feed.feed'))
-    from app import Comment, Post, db
-
     comment = Comment.query.get_or_404(comment_id)
 
     # Verify permission to edit (author only)
@@ -455,7 +451,7 @@ def editar_comentario(comment_id):
         flash('Você não tem permissão para editar este comentário.')
         return redirect(url_for('feed.feed'))
 
-    content = request.form.get('content', '').strip()
+    content = sanitize_user_text(request.form.get('content', ''), max_len=500)
     if not content:
         flash('O comentário não pode estar vazio.')
         return redirect(url_for('feed.feed'))
@@ -472,7 +468,6 @@ def excluir_comentario(comment_id):
     """Legacy route - redirects to feed after deleting."""
     if 'user_id' not in session:
         return redirect(url_for('feed.feed'))
-    from app import Comment, Post, db
 
     comment = Comment.query.get_or_404(comment_id)
 
@@ -489,4 +484,3 @@ def excluir_comentario(comment_id):
     db.session.commit()
 
     return redirect(url_for('feed.feed', _anchor=f"post-{post_id}"))
-

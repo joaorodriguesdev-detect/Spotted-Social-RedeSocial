@@ -1,17 +1,50 @@
-from flask import Blueprint, request, redirect, url_for, flash, jsonify, render_template, session
-from flask_socketio import emit, join_room, leave_room
-from sqlalchemy import select, and_, or_, func
 import re
 import uuid
-from app import db, User, Conversation, ConversationMember, DirectChatMessage, MessageReaction, Notification, socketio, online_user_connections, GROUP_CHAT_PARTICIPANTS, GROUP_CHAT_ADMINS, followers, get_membership, can_user_access_group_conversation, is_direct_blocked_for_system_admin, is_direct_temporarily_disabled_for_users, is_direct_globally_disabled, conversation_room_name, serialize_group_member, build_members_payload, emit_group_members_updated, emit_group_updated, emit_presence_for_user, create_notification, ensure_group_conversation, get_or_create_dm_conversation, serialize_direct_message, serialize_direct_message_broadcast, get_conversation_pinned_message, get_group_members, can_manage_group, get_latest_message_id, mark_conversation_read, get_unread_message_count, get_direct_unread_total, build_direct_inbox_items, users_follow_each_other
+
+from flask import Blueprint, request, redirect, url_for, flash, jsonify, render_template, session, current_app
+from flask_socketio import emit, join_room, leave_room
+from sqlalchemy import and_, or_, select, func
+
+from extensions import online_user_connections, socketio
+from models import Conversation, ConversationMember, DirectChatMessage, MessageReaction, Notification, User, db, followers
+from services.direct_service import (
+    GROUP_CHAT_ADMINS,
+    GROUP_CHAT_PARTICIPANTS,
+    build_direct_inbox_items,
+    build_members_payload,
+    can_manage_group,
+    can_user_access_group_conversation,
+    conversation_room_name,
+    emit_group_members_updated,
+    emit_group_updated,
+    emit_presence_for_user,
+    ensure_group_conversation,
+    get_conversation_pinned_message,
+    get_direct_unread_total,
+    get_group_members,
+    get_latest_message_id,
+    get_membership,
+    get_or_create_dm_conversation,
+    get_unread_message_count,
+    is_direct_blocked_for_system_admin,
+    is_direct_globally_disabled,
+    is_direct_temporarily_disabled_for_users,
+    mark_conversation_read,
+    serialize_direct_message,
+    serialize_direct_message_broadcast,
+    users_follow_each_other,
+)
+from services.notification_service import create_notification
+from services.security_service import build_contains_pattern, build_prefix_pattern
 
 direct_bp = Blueprint('direct', __name__)
 
 @direct_bp.route('/api/users')
 def api_users():
-    q = request.args.get('q', '').lower()
+    q = (request.args.get('q') or '').strip().lower()
     if not q: return jsonify([])
-    users = User.query.filter(User.username.like(f'{q}%'), User.is_admin == False).limit(5).all()
+    prefix_pattern = build_prefix_pattern(q)
+    users = User.query.filter(User.username.ilike(prefix_pattern, escape='\\'), User.is_admin == False).limit(5).all()
     return jsonify([{'username': u.username, 'name': u.name} for u in users])
 
 
@@ -32,10 +65,11 @@ def api_direct_users():
     )
 
     if q:
+        safe_pattern = build_contains_pattern(q)
         query = query.filter(
             or_(
-                User.username.ilike(f'%{q}%'),
-                User.name.ilike(f'%{q}%')
+                User.username.ilike(safe_pattern, escape='\\'),
+                User.name.ilike(safe_pattern, escape='\\')
             )
         )
 
@@ -202,7 +236,7 @@ def direct():
         conversations=conversations,
         current_filter=current_filter,
         search_query=search_query
-        , direct_enabled=app.config.get('DIRECT_ENABLED', True)
+        , direct_enabled=current_app.config.get('DIRECT_ENABLED', True)
     )
 
 
@@ -355,8 +389,6 @@ def api_direct_send_message(conversation_id):
     if len(content) > 500:
         return jsonify({'error': 'mensagem muito longa'}), 400
 
-    import time
-    t0 = time.time()
     message = DirectChatMessage(conversation_id=conversation_id, sender_id=current_user_id, content=content)
     db.session.add(message)
     db.session.flush()
@@ -383,15 +415,12 @@ def api_direct_send_message(conversation_id):
     if sender_membership:
         sender_membership.last_read_message_id = message.id
 
-    db_commit_start = time.time()
     try:
         db.session.commit()
     except Exception:
         db.session.rollback()
-        app.logger.exception('Failed to commit direct message and notifications')
+        current_app.logger.exception('Failed to commit direct message and notifications')
         return jsonify({'error': 'falha ao enviar mensagem'}), 500
-    db_commit_end = time.time()
-
     serialized = serialize_direct_message(message, current_user_id)
 
     # Emit message and notifications asynchronously so the request doesn't block on socket I/O
@@ -401,7 +430,7 @@ def api_direct_send_message(conversation_id):
             try:
                 socketio.emit('direct:message', payload, room=room)
             except Exception:
-                app.logger.exception('Failed to emit direct:message')
+                current_app.logger.exception('Failed to emit direct:message')
 
         socketio.start_background_task(_emit_message, serialize_direct_message_broadcast(message), conversation_room_name(conversation_id))
 
@@ -421,15 +450,12 @@ def api_direct_send_message(conversation_id):
                     }
                     socketio.emit('notification:new', payload, room=f'user:{n.user_id}')
                 except Exception:
-                    app.logger.exception('Failed to emit notification for user %s', getattr(n, 'user_id', None))
+                    current_app.logger.exception('Failed to emit notification for user %s', getattr(n, 'user_id', None))
 
         socketio.start_background_task(_emit_notifications, pending_notifs)
     except Exception:
-        app.logger.exception('Failed to start background emit tasks')
+        current_app.logger.exception('Failed to start background emit tasks')
 
-    socketio_emit_end = time.time()
-    t1 = time.time()
-    app.logger.info(f"[PERF] POST /api/direct/conversations/{conversation_id}/messages total: {(t1-t0)*1000:.1f}ms | commit: {(db_commit_end-db_commit_start)*1000:.1f}ms | socketio-bg: {(socketio_emit_end-db_commit_end)*1000:.1f}ms")
     return jsonify({'message': serialized}), 201
 
 
@@ -640,8 +666,6 @@ def direct_conversation(username):
         flash('Conta administradora do sistema nao possui acesso ao Direct.')
         return redirect(url_for('feed'))
 
-    import time
-    t0 = time.time()
     clean_username = (username or '').strip().lower()
     if not clean_username:
         return redirect(url_for('direct'))
@@ -714,10 +738,8 @@ def direct_conversation(username):
         group_creator_username=group_creator_username,
         participant_usernames=participant_usernames,
         participant_cards=participant_cards
-        , direct_enabled=app.config.get('DIRECT_ENABLED', True)
+        , direct_enabled=current_app.config.get('DIRECT_ENABLED', True)
     )
-    t1 = time.time()
-    print(f"[PERF] /direct/conversa/{{username}} total: {{(t1-t0)*1000:.1f}}ms")
     return resp
     # NOTE: render_template already returns the response above; ensure direct_enabled passed via context
 

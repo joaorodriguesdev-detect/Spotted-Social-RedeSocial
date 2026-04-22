@@ -292,8 +292,6 @@
                 </div>
                 {% if user.is_admin %}
                 <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 admin-badge bg-yellow-400 text-black text-[10px] font-black px-3 py-1 rounded-full shadow-lg uppercase border-2 border-white z-10">Admin</div>
-                {% elif user.is_verified %}
-                <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 admin-badge bg-blue-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg uppercase border-2 border-white z-10">✓ Verificado</div>
                 {% endif %}
             </div>
 
@@ -353,7 +351,7 @@
                              <a href="{{ url_for('seguir', username=user.username) }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
                              <a href="{{ url_for('direct_conversation', username=user.username) }}" title="Enviar mensagem" aria-label="Enviar mensagem para {{ user.username }}" class="interactive-control send-message-btn compact" data-action="send-message">Enviar mensagem</a>
                              {% if me.is_admin %}
-                             <form action="{{ url_for('perfil.toggle_verificacao', username=user.username) }}" method="POST" style="display: inline;">
+                             <form action="{{ url_for('toggle_verificacao', username=user.username) }}" method="POST" style="display: inline;">
                                  {% if user.is_verified %}
                                  <button type="submit" class="interactive-control bg-red-500 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg hover:bg-red-600 transition" title="Remover verificação">Desverificar</button>
                                  {% else %}
@@ -394,15 +392,20 @@
                 <div class="flex items-center justify-between">
                     <p class="text-[11px] font-black uppercase tracking-widest text-indigo-500">Deixe um recado</p>
                     <span id="wall-char-count" class="text-[10px] text-secondary font-bold">0 / 500</span>
-                </div>
+                </div> 
                 <textarea id="wall-textarea" name="content" maxlength="500" class="form-field w-full text-sm text-main p-3 rounded-2xl resize-none min-h-[90px]" placeholder="Escreva algo no mural..." required></textarea>
                 <p id="wall-error" class="form-error hidden text-[11px] font-semibold">Escreva um recado antes de enviar.</p>
-                <button class="interactive-control w-full bg-indigo-50 text-indigo-600 font-black py-2.5 rounded-xl text-xs hover:bg-indigo-100 transition">Enviar</button>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button type="submit" name="anon_mode" value="false" class="interactive-control w-full bg-indigo-50 text-indigo-600 font-black py-2.5 rounded-xl text-xs hover:bg-indigo-100 transition">Enviar</button>
+                    <button type="submit" name="anon_mode" value="true" class="interactive-control w-full bg-indigo-50 text-indigo-600 font-black py-2.5 rounded-xl text-xs hover:bg-indigo-100 transition">Enviar Anonimo</button>
+                </div>
             </form>
             {% for msg in messages %}
             <div class="bg-white p-4 rounded-2xl border text-xs shadow-sm">
                 <p class="font-black text-indigo-400 uppercase mb-1">
-                    {% if msg.sender_name %}
+                    {% if msg.sender_name and msg.sender_name|lower in ['anônimo', 'anonimo'] %}
+                    Anonimo
+                    {% elif msg.sender_name %}
                     <a href="{{ url_for('perfil_por_remetente', sender_name=msg.sender_name) }}" class="hover:underline hover:text-indigo-500 transition">{{ msg.sender_name }}</a>
                     {% else %}
                     usuário

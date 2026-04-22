@@ -53,8 +53,20 @@
         @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
         .insta-font { font-family: 'Lobster', cursive; }
 
+        :root {
+            --sp-card-bg: #ffffff;
+            --sp-card-border: #dbe2f0;
+            --sp-card-radius: 1rem;
+            --sp-card-padding: 1rem;
+        }
+
+        html,
+        body {
+            min-height: 100%;
+        }
+
         /* --- TEMA PADRÃO (CLARO) --- */
-        body { background-color: #f5f8ff; color: #0f172a; transition: background 0.3s, color 0.3s; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #f5f8ff; color: #0f172a; transition: background 0.3s, color 0.3s; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow-y: scroll; scrollbar-gutter: stable; }
         nav { background-color: rgba(255, 255, 255, 0.88); border-color: #dbe2f0; }
         nav h1 { color: #4f46e5; }
         #theme-icon { color: #0f172a; }
@@ -70,6 +82,33 @@
         #profile-context-menu { z-index: 1111; }
         .text-main { color: #0f172a; }
         .text-secondary { color: #5b6b82; }
+
+        .app-main {
+            min-height: 100vh;
+        }
+
+        .app-content-wrap {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1rem 1rem 6rem;
+            min-height: 100vh;
+        }
+
+        .app-page-shell {
+            opacity: 0;
+            animation: pageFadeIn 0.18s ease-out forwards;
+        }
+
+        .app-page-shell.is-leaving {
+            animation: none;
+            opacity: 0;
+            transition: opacity 0.12s ease;
+        }
+
+        .app-card-section {
+            padding: var(--sp-card-padding);
+        }
 
         /* Shared form controls */
         .form-field {
@@ -147,7 +186,12 @@
         }
         .direct-pulse { animation: direct-pulse 1.6s ease-out infinite; }
         /* --- TEMA BLACK --- */
-        body.dark-mode { background-color: #000000; color: #e7e9ea; }
+        body.dark-mode {
+            background-color: #000000;
+            color: #e7e9ea;
+            --sp-card-bg: #16181c;
+            --sp-card-border: #2f3336;
+        }
         body.dark-mode nav { background-color: rgba(0, 0, 0, 0.8); border-color: #2f3336; }
         body.dark-mode nav h1 { color: #ffffff; }
         body.dark-mode #theme-icon { color: #ffffff; }
@@ -176,11 +220,308 @@
 
         .preview-img { display: none; max-height: 300px; width: 100%; object-fit: cover; border-radius: 1rem; margin-top: 1rem; border: 1px solid #2f3336; }
 
-        .twitter-card { border-bottom: 1px solid; border-color: inherit; transition: background 0.2s; }
-        body:not(.dark-mode) .twitter-card { background-color: #ffffff; border-color: #dbe2f0; }
-        body:not(.dark-mode) .twitter-card:hover { background-color: #f8faff; }
-        body.dark-mode .twitter-card { background-color: #000000; border-color: #2f3336; }
-        body.dark-mode .twitter-card:hover { background-color: rgba(255, 255, 255, 0.03); }
+        .twitter-card,
+        .mural-card {
+            border: 1px solid var(--sp-card-border);
+            border-radius: var(--sp-card-radius);
+            background-color: var(--sp-card-bg);
+        }
+
+        .twitter-card {
+            margin: 0.75rem 0;
+            overflow: hidden;
+            transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .feed-post-card {
+            background-color: #ffffff;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            margin: 0;
+            border-bottom: 1px solid #dbe2f0;
+        }
+
+        body:not(.dark-mode) .twitter-card.feed-post-card:hover {
+            background-color: #ffffff;
+            box-shadow: none;
+        }
+
+        body.dark-mode .feed-post-card {
+            background-color: #000000;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            border-bottom: 1px solid #2f3336;
+        }
+
+        body.dark-mode .twitter-card.feed-post-card:hover {
+            background-color: #000000;
+            box-shadow: none;
+        }
+
+        .comment-composer {
+            background: #ffffff;
+            border: 1px solid #dbe2f0;
+            width: 100%;
+        }
+
+        .comment-composer:focus-within {
+            border-color: rgba(79, 70, 229, 0.5);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.16);
+        }
+
+        .comment-composer-input {
+            color: #0f172a;
+            min-width: 0;
+        }
+
+        .comment-composer-input::placeholder {
+            color: #5b6b82;
+        }
+
+        .comment-composer-submit {
+            color: #4f46e5;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .comment-thread {
+            margin-left: 0.15rem;
+        }
+
+        .comment-thread-list {
+            position: relative;
+        }
+
+        .comment-thread-list::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: -12px;
+            bottom: 14px;
+            width: 1px;
+            background: #e5e7eb;
+        }
+
+        .comment-item {
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            padding: 0.25rem 0;
+            margin-bottom: 0.1rem;
+            align-items: flex-start;
+            gap: 0.6rem;
+        }
+
+        .comment-avatar-col {
+            width: 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .comment-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 999px;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #4f46e5;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .comment-thread-segment {
+            width: 1px;
+            min-height: 16px;
+            flex: 1;
+            margin-top: 4px;
+            background: #e5e7eb;
+        }
+
+        .comment-actions-wrap {
+            position: relative;
+            margin-left: 0.5rem;
+            align-self: flex-start;
+            flex-shrink: 0;
+        }
+
+        .comment-actions-wrap > button {
+            color: #6b7280;
+            opacity: 1;
+        }
+
+        .comment-content-wrapper {
+            min-width: 0;
+            padding-right: 0.25rem;
+            flex: 1;
+        }
+
+        .comment-meta-row {
+            line-height: 1.2;
+        }
+
+        .comment-text {
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        .comment-engagement-row {
+            color: #6b7280;
+        }
+
+        .comment-engagement-btn {
+            color: inherit;
+            font-size: 13px;
+            line-height: 1;
+        }
+
+        .comment-engagement-btn:hover {
+            color: #4f46e5;
+        }
+
+        .feed-comment-menu {
+            position: absolute;
+            right: 0;
+            bottom: calc(100% + 0.25rem);
+            z-index: 40;
+        }
+
+        #modalDenunciaPanel {
+            background: #ffffff;
+            border: 1px solid #dbe2f0;
+            color: #0f172a;
+        }
+
+        #descricaoDenuncia {
+            background: #ffffff;
+            border-color: #dbe2f0;
+            color: #0f172a;
+        }
+
+        #descricaoDenuncia::placeholder {
+            color: #64748b;
+        }
+
+        #cancelarDenuncia {
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        #cancelarDenuncia:hover {
+            background: #e2e8f0;
+        }
+
+        #closeModalDenuncia {
+            color: #64748b;
+        }
+
+        body.dark-mode .comment-composer {
+            background: #2b2d36;
+            border-color: #4b5563;
+        }
+
+        body.dark-mode .comment-composer-input {
+            color: #e7e9ea;
+        }
+
+        body.dark-mode .comment-composer-input::placeholder {
+            color: #8b98a5;
+        }
+
+        body.dark-mode .comment-composer-submit {
+            color: #a5b4fc;
+        }
+
+        body.dark-mode #modalDenunciaPanel {
+            background: #1f2128;
+            border-color: #3f4653;
+            color: #e7e9ea;
+        }
+
+        body.dark-mode #descricaoDenuncia {
+            background: #2b2d36;
+            border-color: #4b5563;
+            color: #e7e9ea;
+        }
+
+        body.dark-mode #descricaoDenuncia::placeholder {
+            color: #8b98a5;
+        }
+
+        body.dark-mode #cancelarDenuncia {
+            background: #374151;
+            color: #e7e9ea;
+            border: 1px solid #4b5563;
+        }
+
+        body.dark-mode #cancelarDenuncia:hover {
+            background: #4b5563;
+        }
+
+        body.dark-mode #closeModalDenuncia {
+            color: #94a3b8;
+        }
+
+        body.dark-mode .feed-comment-menu {
+            background: #454854 !important;
+            border-color: #5a6170 !important;
+        }
+
+        body.dark-mode .feed-comment-menu .h-px {
+            background: #5a6170 !important;
+        }
+
+        body.dark-mode .feed-comment-menu button:hover {
+            background: #555b68 !important;
+        }
+
+        body.dark-mode .feed-comment-edit-panel {
+            background: #2b2d36 !important;
+            border: 1px solid #4b5563;
+        }
+
+        body.dark-mode .feed-comment-edit-panel input {
+            background: #1f2128 !important;
+            border-color: #4b5563 !important;
+            color: #e7e9ea;
+        }
+
+        body.dark-mode .comment-context-menu {
+            background: #454854 !important;
+            border-color: #5a6170 !important;
+        }
+
+        body.dark-mode .comment-item {
+            background: transparent;
+        }
+
+        body.dark-mode .comment-thread-list::before,
+        body.dark-mode .comment-thread-segment {
+            background: #1f1f1f;
+        }
+
+        body.dark-mode .comment-actions-wrap > button {
+            color: #9ca3af;
+        }
+
+        body.dark-mode .comment-engagement-row {
+            color: #71767b;
+        }
+
+        body.dark-mode .comment-engagement-btn:hover {
+            color: #a5b4fc;
+        }
+
+        body:not(.dark-mode) .twitter-card:hover { background-color: #f8faff; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06); }
+        body.dark-mode .twitter-card:hover { background-color: rgba(255, 255, 255, 0.03); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); }
 
         .top-tab { color: #5b6b82; font-weight: 500; border-bottom: 2px solid transparent; }
         .top-tab-active { color: #0f172a; font-weight: 700; border-bottom-color: #4f46e5; }
@@ -302,6 +643,66 @@
             }
         }
 
+        /* Mural toast notification styles */
+        .mural-toast {
+            background: white;
+            border: 1px solid #dbe2f0;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+            animation: slideIn 0.3s ease-out;
+        }
+        body.dark-mode .mural-toast {
+            background: #1f2937;
+            border-color: #374151;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .animate-slide-out {
+            animation: slideOut 0.3s ease-in;
+        }
+
+        @keyframes pageFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .app-page-shell {
+                animation: none;
+                opacity: 1;
+            }
+
+            .app-page-shell.is-leaving {
+                transition: none;
+            }
+        }
+
     </style>
     {% block head_extra %}{% endblock %}
 </head>
@@ -344,7 +745,7 @@
 </nav>
 {% endif %}
 
-<main>
+<main class="app-main">
     {% block content %}{% endblock %}
 </main>
 
@@ -355,6 +756,7 @@
         <a href="/feed" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path == '/feed' %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-house"></i>{% if current_path == '/feed' %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
 
         <a href="/search" class="relative w-9 h-9 flex items-center justify-center text-lg hover:text-indigo-500 {% if current_path.startswith('/search') %}text-indigo-500{% else %}text-main{% endif %}"><i class="fa-solid fa-magnifying-glass"></i>{% if current_path.startswith('/search') %}<span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-indigo-500 rounded-full"></span>{% endif %}</a>
+
         <!-- Use a stable literal path for the Direct link so the navbar works even
              if the Direct blueprint/view registration changes. Keep the
              original template-based url_for for clarity in a data attribute. -->
@@ -732,6 +1134,17 @@
                     console.error('Failed to handle notification:marked-read', e);
                 }
             });
+
+            // Handle new mural post notifications (broadcast to all connected clients)
+            socket.on('mural:new-post', (payload) => {
+                try {
+                    console.log('Novo post no mural recebido', payload);
+                    // Show a toast notification for new mural post
+                    showMuralNotification(payload);
+                } catch (e) {
+                    console.error('Failed to handle mural:new-post', e);
+                }
+            });
         } else {
             console.warn('Realtime notifications disabled on host:', _host);
         }
@@ -767,6 +1180,47 @@
     })();
 </script>
 <script>
+    // Toast notification for new mural posts
+    function showMuralNotification(payload) {
+        const container = document.getElementById('mural-toast-container') || createMuralToastContainer();
+
+        const toast = document.createElement('div');
+        toast.className = 'mural-toast animate-slide-in';
+        toast.innerHTML = `
+            <div class="flex items-start gap-3">
+                <div class="flex-1">
+                    <p class="font-semibold text-sm">📢 Novo anúncio no Mural</p>
+                    <p class="text-xs text-gray-600 mt-1"><strong>${payload.username}</strong> postou:</p>
+                    <p class="text-xs mt-1 line-clamp-2">${payload.title}</p>
+                    <p class="text-xs text-indigo-600 mt-2">Categoria: <strong>${payload.category}</strong></p>
+                </div>
+                <button class="text-gray-400 hover:text-gray-600" onclick="this.parentElement.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+
+        container.appendChild(toast);
+
+        // Auto-remove after 6 seconds
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.remove('animate-slide-in');
+                toast.classList.add('animate-slide-out');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 6000);
+    }
+
+    function createMuralToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'mural-toast-container';
+        container.className = 'fixed bottom-24 right-4 z-[999] space-y-2 max-w-sm';
+        document.body.appendChild(container);
+        return container;
+    }
+</script>
+<script>
     // Fallback: force navigation for anchors that use the Direct link template
     // when some other script might intercept clicks. We run this in the capture
     // phase so it executes before other handlers and ensures the user can
@@ -788,6 +1242,7 @@
         }
     }, true);
 </script>
+<script src="{{ url_for('public_files', filename='js/page-transitions.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

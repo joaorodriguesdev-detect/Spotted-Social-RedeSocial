@@ -3,5 +3,7 @@ instance/
 tests
 *.pyc
 .env
+.env.dev
+.env.prod
 RELATORIO.md
 uploads/*

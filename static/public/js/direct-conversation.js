@@ -108,7 +108,9 @@
         trigger.className = 'conversation-reaction-trigger' + (isOutBubble ? ' conversation-reaction-trigger--out' : '');
         trigger.setAttribute('data-reaction-trigger', 'true');
         trigger.setAttribute('aria-label', 'Reagir com emoji');
-        trigger.innerHTML = '<i class="fa-regular fa-face-smile"></i>';
+        const smileIcon = document.createElement('i');
+        smileIcon.className = 'fa-regular fa-face-smile';
+        trigger.appendChild(smileIcon);
 
         tools.appendChild(reactionList);
         tools.appendChild(trigger);
@@ -312,18 +314,18 @@
 
         function loadLatestMessages() {
             return dcFetch('/api/direct/conversations/' + conversationId + '/messages')
-            .then(function (response) { return response.ok ? response.json() : null; })
-            .then(function (payload) {
-                if (!payload || !Array.isArray(payload.messages)) return;
-                scrollArea.querySelectorAll('.conversation-row[data-group-content="mensagem"]').forEach(function (row) {
-                    row.remove();
+                .then(function (response) { return response.ok ? response.json() : null; })
+                .then(function (payload) {
+                    if (!payload || !Array.isArray(payload.messages)) return;
+                    scrollArea.querySelectorAll('.conversation-row[data-group-content="mensagem"]').forEach(function (row) {
+                        row.remove();
+                    });
+                    payload.messages.forEach(appendRealtimeMessage);
+                    applyPinnedMessageUI(payload.pinned_message || null);
+                })
+                .catch(function () {
+                    // Keep fallback UI when realtime API is unavailable.
                 });
-                payload.messages.forEach(appendRealtimeMessage);
-                applyPinnedMessageUI(payload.pinned_message || null);
-            })
-            .catch(function () {
-                // Keep fallback UI when realtime API is unavailable.
-            });
         }
 
         loadLatestMessages();
@@ -815,16 +817,24 @@
 
         function buildMemberAvatar(picFilename, username) {
             if (picFilename) {
-                return '<img src="/static/uploads/' + picFilename + '" alt="Foto de @' + username + '" class="w-full h-full object-cover">';
+                const img = document.createElement('img');
+                img.src = '/static/uploads/' + picFilename;
+                img.alt = 'Foto de @' + username;
+                img.className = 'w-full h-full object-cover';
+                return img;
             }
-            return username.charAt(0).toUpperCase();
+            return document.createTextNode(username.charAt(0).toUpperCase());
         }
 
         function syncMemberCountUI() {
             const label = String(members.length) + ' participantes';
             if (groupCount) {
-                const dotMarkup = '<span class="conversation-presence-dot" aria-hidden="true"></span>';
-                groupCount.innerHTML = dotMarkup + ' ' + label;
+                groupCount.textContent = '';
+                const dot = document.createElement('span');
+                dot.className = 'conversation-presence-dot';
+                dot.setAttribute('aria-hidden', 'true');
+                groupCount.appendChild(dot);
+                groupCount.appendChild(document.createTextNode(' ' + label));
             }
             if (summaryCount) {
                 summaryCount.textContent = label;
@@ -904,7 +914,12 @@
         function setGroupPhotoPreview(picValue, fallbackName) {
             if (!groupPhotoPreview) return;
             if (picValue) {
-                groupPhotoPreview.innerHTML = '<img src="' + picValue + '" alt="Foto do grupo" class="w-full h-full object-cover">';
+                groupPhotoPreview.textContent = '';
+                const img = document.createElement('img');
+                img.src = picValue;
+                img.alt = 'Foto do grupo';
+                img.className = 'w-full h-full object-cover';
+                groupPhotoPreview.appendChild(img);
                 return;
             }
             const safe = (fallbackName || 'grupo').trim();
@@ -965,7 +980,8 @@
 
                 const avatar = document.createElement('div');
                 avatar.className = 'conversation-member-avatar';
-                avatar.innerHTML = buildMemberAvatar(memberPictures[username] || '', username);
+                const avatarContent = buildMemberAvatar(memberPictures[username] || '', username);
+                avatar.appendChild(avatarContent);
 
                 const textBlock = document.createElement('div');
                 const name = document.createElement('p');
@@ -987,7 +1003,9 @@
                 menuTrigger.className = 'conversation-member-menu-trigger';
                 menuTrigger.setAttribute('data-member-menu-trigger', 'true');
                 menuTrigger.setAttribute('aria-label', 'Acoes do participante');
-                menuTrigger.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
+                const ellipsisIcon = document.createElement('i');
+                ellipsisIcon.className = 'fa-solid fa-ellipsis';
+                menuTrigger.appendChild(ellipsisIcon);
 
                 const menu = document.createElement('div');
                 menu.className = 'conversation-member-menu hidden';
@@ -1143,7 +1161,12 @@
                 const file = groupPhotoInput.files && groupPhotoInput.files[0];
                 if (!file) return;
                 const url = window.URL.createObjectURL(file);
-                groupPhotoPreview.innerHTML = '<img src="' + url + '" alt="Preview da foto do grupo" class="w-full h-full object-cover">';
+                groupPhotoPreview.textContent = '';
+                const previewImg = document.createElement('img');
+                previewImg.src = url;
+                previewImg.alt = 'Preview da foto do grupo';
+                previewImg.className = 'w-full h-full object-cover';
+                groupPhotoPreview.appendChild(previewImg);
             });
         }
 
@@ -1533,7 +1556,9 @@
             pinButton.className = 'conversation-bubble-pin conversation-bubble-pin--out';
             pinButton.setAttribute('data-pin-trigger', 'true');
             pinButton.setAttribute('aria-label', 'Fixar mensagem');
-            pinButton.innerHTML = '<i class="fa-solid fa-thumbtack"></i>';
+            const pinIcon = document.createElement('i');
+            pinIcon.className = 'fa-solid fa-thumbtack';
+            pinButton.appendChild(pinIcon);
             bubble.appendChild(pinButton);
 
             bubble.appendChild(createReactionTools(true));
@@ -1914,5 +1939,3 @@
         const fallbackName = (conversationShell && conversationShell.getAttribute('data-target-username')) || 'contato';
         return '@' + fallbackName;
     }
-})();
-
