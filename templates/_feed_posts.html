@@ -3,11 +3,11 @@
     <div class="flex space-x-3 app-card-section">
         <div class="w-9 h-9 rounded-full bg-indigo-600 flex-shrink-0 flex items-center justify-center text-white font-bold uppercase overflow-hidden text-base">
             {% if post.is_anonymous %}
-                ?
+            ?
             {% elif post.author and post.author.profile_pic %}
-                <img src="{{ url_for('static', filename='uploads/' + post.author.profile_pic) }}" class="w-full h-full object-cover">
+            <img src="{{ url_for('static', filename='uploads/' + post.author.profile_pic) }}" class="w-full h-full object-cover">
             {% else %}
-                {{ post.author.username[0].upper() if post.author else '?' }}
+            {{ post.author.username[0].upper() if post.author else '?' }}
             {% endif %}
         </div>
         <div class="w-full">
@@ -16,38 +16,38 @@
                 <!-- INFO USUÁRIO -->
                 <div class="flex flex-col">
                     {% if post.is_anonymous %}
-                        <span class="font-bold text-main text-[14px]">Anônimo</span>
-                        <div class="flex items-center space-x-1 text-[12px] text-secondary">
-                            <span>@SpottedAnonimo</span>
-                            <span>&middot;</span>
-                            <span>{{ post.timestamp | post_time }}</span>
-                        </div>
+                    <span class="font-bold text-main text-[14px]">Anônimo</span>
+                    <div class="flex items-center space-x-1 text-[12px] text-secondary">
+                        <span>@SpottedAnonimo</span>
+                        <span>&middot;</span>
+                        <span>{{ post.timestamp | post_time }}</span>
+                    </div>
                     {% else %}
-                        <div class="flex flex-col">
-                            <div class="flex items-center space-x-2">
-                                <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
-                                    <span class="font-bold text-main text-[14px]">{{ post.author.name }}</span>
-                                </a>
-                                {% if post.author.is_admin %}
-                                    <i class="fa-solid fa-circle-check text-yellow-400 text-[12px]" title="Administrador"></i>
-                                {% elif post.author.is_verified %}
-                                    <i class="fa-solid fa-circle-check text-blue-500 text-[12px]" title="Verificado"></i>
-                                {% endif %}
-                                <span class="text-secondary text-[12px]">{{ post.timestamp | post_time }}</span>
-                            </div>
-                            {% if post.author.university %}
-                            <div class="flex items-center">
+                    <div class="flex flex-col">
+                        <div class="flex items-center space-x-2">
+                            <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
+                                <span class="font-bold text-main text-[14px]">{{ post.author.name }}</span>
+                            </a>
+                            {% if post.author.is_admin %}
+                            <i class="fa-solid fa-circle-check text-yellow-400 text-[12px]" title="Administrador"></i>
+                            {% elif post.author.is_verified %}
+                            <i class="fa-solid fa-circle-check text-blue-500 text-[12px]" title="Verificado"></i>
+                            {% endif %}
+                            <span class="text-secondary text-[12px]">{{ post.timestamp | post_time }}</span>
+                        </div>
+                        {% if post.author.university %}
+                        <div class="flex items-center">
                                 <span class="text-indigo-600 dark:text-indigo-400 text-[11px] px-0 py-0 font-bold uppercase">
                                     {{ post.author.university }}
                                 </span>
-                            </div>
-                            {% endif %}
-                            <div class="flex items-center space-x-1 text-[12px] text-secondary">
-                                <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
-                                    <span>@{{ post.author.username }}</span>
-                                </a>
-                            </div>
                         </div>
+                        {% endif %}
+                        <div class="flex items-center space-x-1 text-[12px] text-secondary">
+                            <a href="{{ url_for('perfil', username=post.author.username) }}" class="hover:underline">
+                                <span>@{{ post.author.username }}</span>
+                            </a>
+                        </div>
+                    </div>
                     {% endif %}
                 </div>
                 <!-- AÇÕES -->
@@ -63,8 +63,8 @@
                     {% if (session.get('user_id') == post.user_id and post.user_id) or session.get('is_admin') %}
                     {% if session.get('user_id') == post.user_id and post.user_id %}
                     <button type="button" onclick="toggleEditPost({{ post.id }})"
-                       class="interactive-control text-secondary hover:text-indigo-500 transition-colors"
-                       title="Editar postagem">
+                            class="interactive-control text-secondary hover:text-indigo-500 transition-colors"
+                            title="Editar postagem">
                         <i class="fa-solid fa-pen text-lg"></i>
                     </button>
                     {% endif %}
@@ -82,7 +82,7 @@
             <div id="post-content-view-{{ post.id }}" class="mt-2 text-main text-[14px] leading-normal break-words text-left">
                 {{ post.content | mention | safe }}
             </div>
-           
+
             {% if session.get('user_id') == post.user_id and post.user_id %}
             <div id="post-edit-{{ post.id }}" class="hidden mt-2">
                 <form action="/editar_post/{{ post.id }}" method="POST">
@@ -138,11 +138,10 @@
                                     <span class="font-bold text-main">{{ comment_name }}</span>
                                 </a>
                                 {% if c.user %}
-                                    {% if c.user.is_admin %}
-                                        <i class="fa-solid fa-circle-check text-yellow-400 text-[11px]" title="Administrador"></i>
-                                    {% elif c.user.is_verified %}
-                                        <i class="fa-solid fa-circle-check text-blue-500 text-[11px]" title="Verificado"></i>
-                                    {% endif %}
+                                {% if c.user.is_admin %}
+                                <i class="fa-solid fa-circle-check text-yellow-400 text-[11px]" title="Administrador"></i>
+                                {% elif c.user.is_verified %}
+                                <i class="fa-solid fa-circle-check text-blue-500 text-[11px]" title="Verificado"></i>
                                 {% endif %}
                                 <a href="{{ url_for('perfil', username=comment_username) }}" class="text-secondary text-[12px] hover:underline">@{{ comment_username }}</a>
                                 <span class="text-secondary text-[11px]">&middot;</span>
@@ -160,6 +159,7 @@
                                 <button type="button" class="comment-engagement-btn interactive-control" aria-label="Compartilhar comentário">
                                     <i class="fa-solid fa-retweet text-[13px]"></i>
                                 </button>
+
                             </div>
                         </div>
                         {% if session.get('username') == c.username %}
@@ -224,6 +224,7 @@
                         </button>
                     </form>
                     
+
                     <p data-comment-error class="text-red-500 text-xs mt-1 hidden"></p>
                 </div>
             </div>
@@ -265,8 +266,8 @@
         </div>
     </div>
 </div>
-    <!-- SCRIPT -->
-    <script>
+<!-- SCRIPT -->
+<script>
     function toggleEditPost(postId) {
         const viewDiv = document.getElementById(`post-content-view-${postId}`);
         const editDiv = document.getElementById(`post-edit-${postId}`);
@@ -471,14 +472,14 @@
                 descricao: descricao
             })
         })
-        .then(() => {
-            closeModal();
-            textarea.value = '';
-            showToast('Denúncia enviada com sucesso!');
-        })
-        .catch(() => {
-            showToast('Erro ao enviar denúncia', true);
-        });
+            .then(() => {
+                closeModal();
+                textarea.value = '';
+                showToast('Denúncia enviada com sucesso!');
+            })
+            .catch(() => {
+                showToast('Erro ao enviar denúncia', true);
+            });
     };
     // toast
     function showToast(msg, erro=false) {
@@ -559,29 +560,29 @@
         });
     });
 
-    </script>
+</script>
 
-    <!-- MODAL DE EVENTO DETALHADO -->
-    <div id="event-detail-modal" class="hidden fixed inset-0 bg-black/50 z-[200] items-center justify-center p-4 overflow-y-auto" style="display: none;">
-        <div class="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="p-6 border-b dark:border-zinc-700 flex justify-between items-center sticky top-0 bg-white dark:bg-zinc-900">
-                <h2 class="text-2xl font-black text-main">Detalhes do Evento</h2>
-                <button onclick="closeEventModal()" class="interactive-control text-secondary hover:text-main text-2xl">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div id="event-modal-content" class="p-6">
-                <!-- Conteúdo será inserido aqui -->
-            </div>
+<!-- MODAL DE EVENTO DETALHADO -->
+<div id="event-detail-modal" class="hidden fixed inset-0 bg-black/50 z-[200] items-center justify-center p-4 overflow-y-auto" style="display: none;">
+    <div class="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b dark:border-zinc-700 flex justify-between items-center sticky top-0 bg-white dark:bg-zinc-900">
+            <h2 class="text-2xl font-black text-main">Detalhes do Evento</h2>
+            <button onclick="closeEventModal()" class="interactive-control text-secondary hover:text-main text-2xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div id="event-modal-content" class="p-6">
+            <!-- Conteúdo será inserido aqui -->
         </div>
     </div>
+</div>
 
-    <!-- ==================== ESTILOS DO TEMA ==================== -->
+<!-- ==================== ESTILOS DO TEMA ==================== -->
 <style>
     .text-main {
         color: #111827; /* modo claro */
     }
-    
+
     .dark .text-main {
         color: #f1f5f9; /* modo escuro */
     }
@@ -589,7 +590,7 @@
     .text-secondary {
         color: #6b7280; /* modo claro */
     }
-    
+
     .dark .text-secondary {
         color: #9ca3af; /* modo escuro */
     }
@@ -627,164 +628,164 @@
         padding: 0.25rem 0;
     }
 
-     @media (max-width: 767px) {
-         [data-comment-id].comment-selected {
-             background-color: rgba(99, 102, 241, 0.1);
-         }
-     }
+    @media (max-width: 767px) {
+        [data-comment-id].comment-selected {
+            background-color: rgba(99, 102, 241, 0.1);
+        }
+    }
 </style>
 
 <script>
-// Comment management functions with AJAX
+    // Comment management functions with AJAX
 
-/**
- * Toggle the comment options menu (3 pontinhos)
- */
-function toggleCommentMenu(commentId) {
-    const menu = document.getElementById(`comment-menu-${commentId}`);
-    if (menu) {
-        menu.classList.toggle('hidden');
-        // Close other open menus
-        document.querySelectorAll('[id^="comment-menu-"]').forEach(m => {
-            if (m.id !== `comment-menu-${commentId}`) {
-                m.classList.add('hidden');
-            }
-        });
-    }
-}
-
-/**
- * Enable edit mode for a comment
- */
-function enableEditComment(commentId) {
-    const editForm = document.getElementById(`comment-edit-${commentId}`);
-    const menu = document.getElementById(`comment-menu-${commentId}`);
-    if (editForm) {
-        editForm.classList.remove('hidden');
-    }
-    if (menu) {
-        menu.classList.add('hidden');
-    }
-}
-
-/**
- * Cancel editing a comment
- */
-function cancelEditComment(commentId) {
-    const editForm = document.getElementById(`comment-edit-${commentId}`);
-    if (editForm) {
-        editForm.classList.add('hidden');
-    }
-}
-
-/**
- * Save the edited comment via AJAX
- */
-function saveEditComment(commentId) {
-    const inputField = document.getElementById(`comment-input-${commentId}`);
-    const newContent = (inputField.value || '').trim();
-
-    if (!newContent) {
-        alert('O comentário não pode estar vazio');
-        return;
-    }
-
-    if (newContent.length > 500) {
-        alert('Comentário muito longo (máximo 500 caracteres)');
-        return;
-    }
-
-    // Show loading state
-    inputField.disabled = true;
-
-    // Send AJAX request
-    fetch(`/api/comments/${commentId}/edit`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content: newContent })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.ok) {
-            // Update the comment display
-            const contentDisplay = document.getElementById(`comment-content-${commentId}`);
-            if (contentDisplay) {
-                contentDisplay.textContent = newContent;
-            }
-
-            // Cancel edit mode
-            cancelEditComment(commentId);
-
-            // Show success message
-            showNotification('Comentário atualizado com sucesso!', 'success');
-        } else {
-            alert('Erro ao atualizar: ' + (data.error || 'Erro desconhecido'));
+    /**
+     * Toggle the comment options menu (3 pontinhos)
+     */
+    function toggleCommentMenu(commentId) {
+        const menu = document.getElementById(`comment-menu-${commentId}`);
+        if (menu) {
+            menu.classList.toggle('hidden');
+            // Close other open menus
+            document.querySelectorAll('[id^="comment-menu-"]').forEach(m => {
+                if (m.id !== `comment-menu-${commentId}`) {
+                    m.classList.add('hidden');
+                }
+            });
         }
-        inputField.disabled = false;
-    })
-    .catch(error => {
-        console.error('Erro:', error);
-        alert('Erro ao atualizar o comentário');
-        inputField.disabled = false;
-    });
-}
-
-/**
- * Delete a comment via AJAX
- */
-function deleteComment(commentId) {
-    if (!confirm('Tem certeza que deseja deletar este comentário?')) {
-        return;
     }
 
-    // Send AJAX request to delete
-    fetch(`/api/comments/${commentId}/delete`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
+    /**
+     * Enable edit mode for a comment
+     */
+    function enableEditComment(commentId) {
+        const editForm = document.getElementById(`comment-edit-${commentId}`);
+        const menu = document.getElementById(`comment-menu-${commentId}`);
+        if (editForm) {
+            editForm.classList.remove('hidden');
         }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.ok) {
-            // Remove the comment from DOM
-            const commentElement = document.getElementById(`comment-view-${commentId}`);
-            const editForm = document.getElementById(`comment-edit-${commentId}`);
-
-            if (commentElement) {
-                commentElement.style.opacity = '0.5';
-                setTimeout(() => {
-                    commentElement.remove();
-                    if (editForm) editForm.remove();
-                    showNotification('Comentário deletado com sucesso', 'success');
-                }, 200);
-            }
-        } else {
-            alert('Erro ao deletar: ' + (data.error || 'Erro desconhecido'));
-        }
-    })
-    .catch(error => {
-        console.error('Erro:', error);
-        alert('Erro ao deletar o comentário');
-    });
-}
-
-/**
- * Helper function to show notifications
- */
-function showNotification(message, type = 'info') {
-    console.log(`[${type.toUpperCase()}] ${message}`);
-}
-
-// Close menus when clicking outside
-document.addEventListener('click', function(event) {
-    const isMenuButton = event.target.closest('button[onclick*="toggleCommentMenu"]');
-    if (!isMenuButton) {
-        document.querySelectorAll('[id^="comment-menu-"]').forEach(menu => {
+        if (menu) {
             menu.classList.add('hidden');
-        });
+        }
     }
-});
+
+    /**
+     * Cancel editing a comment
+     */
+    function cancelEditComment(commentId) {
+        const editForm = document.getElementById(`comment-edit-${commentId}`);
+        if (editForm) {
+            editForm.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Save the edited comment via AJAX
+     */
+    function saveEditComment(commentId) {
+        const inputField = document.getElementById(`comment-input-${commentId}`);
+        const newContent = (inputField.value || '').trim();
+
+        if (!newContent) {
+            alert('O comentário não pode estar vazio');
+            return;
+        }
+
+        if (newContent.length > 500) {
+            alert('Comentário muito longo (máximo 500 caracteres)');
+            return;
+        }
+
+        // Show loading state
+        inputField.disabled = true;
+
+        // Send AJAX request
+        fetch(`/api/comments/${commentId}/edit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content: newContent })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.ok) {
+                    // Update the comment display
+                    const contentDisplay = document.getElementById(`comment-content-${commentId}`);
+                    if (contentDisplay) {
+                        contentDisplay.textContent = newContent;
+                    }
+
+                    // Cancel edit mode
+                    cancelEditComment(commentId);
+
+                    // Show success message
+                    showNotification('Comentário atualizado com sucesso!', 'success');
+                } else {
+                    alert('Erro ao atualizar: ' + (data.error || 'Erro desconhecido'));
+                }
+                inputField.disabled = false;
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao atualizar o comentário');
+                inputField.disabled = false;
+            });
+    }
+
+    /**
+     * Delete a comment via AJAX
+     */
+    function deleteComment(commentId) {
+        if (!confirm('Tem certeza que deseja deletar este comentário?')) {
+            return;
+        }
+
+        // Send AJAX request to delete
+        fetch(`/api/comments/${commentId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.ok) {
+                    // Remove the comment from DOM
+                    const commentElement = document.getElementById(`comment-view-${commentId}`);
+                    const editForm = document.getElementById(`comment-edit-${commentId}`);
+
+                    if (commentElement) {
+                        commentElement.style.opacity = '0.5';
+                        setTimeout(() => {
+                            commentElement.remove();
+                            if (editForm) editForm.remove();
+                            showNotification('Comentário deletado com sucesso', 'success');
+                        }, 200);
+                    }
+                } else {
+                    alert('Erro ao deletar: ' + (data.error || 'Erro desconhecido'));
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao deletar o comentário');
+            });
+    }
+
+    /**
+     * Helper function to show notifications
+     */
+    function showNotification(message, type = 'info') {
+        console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    // Close menus when clicking outside
+    document.addEventListener('click', function(event) {
+        const isMenuButton = event.target.closest('button[onclick*="toggleCommentMenu"]');
+        if (!isMenuButton) {
+            document.querySelectorAll('[id^="comment-menu-"]').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+    });
 </script>
