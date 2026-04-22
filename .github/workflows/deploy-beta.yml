@@ -31,36 +31,61 @@ jobs:
     environment: beta
     steps:
       - name: Conectar via SSH e atualizar PM2
-        uses: appleboy/ssh-action@v1.1.0
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_SSH_PORT || '22' }}
+          # descomente só se sua chave privada tiver senha:
+          # passphrase: ${{ secrets.SERVER_SSH_PASSPHRASE }}
+          # recomendado:
+          # fingerprint: ${{ secrets.SERVER_FINGERPRINT }}
           script: |
             set -euo pipefail
+            APP_DIR="${{ secrets.APP_DIR || '/opt/spotted' }}"
+            PM2_PROCESS="${{ secrets.PM2_NAME || 'spotted-app' }}"
+            PORT="${{ secrets.PORT || '5000' }}"
+            PM2_BIN="${{ secrets.PM2_BIN_PATH || '/root/.bun/bin/pm2' }}"
 
-            APP_DIR="${{ secrets.APP_DIR }}"
-            PM2_PROCESS="${{ secrets.PM2_NAME }}"
-            PORT="${{ secrets.PORT }}"
-            PM2_BIN="/root/.bun/bin/pm2"
-
-            sudo apt-get update && sudo apt-get install -y python3-venv python3-pip python3-dev libjpeg-dev zlib1g-dev libwebp-dev
-
+            echo "Preparando deploy de PRODUÇÃO para $APP_DIR na porta $PORT (processo $PM2_PROCESS)"
+            mkdir -p "$APP_DIR"
             cd "$APP_DIR"
-            git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-            git fetch --all --prune
-            git reset --hard origin/beta
 
-            rm -rf venv
-            python3 -m venv venv
+            if [ ! -d ".git" ]; then
+              if [ -z "$(ls -A .)" ]; then
+                echo "Diretório vazio — clonando repositório pela primeira vez..."
+                git clone -b main https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git .
+              else
+                echo "Diretório existente sem .git — inicializando repositório e resetando para origin/main"
+                git init
+                git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" || true
+                git fetch --all --prune
+                git reset --hard origin/main
+              fi
+            else
+              echo "Repositório Git detectado — buscando novidades da origin/main..."
+              git remote set-url origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+              git fetch --all --prune
+              git remote set-url origin "https://github.com/${{ github.repository }}.git"
+            fi
+
+            TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t deploy-test)
+            echo "Criando árvore de teste em $TMP_DIR"
+            git archive origin/main | tar -x -C "$TMP_DIR"
+
+            if [ ! -d venv ]; then
+              echo "Criando venv live..."
+              python3 -m venv venv || true
+            fi
+
             source venv/bin/activate
+            python -m pip install --upgrade pip || true
+            python -m pip install --no-cache-dir -r requirements.txt || true
 
-            pip install --upgrade pip setuptools wheel
-            pip install --no-cache-dir --only-binary=:all: Pillow
-            pip install --no-cache-dir -r requirements.txt
-
+            echo "Reiniciando processo $PM2_PROCESS (pm2 bin: $PM2_BIN)"
             $PM2_BIN restart "$PM2_PROCESS" --update-env || \
             $PM2_BIN start ./venv/bin/gunicorn --interpreter ./venv/bin/python --name "$PM2_PROCESS" -- --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker --workers 1 --bind 127.0.0.1:$PORT app:app
-            
-            $PM2_BIN save
+
+            $PM2_BIN save || true
+            echo "Deploy finalizado"
