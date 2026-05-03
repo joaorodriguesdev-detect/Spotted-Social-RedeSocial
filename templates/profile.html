@@ -1,0 +1,667 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} | Spotted{% endblock %}
+
+{% block head_extra %}
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
+        .insta-font { font-family: 'Lobster', cursive; }
+        #edit-modal { display: none; }
+        #edit-modal.active { display: flex; }
+        .profile-pic-container:hover .edit-overlay { opacity: 1; }
+        .edit-overlay { transition: opacity 0.3s ease; background: rgba(0, 0, 0, 0.4); }
+        body { background-color: #f5f8ff; color: #0f172a; transition: 0.3s; }
+        body.dark-mode { background-color: #000000; color: #e7e9ea; }
+        nav { background-color: rgba(255, 255, 255, 0.88); border-bottom: 1px solid #dbe2f0; }
+        body.dark-mode nav { background-color: rgba(0, 0, 0, 0.8); border-color: #2f3336; }
+        .twitter-border { border-color: #dbe2f0; }
+        body.dark-mode .twitter-border { border-color: #2f3336; }
+        body.dark-mode .bg-white { background-color: #16181c !important; border-color: #2f3336 !important; color: #ffffff !important; }
+        body.dark-mode .text-main { color: #ffffff !important; }
+        body.dark-mode .text-secondary { color: #71767b !important; }
+
+        /* Theme-aware tokens for profile menu & trigger */
+        :root {
+            --profile-menu-bg: #ffffff;
+            --profile-menu-border: #e6eaf6;
+            --profile-menu-text: #0f172a;
+            --profile-menu-hover: rgba(99,102,241,0.08);
+            --profile-menu-muted: #6b7280;
+            --profile-menu-danger: #b91c1c;
+            --profile-menu-icon: #374151; /* icon color (three dots) */
+            --profile-menu-shadow: 0 8px 24px rgba(15,23,42,0.08);
+        }
+        body.dark-mode {
+            --profile-menu-bg: #0f1113;
+            --profile-menu-border: #26282a;
+            --profile-menu-text: #e7e9ea;
+            --profile-menu-muted: #9aa0a6;
+            --profile-menu-icon: #e7e9ea; /* bright icon in dark theme */
+            --profile-menu-danger: #fca5a5;
+            --profile-menu-hover: rgba(255,255,255,0.06);
+            --profile-menu-shadow: 0 12px 30px rgba(0,0,0,0.6);
+        }
+
+        /* send-message button tokens retained */
+        :root {
+            --send-bg: #ffffff;
+            --send-text: #0f172a;
+            --send-border: #dbe2f0;
+            --send-hover-bg: #eef2ff;
+            --send-shadow: 0 4px 8px rgba(15,23,42,0.06);
+        }
+        body.dark-mode {
+            --send-bg: #1f2326;
+            --send-text: #e7e9ea;
+            --send-border: #2f3336;
+            --send-hover-bg: rgba(79,70,229,0.06);
+            --send-shadow: 0 6px 14px rgba(0,0,0,0.6);
+        }
+
+        .send-message-btn {
+            background: var(--send-bg);
+            color: var(--send-text) !important;
+            border: 1px solid var(--send-border);
+            padding: 0.5rem 1.25rem;
+            border-radius: 0.75rem;
+            font-weight: 800;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: var(--send-shadow);
+            transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+        }
+        .send-message-btn:hover { background: var(--send-hover-bg); transform: translateY(-1px); }
+        .send-message-btn:active { transform: translateY(0); }
+        .send-message-btn:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(79,70,229,0.12); }
+        .send-message-btn[disabled], .send-message-btn[aria-disabled="true"] { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+        .send-message-btn.compact { padding: 0.375rem 1rem; }
+
+        .profile-card { position: relative; }
+        .profile-pic-container { border-radius: 12px; }
+        .profile-card .admin-badge { transform: translateX(-50%); }
+
+        /* Profile menu trigger (three dots) */
+        :root { --profile-menu-trigger-bg: rgba(255,255,255,0.9); }
+        body.dark-mode { --profile-menu-trigger-bg: rgba(20,20,20,0.65); }
+
+        #profile-card-menu-trigger {
+            z-index: 120;
+            color: var(--profile-menu-icon);
+            background: var(--profile-menu-trigger-bg);
+            border: 1px solid var(--profile-menu-border);
+            box-shadow: 0 2px 6px rgba(2,6,23,0.06);
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        #profile-card-menu-trigger i { color: var(--profile-menu-icon); }
+
+        /* Context menu box */
+        .profile-context-menu {
+            display: block; /* JS toggles .hidden */
+            background: var(--profile-menu-bg);
+            border: 1px solid var(--profile-menu-border);
+            color: var(--profile-menu-text);
+            border-radius: 10px;
+            /* softer shadow so menu doesn't look heavy */
+            box-shadow: 0 4px 14px rgba(2,6,23,0.06);
+            min-width: 160px;
+            max-width: 300px;
+            padding: 6px 6px;
+            overflow: hidden;
+            backdrop-filter: blur(4px);
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 160ms ease, transform 160ms ease;
+            transform-origin: top right;
+        }
+
+        /* When hidden, collapse visually with a smooth transition */
+        .profile-context-menu.hidden {
+            opacity: 0;
+            transform: translateY(-6px) scale(0.995);
+            pointer-events: none;
+        }
+
+        .profile-menu-link {
+            display: flex; /* make the whole row clickable */
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 14px;
+            min-height: 44px; /* ensure comfortable touch target */
+            font-size: 13px;
+            color: var(--profile-menu-text);
+            text-decoration: none;
+            transition: background-color 180ms ease, color 120ms ease, transform 120ms ease;
+            background: transparent !important;
+            border: none !important; /* removes button chrome for <button> elements */
+            appearance: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            box-shadow: none !important;
+            line-height: 1.1;
+            border-radius: 8px;
+            padding-left: 12px;
+        }
+        /* menu item layout with icon */
+        .profile-menu-item { display: flex; align-items: center; gap: 10px; }
+        .profile-menu-separator { height: 1px; background: var(--profile-menu-border); margin: 6px 8px; border-radius: 2px; }
+        /* hover/focus: full-row highlight and focus ring */
+        .profile-menu-link:hover, .profile-menu-link:focus {
+            background: var(--profile-menu-hover) !important;
+            color: var(--profile-menu-text);
+            outline: none;
+            transform: none;
+        }
+        .profile-menu-link:focus-visible { box-shadow: 0 0 0 4px rgba(99,102,241,0.12); }
+
+        /*.profile-menu-link-danger { color: var(--profile-menu-danger); }*/
+        /*body.dark-mode .profile-menu-link-danger { color: var(--profile-menu-danger); }*/
+
+        /* hidden utility for now to hide the delete action */
+        .profile-menu-hidden { display: none !important; }
+
+        /* Polished item visuals: remove filled button look, small icon badges, subtle hover */
+        .profile-menu-item i {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--profile-menu-muted);
+            transition: background-color 120ms ease, color 120ms ease;
+        }
+        .profile-menu-link:hover i { background: rgba(99,102,241,0.08); color: var(--profile-menu-text); }
+        /* Make first item appear as a flat menu item (not a filled button) */
+        /* first item: keep flat, no extra rectangle behind it */
+        .profile-context-menu .profile-menu-link:first-child { background: transparent !important; border-radius: 0; }
+        .profile-context-menu .profile-menu-link:first-child i { background: transparent; }
+
+        /* Ensure all items are visually flat and separated by subtle divider when needed */
+        .profile-context-menu .profile-menu-link { border-radius: 6px; }
+
+        /* Danger treatment for the logout item: icon and text in danger color, subtle hover bg */
+        /*.profile-menu-link-danger i { color: var(--profile-menu-danger); }*/
+        /*.profile-menu-link-danger span { color: var(--profile-menu-danger); }*/
+        /*.profile-menu-link-danger:hover { background: rgba(185,28,28,0.08); }*/
+
+        /* Ensure clickable area remains full width on mobile */
+        @media (max-width:640px) {
+            .profile-menu-link { padding-left: 14px; padding-right: 14px; font-size: 15px; }
+            .profile-context-menu { box-shadow: 0 10px 28px rgba(0,0,0,0.5); }
+            /* hide the Edit action from the three-dots menu on mobile (we show a separate button) */
+            .profile-context-menu .profile-menu-link.edit-action { display: none !important; }
+            /* ensure mobile edit button is visible (fallback if Tailwind classes not applied) */
+            .edit-profile-mobile { display: inline-flex !important; }
+            /* Mobile-specific visual tweaks for the edit button: smaller rounding and left icon */
+            .edit-profile-mobile {
+                border-radius: 8px !important; /* smaller than rounded-xl */
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+                gap: 8px;
+                min-height: 40px;
+                font-size: 14px !important;
+                align-items: center;
+                justify-content: center;
+            }
+            .edit-profile-mobile i { color: #ffffff; font-size: 14px; display: inline-block; }
+        }
+
+        /* Ensure button elements inside the menu have no native chrome in all browsers */
+        .profile-context-menu button.profile-menu-link {
+            background: transparent !important;
+            border: none !important;
+            padding: 10px 14px !important;
+            text-align: left;
+            width: 100%;
+        }
+
+        /* separator lighter and full width */
+        .profile-menu-separator { height: 1px; background: var(--profile-menu-border); margin: 6px 0; }
+
+        /* Mobile behavior: anchor the menu inside the profile card and make it compact/full-width within the card */
+        /*@media (max-width: 640px) {*/
+        /*    #profile-card-menu-trigger { top: 0.5rem !important; right: 0.5rem !important; width:36px; height:36px; }*/
+        /*    .profile-context-menu {*/
+                position: absolute; /* positioned relative to .profile-card */
+        /*        top: calc(100% + 0.5rem);*/
+        /*        right: 1rem;*/
+        /*        left: 1rem;*/
+        /*        width: auto;*/
+        /*        max-width: none;*/
+        /*        min-width: 0;*/
+        /*        border-radius: 10px;*/
+        /*        box-shadow: 0 8px 30px rgba(0,0,0,0.45);*/
+        /*        padding: 6px 0;*/
+        /*    }*/
+        /*    .profile-menu-link { padding: 10px 14px; font-size: 14px; }*/
+        /*    .profile-menu-separator { margin: 8px 12px; }*/
+        /*}*/
+
+        @media (max-width: 640px) {
+            #profile-card-menu-trigger {
+                top: 12px !important;
+                right: 12px !important;
+                width: 40px;
+                height: 40px;
+            }
+
+            .profile-context-menu {
+                position: absolute;
+                top: calc(100% + 12px);
+                right: 12px;
+                left: 12px;
+                border-radius: 14px;
+                box-shadow: 0 12px 50px rgba(0, 0, 0, 0.55);
+                padding: 10px 0;
+            }
+
+            .profile-menu-link {
+                padding: 13px 18px;
+                font-size: 15px;
+            }
+
+            .profile-menu-separator {
+                margin: 8px 16px;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+    <div class="max-w-4xl mx-auto pt-10 px-6 pb-20">
+        <div class="bg-white rounded-[40px] p-6 md:p-8 shadow-sm border flex flex-col md:flex-row items-center md:space-x-10 mb-10 relative profile-card">
+            <div class="relative group">
+                <div class="profile-pic-container w-32 h-32 md:w-40 md:h-40 bg-indigo-600 overflow-hidden shadow-xl flex items-center justify-center text-white font-black text-5xl">
+                    {% if user.profile_pic %}
+                    <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" class="w-full h-full object-cover" alt="Foto do perfil de {{ user.username }}">
+                    {% else %}
+                    {{ user.username[0].upper() }}
+                    {% endif %}
+                    {% if me and me.id == user.id %}
+                    <form id="pfp-form-direct" action="/editar_perfil" method="POST" enctype="multipart/form-data" class="absolute inset-0">
+                        <label for="pfp-input-direct" class="edit-overlay absolute inset-0 flex items-center justify-center opacity-0 cursor-pointer"><i class="fa-solid fa-pencil text-white text-2xl"></i></label>
+                        <input type="file" name="profile_pic" id="pfp-input-direct" class="hidden" accept="image/*" onchange="document.getElementById('pfp-form-direct').submit();">
+                    </form>
+                    {% endif %}
+                </div>
+                {% if user.is_admin %}
+                <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 admin-badge bg-yellow-400 text-black text-[10px] font-black px-3 py-1 rounded-full shadow-lg uppercase border-2 border-white z-10">Admin</div>
+                {% endif %}
+            </div>
+
+            {% if me and me.id == user.id %}
+            <!-- Profile card menu trigger positioned on the outside card (top-right) -->
+            <button
+                id="profile-card-menu-trigger"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-controls="profile-card-context-menu"
+                class="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full
+                       bg-white/80 hover:bg-white dark:bg-zinc-900 dark:hover:bg-zinc-800
+                       shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-700
+                       transition-all active:scale-90"
+                title="Editar conta"
+                onclick="toggleModal(); return false;">
+
+                <i class="fa-solid fa-pen-to-square text-xl text-gray-700 dark:text-gray-300"></i>
+            </button>
+
+            <!--<div id="profile-card-context-menu" role="menu" aria-labelledby="profile-card-menu-trigger" class="profile-context-menu hidden absolute top-14 right-4 min-w-[240px] rounded-xl py-1 z-[180]">-->
+                <!--<a onclick="toggleModal(); return false;" role="menuitem" tabindex="0" class="profile-menu-link profile-menu-item edit-action block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition" title="Editar conta">-->
+                    <!--<i class="fa-solid fa-pen-to-square mr-3 text-sm" aria-hidden="true" style="color:var(--profile-menu-muted)"></i>-->
+                    <!--<span>Editar Conta</span>-->
+                <!--</a>-->
+                <!--<div class="profile-menu-separator" role="separator" aria-hidden="true"></div>-->
+                <!--<a href="{{ url_for('logout') }}" role="menuitem" class="profile-menu-link profile-menu-item profile-menu-link-danger block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition" title="Sair">-->
+                <!--    <i class="fa-solid fa-right-from-bracket mr-3 text-sm" aria-hidden="true" style="color:var(--profile-menu-danger)"></i>-->
+                <!--    <span style="color:var(--profile-menu-danger)">Sair</span>-->
+                <!--</a>-->
+                <!--<button role="menuitem" aria-disabled="true" aria-hidden="true" class="profile-menu-link profile-menu-link-danger profile-menu-hidden profile-menu-item block px-4 py-2 text-sm font-semibold focus-visible:outline-none transition cursor-not-allowed opacity-70">-->
+                <!--    <i class="fa-solid fa-user-slash mr-3 text-sm" aria-hidden="true" style="color:var(--profile-menu-danger)"></i>-->
+                <!--    <span>Deletar conta (desabilitado)</span>-->
+                <!--</button>-->
+            <!--</div>-->
+            {% endif %}
+
+            <div class="text-center md:text-left flex-grow max-w-full overflow-hidden">
+                <div class="flex flex-col md:flex-row items-center md:space-x-4 mb-2 mt-4 md:mt-0">
+                    <div class="flex items-center space-x-2">
+                        <h2 class="text-2xl font-black truncate max-w-[250px]">{{ user.name if user.name else user.username }}</h2>
+                        {% if user.is_admin %}
+                            <i class="fa-solid fa-circle-check text-yellow-400 text-xl" title="Administrador"></i>
+                        {% elif user.is_verified %}
+                            <i class="fa-solid fa-circle-check text-blue-500 text-xl" title="Verificado"></i>
+                        {% endif %}
+                    </div>
+                            {% if me and me.id == user.id %}
+                                {# 'Editar perfil' mobile button: shown only on small screens; desktop keeps Edit inside menu #}
+                                <!--<a onclick="toggleModal(); return false;" class="interactive-control edit-profile-mobile inline-flex items-center bg-indigo-600 text-white px-6 py-2 rounded-xl text-xs font-bold shadow-lg md:hidden">-->
+                                <!--    <i class="fa-solid fa-pen-to-square" aria-hidden="true" style="margin-right:8px;color:#fff;font-size:14px"></i>-->
+                                <!--    <span>Editar Conta</span>-->
+                                <!--</a>-->
+                     {% elif me and me.id != user.id and not user.is_admin %}
+                         <div class="flex items-center gap-2 mt-2 md:mt-0">
+                             <a href="{{ url_for('seguir', username=user.username) }}" class="interactive-control bg-indigo-600 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg">{% if me.is_following(user) %}Seguindo{% else %}Seguir{% endif %}</a>
+                             <a href="{{ url_for('direct_conversation', username=user.username) }}" title="Enviar mensagem" aria-label="Enviar mensagem para {{ user.username }}" class="interactive-control send-message-btn compact" data-action="send-message">Enviar mensagem</a>
+                             {% if me.is_admin %}
+                             <form action="{{ url_for('toggle_verificacao', username=user.username) }}" method="POST" style="display: inline;">
+                                 {% if user.is_verified %}
+                                 <button type="submit" class="interactive-control bg-red-500 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg hover:bg-red-600 transition" title="Remover verificação">Desverificar</button>
+                                 {% else %}
+                                 <button type="submit" class="interactive-control bg-green-500 text-white px-6 py-1.5 rounded-xl text-xs font-bold shadow-lg hover:bg-green-600 transition" title="Adicionar verificação">Verificar</button>
+                                 {% endif %}
+                             </form>
+                             {% endif %}
+                         </div>
+                     {% elif me and me.is_admin and user.id != me.id and user.is_admin %}
+                         <!-- Admin viewing another admin profile -->
+                         <div class="flex items-center gap-2 mt-2 md:mt-0">
+                             <a href="{{ url_for('direct_conversation', username=user.username) }}" title="Enviar mensagem" aria-label="Enviar mensagem para {{ user.username }}" class="interactive-control send-message-btn compact" data-action="send-message">Enviar mensagem</a>
+                         </div>
+                     {% endif %}
+                </div>
+                <div class="mb-6">
+                    {% if not user.is_admin %}
+                    <p class="font-bold text-sm text-secondary">@{{ user.username }}</p>
+                    {% endif %}
+                    {% if user.created_at %}<p class="text-xs font-semibold text-secondary mt-2 mb-1">Entrou em {{ user.created_at|joined_month_year }}</p>{% endif %}
+                    {% if user.university and not user.is_admin %}<p class="text-xs font-black text-indigo-600 uppercase mt-2 mb-2 tracking-widest flex items-center justify-center md:justify-start"><i class="fa-solid fa-graduation-cap mr-2"></i> {{ user.university }}</p>{% endif %}
+                    <p class="text-sm whitespace-pre-wrap break-words leading-relaxed mt-4">{% if user.bio %}{{ user.bio }}{% else %}Sem biografia.{% endif %}</p>
+                </div>
+                <div class="flex space-x-8 justify-center md:justify-start pt-4">
+                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ posts|length }}</span><span class="text-[10px] uppercase font-bold text-secondary">Posts</span></div>
+                    {% if not user.is_admin %}
+                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followers.count() }}</span><span class="text-[10px] uppercase font-bold text-secondary">Seguidores</span></div>
+                    <div class="text-center"><span class="block font-black text-indigo-600 text-lg">{{ user.followed.count() }}</span><span class="text-[10px] uppercase font-bold text-secondary">Seguindo</span></div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if not user.is_admin %}
+        <div class="space-y-6">
+            <h3 class="font-black text-secondary uppercase text-xs tracking-widest mb-4">Mural</h3>
+            <form id="wall-message-form" action="/enviar_recado/{{ user.id }}" method="POST" class="bg-white p-4 rounded-3xl border shadow-sm space-y-3" novalidate>
+                <div class="flex items-center justify-between">
+                    <p class="text-[11px] font-black uppercase tracking-widest text-indigo-500">Deixe um recado</p>
+                    <span id="wall-char-count" class="text-[10px] text-secondary font-bold">0 / 500</span>
+                </div> 
+                <textarea id="wall-textarea" name="content" maxlength="500" class="form-field w-full text-sm text-main p-3 rounded-2xl resize-none min-h-[90px]" placeholder="Escreva algo no mural..." required></textarea>
+                <p id="wall-error" class="form-error hidden text-[11px] font-semibold">Escreva um recado antes de enviar.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button type="submit" name="anon_mode" value="false" class="interactive-control w-full bg-indigo-50 text-indigo-600 font-black py-2.5 rounded-xl text-xs hover:bg-indigo-100 transition">Enviar</button>
+                    <button type="submit" name="anon_mode" value="true" class="interactive-control w-full bg-indigo-50 text-indigo-600 font-black py-2.5 rounded-xl text-xs hover:bg-indigo-100 transition">Enviar Anonimo</button>
+                </div>
+            </form>
+            {% for msg in messages %}
+            <div class="bg-white p-4 rounded-2xl border text-xs shadow-sm">
+                <p class="font-black text-indigo-400 uppercase mb-1">
+                    {% if msg.sender_name and msg.sender_name|lower in ['anônimo', 'anonimo'] %}
+                    Anonimo
+                    {% elif msg.sender_name %}
+                    <a href="{{ url_for('perfil_por_remetente', sender_name=msg.sender_name) }}" class="hover:underline hover:text-indigo-500 transition">{{ msg.sender_name }}</a>
+                    {% else %}
+                    usuário
+                    {% endif %}
+                </p>
+                <p class="leading-tight break-words">{{ msg.content }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if not user.is_admin %}
+        <div class="mt-10">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-black text-secondary uppercase text-xs tracking-widest">Eventos</h3>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-secondary">{{ user_events|length }} itens</span>
+            </div>
+            {% if user_events %}
+                <div class="{% if user_events|length > 2 %}flex gap-4 overflow-x-auto pb-2 pr-1 snap-x snap-mandatory{% else %}grid grid-cols-1 md:grid-cols-2 gap-4{% endif %}">
+                    {% for event in user_events %}
+                    <div class="bg-white border twitter-border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition {% if user_events|length > 2 %}min-w-[280px] sm:min-w-[320px] max-w-[320px] flex-shrink-0 snap-start{% endif %}">
+                        {% if event.media_url %}
+                        <div class="w-full h-36 overflow-hidden">
+                            <img src="{{ url_for('static', filename='uploads/' + event.media_url) }}" class="w-full h-full object-cover" alt="Capa do evento {{ event.title }}">
+                        </div>
+                        {% endif %}
+                        <div class="p-4">
+                            <div class="flex items-start justify-between gap-2">
+                                <h4 class="text-sm font-black text-main leading-tight">{{ event.title }}</h4>
+                                {% if (me and me.id == user.id) or session.get('is_admin') %}
+                                <a href="/excluir_evento/{{ event.id }}" data-confirm-delete="true" data-confirm-message="Tem certeza que deseja excluir este evento?" class="interactive-control text-secondary hover:text-red-500 p-1 transition" title="Excluir evento">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                            <p class="mt-2 text-[11px] font-bold text-secondary flex items-center"><i class="fa-regular fa-calendar mr-2"></i>{{ event.event_date }}</p>
+                            <p class="mt-1 text-[11px] font-bold text-secondary flex items-center"><i class="fa-solid fa-location-dot mr-2"></i>{{ event.location }}</p>
+                            <p class="mt-2 text-[12px] text-main/90">{{ event.description[:120] }}{% if event.description|length > 120 %}...{% endif %}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-white border twitter-border rounded-2xl p-6 text-center text-secondary text-sm">
+                    Nenhum evento.
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="mt-10">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-black text-secondary uppercase text-xs tracking-widest">Últimas postagens</h3>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-secondary">{{ posts|length }} itens</span>
+            </div>
+            {% if posts %}
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {% for post in posts %}
+                    <div class="aspect-square bg-white rounded-2xl overflow-hidden shadow-sm border relative group hover:-translate-y-0.5 hover:shadow-lg transition-all">
+                        <a href="/feed#post-{{ post.id }}" class="w-full h-full block">
+                            {% if post.media_url %}<img src="{{ url_for('static', filename='uploads/' + post.media_url) }}" class="w-full h-full object-cover">{% else %}<div class="p-4 text-[10px] text-secondary flex items-center justify-center h-full text-center">{{ post.content[:50] }}...</div>{% endif %}
+                            <div class="absolute inset-0 bg-indigo-600/80 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-4 text-white font-black text-sm">
+                                <span class="flex items-center"><i class="fa-solid fa-heart mr-1"></i> {{ post.likes }}</span>
+                                <span class="flex items-center"><i class="fa-regular fa-comment mr-1"></i> {{ post.comments|length }}</span>
+                            </div>
+                        </a>
+                        {% if (me and me.id == user.id) or session.get('is_admin') %}
+                        <a href="/excluir_post/{{ post.id }}" data-confirm-delete="true" data-confirm-message="Tem certeza que deseja excluir esta postagem?" class="interactive-control absolute top-2 right-2 bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition shadow-lg z-10" title="Excluir postagem"><i class="fa-solid fa-trash-can text-xs"></i></a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-white border twitter-border rounded-2xl p-6 text-center text-secondary text-sm">
+                    Nenhuma Postagem.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="edit-modal" class="fixed inset-0 bg-black/50 z-[200] items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h3 class="font-bold text-lg">Editar perfil</h3>
+                <button onclick="toggleModal()" class="interactive-control text-secondary hover:text-main"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form action="/editar_perfil" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-16 h-16 rounded-full bg-indigo-600 overflow-hidden flex-shrink-0">
+                        {% if user.profile_pic %}<img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" class="w-full h-full object-cover">{% endif %}
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold">@{{ user.username }}</p>
+                        <label for="pfp-upload" class="text-indigo-600 text-xs font-bold cursor-pointer hover:text-indigo-800">Alterar foto de perfil</label>
+                        <input type="file" name="profile_pic" id="pfp-upload" class="hidden" accept="image/*">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Nome</label>
+                    <input type="text" name="name" value="{{ user.name if user.name else '' }}" class="form-field w-full rounded-xl p-3 text-sm bg-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Universidade</label>
+                    <select name="university" class="form-field w-full rounded-xl p-3 text-sm bg-transparent appearance-none">
+                        <option value="UFPR (Federal)" {% if user.university == 'UFPR (Federal)' %}selected{% endif %}>UFPR (Federal)</option>
+                        <option value="UTFPR" {% if user.university == 'UTFPR' %}selected{% endif %}>UTFPR</option>
+                        <option value="PUCPR" {% if user.university == 'PUCPR' %}selected{% endif %}>PUCPR</option>
+                        <option value="UP (Positivo)" {% if user.university == 'UP (Positivo)' %}selected{% endif %}>UP (Positivo)</option>
+                        <option value="UTP (Tuiuti)" {% if user.university == 'UTP (Tuiuti)' %}selected{% endif %}>UTP (Tuiuti)</option>
+                        <option value="UniCuritiba" {% if user.university == 'UniCuritiba' %}selected{% endif %}>UniCuritiba</option>
+                        <option value="FAE" {% if user.university == 'FAE' %}selected{% endif %}>FAE</option>
+                        <option value="Outra" {% if user.university == 'Outra' %}selected{% endif %}>Outra</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-sm font-bold">Bio</label>
+                        <span id="char-count" class="text-[10px] text-secondary font-bold">0 / 150</span>
+                    </div>
+                    <textarea name="bio" id="bio-textarea" rows="3" maxlength="150" class="form-field w-full rounded-xl p-3 text-sm resize-none bg-transparent">{{ user.bio }}</textarea>
+                </div>
+                <button type="submit" class="interactive-control w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition">Concluir</button>
+            </form>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        function setWallError(inputEl, errorEl, message) {
+            if (!inputEl || !errorEl) return;
+            if (message) {
+                errorEl.textContent = message;
+                errorEl.classList.remove('hidden');
+                inputEl.setAttribute('aria-invalid', 'true');
+            } else {
+                errorEl.textContent = '';
+                errorEl.classList.add('hidden');
+                inputEl.removeAttribute('aria-invalid');
+            }
+        }
+
+        const editModal = document.getElementById('edit-modal');
+
+        function toggleModal() { if (!editModal) return; editModal.classList.toggle('active'); }
+
+        if (editModal) {
+            editModal.addEventListener('click', (event) => {
+                if (event.target === editModal) {
+                    editModal.classList.remove('active');
+                }
+            });
+        }
+
+        const bioText = document.getElementById('bio-textarea');
+        const charCount = document.getElementById('char-count');
+        if (bioText && charCount) {
+            bioText.addEventListener('input', () => { charCount.textContent = `${bioText.value.length} / 150`; });
+            charCount.textContent = `${bioText.value.length} / 150`;
+        }
+
+        const wallText = document.getElementById('wall-textarea');
+        const wallCount = document.getElementById('wall-char-count');
+        const wallForm = document.getElementById('wall-message-form');
+        const wallError = document.getElementById('wall-error');
+        if (wallText && wallCount) {
+            wallText.addEventListener('input', () => { wallCount.textContent = `${wallText.value.length} / 500`; });
+            wallCount.textContent = `${wallText.value.length} / 500`;
+        }
+
+        if (wallForm && wallText && wallError) {
+            wallForm.addEventListener('submit', (event) => {
+                if (!wallText.value.trim()) {
+                    event.preventDefault();
+                    setWallError(wallText, wallError, 'Escreva um recado antes de enviar.');
+                    wallText.focus();
+                    return;
+                }
+                setWallError(wallText, wallError, '');
+            });
+
+            wallText.addEventListener('input', () => {
+                if (wallText.value.trim()) {
+                    setWallError(wallText, wallError, '');
+                }
+            });
+        }
+    </script>
+    <script>
+        // Profile card context menu behavior (only on the profile page)
+        (function(){
+            const trigger = document.getElementById('profile-card-menu-trigger');
+            const menu = document.getElementById('profile-card-context-menu');
+            if (!trigger || !menu) return;
+
+            function openMenu() {
+                menu.classList.remove('hidden');
+                trigger.setAttribute('aria-expanded', 'true');
+                // On larger viewports position menu so it doesn't overflow
+                try {
+                    if (window.innerWidth > 640) {
+                        menu.style.position = 'fixed';
+                        const rect = trigger.getBoundingClientRect();
+                        const menuRect = menu.getBoundingClientRect();
+                        let left = rect.right - menuRect.width;
+                        left = Math.max(8, Math.min(left, window.innerWidth - menuRect.width - 8));
+                        let top = rect.bottom + 8;
+                        // If not enough space below, try above
+                        if (top + menuRect.height > window.innerHeight - 8) {
+                            top = rect.top - menuRect.height - 8;
+                        }
+                        menu.style.left = left + 'px';
+                        menu.style.top = top + 'px';
+                    } else {
+                        menu.style.position = '';
+                        menu.style.left = '';
+                        menu.style.top = '';
+                    }
+                } catch (e) {
+                    // ignore
+                }
+                // focus first item for accessibility on non-touch (avoid opening keyboard on mobile)
+                try {
+                    if (window.innerWidth > 640) {
+                        const first = menu.querySelector('[role="menuitem"]');
+                        if (first) first.focus();
+                    }
+                } catch (e) { /* ignore */ }
+            }
+
+            function closeMenu() {
+                menu.classList.add('hidden');
+                trigger.setAttribute('aria-expanded', 'false');
+                menu.style.left = '';
+                menu.style.top = '';
+                menu.style.position = '';
+            }
+
+            trigger.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); if (menu.classList.contains('hidden')) openMenu(); else closeMenu(); });
+
+            document.addEventListener('click', function(ev){
+                if (!menu.classList.contains('hidden') && !menu.contains(ev.target) && ev.target !== trigger && !trigger.contains(ev.target)) {
+                    closeMenu();
+                }
+            });
+
+            document.addEventListener('keydown', function(ev){
+                if (ev.key === 'Escape') { closeMenu(); return; }
+                if (menu.classList.contains('hidden')) return;
+                const items = Array.from(menu.querySelectorAll('[role="menuitem"]'));
+                if (!items.length) return;
+                const idx = items.indexOf(document.activeElement);
+                if (ev.key === 'ArrowDown') { ev.preventDefault(); items[(idx + 1) % items.length].focus(); }
+                if (ev.key === 'ArrowUp') { ev.preventDefault(); items[(idx - 1 + items.length) % items.length].focus(); }
+            });
+        })();
+    </script>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Notificações | Spotted{% endblock %}
+
+{% block head_extra %}
+    <style>
+        body.dark-mode { background-color: #000000; color: #e7e9ea; }
+        body.dark-mode .bg-white { background-color: #16181c !important; border-color: #2f3336; }
+        body.dark-mode .text-gray-800 { color: #e7e9ea !important; }
+        body.dark-mode .border { border-color: #2f3336; }
+        body.dark-mode .hover\:bg-gray-50:hover { background-color: rgba(255, 255, 255, 0.05) !important; }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+    <div class="max-w-2xl mx-auto pt-6 px-4">
+        <h1 class="text-xl font-black text-indigo-600">Atividade</h1>
+    </div>
+
+    <div class="max-w-2xl mx-auto pt-8 px-4 pb-24">
+        <div id="notifications-list" class="space-y-4">
+            {% for n in notifications %}
+            {% set sender_label = n.sender_name if n.sender_name else 'usuário' %}
+            {% set is_follow_notification = n.action_type == 'começou a te seguir' %}
+            {% if is_follow_notification %}
+            <a href="{{ url_for('perfil_por_remetente', sender_name=sender_label) }}" class="notif-item bg-white p-4 rounded-2xl border flex items-center justify-between shadow-sm hover:bg-gray-50 transition hover:border-indigo-300">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl uppercase">
+                        {{ sender_label[0] }}
+                    </div>
+                    <div>
+                        <p class="text-sm">
+                            <span class="font-bold">@{{ sender_label }}</span> {{ n.action_type }}
+                        </p>
+                        <p class="text-[10px] text-secondary font-bold mt-1">
+                            {{ n.timestamp | post_time }}
+                        </p>
+                    </div>
+                </div>
+                <span class="text-indigo-600 hover:text-indigo-800"><i class="fa-solid fa-chevron-right"></i></span>
+            </a>
+            {% else %}
+            <div class="notif-item bg-white p-4 rounded-2xl border flex items-center justify-between shadow-sm hover:bg-gray-50 transition">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xl uppercase">
+                        {{ sender_label[0] }}
+                    </div>
+                    <div>
+                        <p class="text-sm">
+                            <span class="font-bold">@{{ sender_label }}</span> {{ n.action_type }}
+                        </p>
+                        <p class="text-[10px] text-secondary font-bold mt-1">
+                            {{ n.timestamp | post_time }}
+                        </p>
+                    </div>
+                </div>
+                {% if n.post_id %}
+                <a href="/feed#post-{{ n.post_id }}" class="text-indigo-600 hover:text-indigo-800"><i class="fa-solid fa-chevron-right"></i></a>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="notif-empty text-center py-20">
+                <i class="fa-regular fa-bell-slash text-5xl text-secondary/40 mb-4"></i>
+                <p class="text-secondary font-medium">Nenhuma notificação por enquanto.</p>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="mt-6 text-center">
+            <button id="load-more-btn" type="button" class="hidden bg-indigo-600 text-white px-5 py-2 rounded-full text-xs font-bold hover:bg-indigo-700 transition">
+                Ver mais
+            </button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        const listEl = document.getElementById('notifications-list');
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const navEl = document.querySelector('nav');
+        const itemGap = 16;
+        let visibleCount = 0;
+
+        function getItems() {
+            return Array.from(document.querySelectorAll('.notif-item'));
+        }
+
+        function getChunkSize(items) {
+            const availableHeight = Math.max(220, window.innerHeight - (navEl ? navEl.offsetHeight : 0) - 200);
+            let used = 0;
+            let chunk = 0;
+            for (const item of items) {
+                const h = item.getBoundingClientRect().height + itemGap;
+                if (used + h > availableHeight && chunk > 0) {
+                    break;
+                }
+                used += h;
+                chunk += 1;
+            }
+            return Math.max(1, chunk);
+        }
+
+        function renderNotifications(reset) {
+            const items = getItems();
+            if (!items.length) {
+                loadMoreBtn.classList.add('hidden');
+                return;
+            }
+
+            const chunkSize = getChunkSize(items);
+            if (reset) {
+                visibleCount = chunkSize;
+            }
+
+            const finalVisible = Math.min(visibleCount, items.length);
+            items.forEach((item, index) => {
+                item.classList.toggle('hidden', index >= finalVisible);
+            });
+
+            if (finalVisible < items.length) {
+                loadMoreBtn.classList.remove('hidden');
+            } else {
+                loadMoreBtn.classList.add('hidden');
+            }
+
+            if (loadMoreBtn) {
+                // Use addEventListener and prevent default to avoid accidental form submits/navigation
+                loadMoreBtn.removeEventListener && loadMoreBtn.removeEventListener('click', () => {});
+                loadMoreBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    visibleCount = Math.min(items.length, finalVisible + chunkSize);
+                    renderNotifications(false);
+                });
+            }
+        }
+
+        window.addEventListener('load', () => renderNotifications(true));
+        window.addEventListener('resize', () => renderNotifications(true));
+    </script>
+{% endblock %}

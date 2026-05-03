@@ -1,0 +1,36 @@
+{% set hide_chrome = true %}
+{% extends "base.html" %}
+
+{% block title %}Painel Dev - Spotted{% endblock %}
+
+{% block content %}
+<div class="bg-gray-900 text-gray-200 min-h-screen">
+    <div class="container mx-auto p-6">
+        <h1 class="text-2xl font-bold mb-6 text-indigo-400">Moderação de Posts</h1>
+        <a href="/" class="text-blue-400 underline mb-4 inline-block">← Voltar ao site</a>
+        
+        <table class="w-full bg-gray-800 rounded-lg overflow-hidden mt-4 text-left">
+            <thead>
+                <tr class="bg-gray-700 text-gray-400 uppercase text-xs">
+                    <th class="p-3">ID</th>
+                    <th class="p-3">Conteúdo</th>
+                    <th class="p-3">Denúncias</th>
+                    <th class="p-3">Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in posts %}
+                <tr class="border-b border-gray-700">
+                    <td class="p-3">{{ post.id }}</td>
+                    <td class="p-3 italic text-sm">{{ post.content[:50] }}...</td>
+                    <td class="p-3 font-bold {% if post.reports >= 5 %}text-red-500{% endif %}">{{ post.reports }}</td>
+                    <td class="p-3">
+                        <a href="/admin/deletar/{{ post.id }}" class="bg-red-600 text-white px-2 py-1 rounded text-xs">Excluir Post</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

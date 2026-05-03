@@ -1,0 +1,41 @@
+✅ CORREÇÕES APLICADAS
+
+## 1. Estilos (globals.css)
+✅ CSS do base.html importado completamente
+✅ Variáveis de cor: --sp-card-bg, --sp-card-border, etc.
+✅ Classes: .twitter-card, .form-field, .twitter-border
+✅ Dark mode ativo por padrão
+✅ Utilities customizadas: .sp-card, .sp-input, .sp-btn-primary
+
+## 2. Rede (api-client.ts)
+✅ BaseURL fixada em http://127.0.0.1:8000
+✅ withCredentials: true (para cookies httpOnly)
+✅ extractErrorMessage() trata arrays de Pydantic
+✅ Função não renderiza objetos diretamente
+
+## 3. CORS (backend config.py)
+✅ http://localhost:3000 permitido
+✅ http://127.0.0.1:3000 permitido
+✅ allow_credentials: True
+✅ allow_methods: ["*"]
+✅ allow_headers: ["*"]
+
+## 4. Interface Registro (page.tsx)
+✅ Classes Tailwind dark/neon: bg-zinc-950, border-zinc-800, etc.
+✅ Sem exibição direta de objetos de erro
+✅ Inputs desabilitados durante loading
+✅ Validação dupla: client + server
+✅ Campos sincronizados: username, name, password, confirm_password, university
+
+## 5. Compilação
+✅ Build: SUCCESS
+✅ TypeScript: 0 errors
+✅ Size /registro: 3.1 kB
+✅ First Load JS: 122 kB
+
+## PRÓXIMOS PASSOS:
+1. Iniciar Backend: python main.py (em backend_fastapi)
+2. Iniciar Frontend: npm run dev (em frontend)
+3. Testar /registro com dados válidos
+4. Verificar Network tab no DevTools
+

@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Conversa | DM{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('public_files', filename='css/direct.css') }}">
+<link rel="stylesheet" href="{{ url_for('public_files', filename='css/direct-conversation.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="app-page-shell conversation-shell max-w-[600px] mx-auto flex flex-col min-h-0" data-target-username="{{ target_username }}" data-current-username="{{ session.get('username', '') }}" data-current-user-id="{{ current_user_id or session.get('user_id', '') }}" data-conversation-id="{{ conversation_id or '' }}" data-is-group-admin="{{ 'true' if is_group_admin else 'false' }}">
+    <div class="conversation-header px-4 py-3 border-b twitter-border flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+            <a href="{{ url_for('direct') }}" class="interactive-control w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Voltar para DM">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="dm-avatar w-10 h-10 rounded-full bg-indigo-600/90 text-white flex items-center justify-center font-bold">
+                <span id="conversation-group-initial">{{ target_initial }}</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-main font-bold text-sm truncate">
+                    {% if is_group_chat %}
+                        <span class="conversation-group-badge">Grupo</span>
+                        <span id="conversation-group-title" class="conversation-group-name">{{ target_username }}</span>
+                    {% else %}
+                        @{{ target_username }}
+                    {% endif %}
+                </p>
+                <p id="conversation-group-count" class="conversation-subtitle text-secondary text-xs inline-flex items-center gap-1.5">
+                    <span class="conversation-presence-dot" aria-hidden="true"></span>
+                    {% if is_group_chat %}
+                        {{ participant_usernames|length }} participantes
+                    {% else %}
+                        Nao criptografado
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="conversation-header-actions relative flex items-center gap-2">
+            {% if is_group_chat %}
+            <button type="button" class="interactive-control conversation-header-btn w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Buscar na conversa" data-conversation-search-toggle>
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+            <button id="conversation-info-trigger" type="button" class="interactive-control conversation-header-btn w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Info da conversa">
+                <i class="fa-solid fa-circle-info"></i>
+            </button>
+            {% else %}
+            <button type="button" class="interactive-control conversation-header-btn w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Buscar na conversa" data-conversation-search-toggle>
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+            <button id="conversation-info-trigger" type="button" class="interactive-control conversation-header-btn w-9 h-9 rounded-full border twitter-border text-main inline-flex items-center justify-center" aria-label="Info da conversa">
+                <i class="fa-solid fa-circle-info"></i>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Group tabs/chips removed from main area; details now live in the info modal. #}
+
+    <div id="conversation-pinned" class="conversation-pinned px-3 py-2 border-b twitter-border hidden">
+        <div class="conversation-pinned-card flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="conversation-pinned-label"><i class="fa-solid fa-thumbtack mr-1"></i>Mensagem fixada</p>
+                <p id="conversation-pinned-text" class="conversation-pinned-text truncate"></p>
+            </div>
+            <button id="conversation-pinned-action" type="button" class="conversation-pinned-action">Desafixar</button>
+        </div>
+    </div>
+
+    <div id="conversation-search-panel" class="conversation-search-panel px-3 py-2 border-b twitter-border hidden" aria-live="polite">
+        <div class="flex items-center gap-2">
+            <label for="conversation-search-input" class="sr-only">Buscar mensagens nesta conversa</label>
+            <input id="conversation-search-input" type="search" class="form-field flex-1 rounded-full py-2 px-3 text-sm" placeholder="Buscar na conversa">
+            <button id="conversation-search-clear" type="button" class="conversation-search-clear">Limpar</button>
+        </div>
+        <p id="conversation-search-count" class="conversation-search-count mt-1 text-[11px] text-secondary">Digite para buscar nas mensagens.</p>
+    </div>
+
+    <div id="conversation-scroll-area" class="conversation-body flex-1 px-3 py-4 overflow-y-auto min-h-0">
+        <!-- Messages are rendered dynamically by JavaScript. Template placeholder rows removed to avoid stale/static content. -->
+        <div class="conversation-day-divider text-center text-[11px] text-secondary mb-4">Hoje</div>
+
+        <div class="conversation-typing-row mb-3 flex items-center gap-2 hidden" aria-live="polite">
+            <span class="conversation-presence-dot" aria-hidden="true"></span>
+            <span id="conversation-typing-text" class="text-secondary text-[11px]"></span>
+        </div>
+    </div>
+
+    <div class="conversation-composer px-3 py-3 border-t twitter-border">
+        <div id="conversation-reply-preview" class="conversation-reply-preview hidden mb-2">
+            <div class="conversation-reply-preview-content">
+                <p id="conversation-reply-author" class="conversation-reply-author"></p>
+                <p id="conversation-reply-text" class="conversation-reply-text"></p>
+            </div>
+            <button id="conversation-reply-cancel" type="button" class="conversation-reply-cancel" aria-label="Cancelar resposta">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="conversation-composer-form" class="flex items-center gap-2" aria-label="Composer de mensagem (UI)">
+            <button type="button" class="interactive-control conversation-attach-btn w-9 h-9 rounded-full border twitter-border text-main" aria-label="Anexar" disabled>
+                <i class="fa-solid fa-plus"></i>
+            </button>
+            <label for="direct-message-input" class="sr-only">Mensagem</label>
+            <input id="direct-message-input" type="text" class="form-field conversation-message-input flex-1 rounded-full py-2 px-3 text-sm" placeholder="Mensagem nao criptografada" autocomplete="off">
+            <button id="conversation-send-button" type="submit" class="interactive-control conversation-send-btn conversation-send-icon px-4 py-2 rounded-full text-xs font-bold" aria-label="Enviar mensagem" disabled>
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if is_group_chat %}
+<div id="conversation-group-summary-modal" class="conversation-panel-modal hidden" role="dialog" aria-modal="true" aria-label="Resumo do grupo">
+    <div class="conversation-panel-content">
+        <div class="conversation-panel-header">
+            <h3 class="conversation-panel-title">Info do grupo</h3>
+            <div class="conversation-panel-header-actions">
+                {% if is_group_admin %}
+                <button type="button" class="conversation-panel-edit-trigger" data-open-settings aria-label="Editar grupo">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+                {% endif %}
+                <button type="button" id="conversation-group-summary-close" class="conversation-panel-close" aria-label="Fechar resumo">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </div>
+        <div class="conversation-panel-body">
+            <div class="conversation-group-info-hero">
+                <div class="conversation-group-info-avatar">{{ target_initial }}</div>
+                <p class="conversation-group-info-title" id="conversation-summary-title">{{ target_username }}</p>
+                <p id="conversation-summary-count" class="conversation-panel-line text-secondary">{{ participant_usernames|length }} participantes</p>
+            </div>
+
+            <div class="conversation-panel-block mt-3">
+                <p class="conversation-panel-subtitle">Midias compartilhadas</p>
+                <div class="conversation-summary-media-list mt-2">
+                    <button type="button" class="conversation-summary-media-item" data-media-preview="true" data-media-full="https://picsum.photos/1200/700?blur=1" aria-label="Abrir midia compartilhada">
+                        <img src="https://picsum.photos/240/140?blur=1" alt="Midia compartilhada do grupo" class="conversation-summary-media-thumb">
+                    </button>
+                </div>
+            </div>
+
+            <div class="conversation-panel-block mt-3">
+                <p class="conversation-panel-subtitle">Participantes</p>
+                <div id="conversation-summary-members" class="conversation-member-card-list mt-2">
+                    {% for participant in participant_cards %}
+                    <div class="conversation-member-card" data-member-name="{{ participant.username }}" data-member-pic="{{ participant.profile_pic or '' }}">
+                        <div class="conversation-member-main">
+                            <div class="conversation-member-avatar">
+                                {% if participant.profile_pic %}
+                                <img src="{{ url_for('static', filename='uploads/' + participant.profile_pic) }}" alt="Foto de @{{ participant.username }}" class="w-full h-full object-cover">
+                                {% else %}
+                                {{ participant.username[0].upper() }}
+                                {% endif %}
+                            </div>
+                            <div>
+                                <p class="conversation-member-name">@{{ participant.username }}</p>
+                                <p class="conversation-member-meta text-secondary text-[10px]">{% if participant.is_admin %}Administrador{% else %}Membro{% endif %}</p>
+                            </div>
+                        </div>
+                        <button type="button" class="conversation-member-menu-trigger" data-member-menu-trigger aria-label="Acoes do participante">
+                            <i class="fa-solid fa-ellipsis"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="conversation-panel-footer mt-4">
+                <button type="button" id="conversation-leave-group-btn" class="conversation-group-action-chip">Sair do grupo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if is_group_admin %}
+<div id="conversation-group-settings-modal" class="conversation-panel-modal hidden" role="dialog" aria-modal="true" aria-label="Configurar grupo">
+    <div class="conversation-panel-content">
+        <div class="conversation-panel-header">
+            <h3 class="conversation-panel-title">Configurar grupo</h3>
+            <button type="button" id="conversation-group-settings-close" class="conversation-panel-close" aria-label="Fechar configuracao">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="conversation-group-settings-form" class="conversation-panel-body" onsubmit="return false;">
+            <label for="conversation-group-name-input" class="conversation-panel-subtitle">Nome do grupo</label>
+            <input id="conversation-group-name-input" type="text" class="form-field w-full rounded-xl py-2 px-3 text-sm mt-1" value="{{ target_username }}" maxlength="80">
+
+            <div class="conversation-panel-block mt-3">
+                <p class="conversation-panel-subtitle">Foto do grupo</p>
+                <div class="conversation-panel-avatar-row mt-1">
+                    <div id="conversation-group-photo-preview" class="conversation-panel-avatar">{{ target_initial }}</div>
+                    <label class="conversation-group-action-chip" for="conversation-group-photo-input">Trocar foto</label>
+                    <input id="conversation-group-photo-input" type="file" accept="image/*" class="hidden">
+                </div>
+            </div>
+
+            <div class="conversation-panel-block mt-3">
+                <p class="conversation-panel-subtitle">Membros</p>
+                <div id="conversation-admin-members-list" class="conversation-admin-members-list mt-2"></div>
+                <div class="conversation-add-member-row mt-2">
+                    <label for="conversation-add-member-input" class="sr-only">Adicionar membro ao grupo</label>
+                    <input id="conversation-add-member-input" type="text" class="form-field flex-1 rounded-xl py-2 px-3 text-sm" placeholder="Adicionar @usuario">
+                    <button type="button" id="conversation-add-member-btn" class="conversation-group-action-chip">Adicionar</button>
+                </div>
+            </div>
+
+            <div class="conversation-panel-footer mt-4">
+                <button type="button" id="conversation-group-settings-cancel" class="conversation-group-action-chip">Cancelar</button>
+                <button type="submit" id="conversation-group-settings-save" class="conversation-group-action-chip conversation-group-action-chip--primary">Salvar alteracoes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% if not is_group_chat %}
+<div id="conversation-direct-info-modal" class="conversation-panel-modal hidden" role="dialog" aria-modal="true" aria-label="Info da conversa direta">
+    <div class="conversation-panel-content">
+        <div class="conversation-panel-header">
+            <h3 class="conversation-panel-title">Info da conversa</h3>
+            <button type="button" id="conversation-direct-info-close" class="conversation-panel-close" aria-label="Fechar info da conversa">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="conversation-panel-body">
+            <div class="conversation-group-info-hero">
+                <div class="conversation-group-info-avatar">{{ target_initial }}</div>
+                <p class="conversation-group-info-title">@{{ target_username }}</p>
+                <p class="conversation-panel-line text-secondary">Conversa direta ativa</p>
+            </div>
+            <div class="conversation-panel-footer mt-4 justify-between">
+                <button type="button" id="conversation-direct-mute-toggle" class="conversation-group-action-chip">Silenciar conversa</button>
+                <a href="{{ url_for('perfil', username=target_username) }}" class="conversation-group-action-chip conversation-group-action-chip--primary">Ver perfil</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div id="conversation-media-modal" class="conversation-media-modal hidden" role="dialog" aria-modal="true" aria-label="Preview de midia">
+    <button type="button" id="conversation-media-close" class="conversation-media-close" aria-label="Fechar preview">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+    <img src="https://picsum.photos/1200/700?blur=1" alt="Midia ampliada" class="conversation-media-full">
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Expose server-side Direct flag to client-side JS as a simple boolean.
+    window.DIRECT_ENABLED = {{ 'true' if direct_enabled else 'false' }};
+</script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+<script src="{{ url_for('public_files', filename='js/direct-conversation.js') }}"></script>
+{% endblock %}
+

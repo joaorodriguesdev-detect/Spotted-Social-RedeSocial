@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('public_files', filename='css/index-search.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set active_category = search_category|default('usuarios') %}
+{% set has_query = (query|default('', true)|trim) %}
+{% include "_top_tabs.html" %}
+
+<div id="search-container" class="{% if not searching %}hidden{% endif %} max-w-[600px] mx-auto px-4 py-3 border-b twitter-border transition-all">
+    <form id="search-form" action="/search" method="GET" class="relative">
+        <input type="hidden" name="category" id="search-category-input" value="{{ active_category }}">
+        <div class="relative">
+            <label for="search-input" class="sr-only">Buscar</label>
+            <input type="text" name="query" id="search-input" value="{{ query if query else '' }}"
+                   placeholder="Buscar no Spotted"
+                   class="form-field w-full rounded-full py-2 pl-10 pr-4 outline-none text-[14px] transition-all">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-xs pointer-events-none"></i>
+        </div>
+        <div class="mt-3 flex items-center gap-2">
+            <button type="button" data-search-category="usuarios" class="interactive-control px-3 py-1.5 rounded-full text-xs font-bold border twitter-border {% if active_category == 'usuarios' %}bg-indigo-500 text-white border-indigo-500{% else %}text-main{% endif %}">Usuarios</button>
+            <button type="button" data-search-category="eventos" class="interactive-control px-3 py-1.5 rounded-full text-xs font-bold border twitter-border {% if active_category == 'eventos' %}bg-indigo-500 text-white border-indigo-500{% else %}text-main{% endif %}">Eventos</button>
+        </div>
+        <p id="search-loading" class="hidden mt-2 text-[11px] text-secondary">Buscando...</p>
+    </form>
+</div>
+
+<div class="app-page-shell app-content-wrap transition-all">
+    {% if searching %}
+    <div class="p-4">
+        <h2 id="search-heading" class="text-lg font-bold text-main mb-4">
+            {% if has_query %}
+            {% if active_category == 'eventos' %}
+            Resultados em eventos para "{{ query }}"
+            {% else %}
+            Resultados em usuarios para "{{ query }}"
+            {% endif %}
+            {% else %}
+            {% if active_category == 'eventos' %}
+            Busque por eventos usando titulo, local ou descricao.
+            {% else %}
+            Busque por usuarios para encontrar perfis.
+            {% endif %}
+            {% endif %}
+        </h2>
+
+        <div id="search-results-root">
+            {% if active_category == 'eventos' %}
+            {% if event_results %}
+            <div class="grid gap-4">
+                {% for event in event_results %}
+                                {% set event_date_parts = event.event_date.split(' às ') %}
+                {% set raw_event_date = event_date_parts[0] if event_date_parts|length > 0 else event.event_date %}
+                {% set parsed_event_date = raw_event_date.split('-') %}
+                {% set event_date_label = raw_event_date %}
+                {% if parsed_event_date|length == 3 %}
+                {% set event_date_label = parsed_event_date[2] ~ '/' ~ parsed_event_date[1] ~ '/' ~ parsed_event_date[0] %}
+                {% endif %}
+                <article class="event-card search-event-card overflow-hidden">
+                    {% if event.media_url %}
+                    <img src="{{ url_for('static', filename='uploads/' + event.media_url) }}" alt="Capa do evento {{ event.title }}" class="event-media h-40">
+                    {% endif %}
+                    <div class="p-4">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <h3 class="event-title text-indigo-500 leading-tight">{{ event.title }}</h3>
+                            <span class="event-meta-chip shrink-0"><i class="fa-regular fa-calendar-check text-[11px]"></i>{{ event_date_label }}</span>
+                        </div>
+                        <p id="search-event-desc-{{ event.id }}" class="event-description whitespace-pre-line mb-1 desc-container search-event-desc-fade">{{ event.description|trim }}</p>
+                        <button type="button" data-search-event-desc-toggle="{{ event.id }}" class="event-toggle-btn hidden text-indigo-500 mb-3 hover:underline focus:outline-none">Ver mais</button>
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <span class="event-meta-chip"><i class="fa-solid fa-location-dot text-[11px]"></i>{{ event.location }}</span>
+                            <a href="{{ url_for('perfil', username=event.creator.username) }}" class="event-author-link inline-flex items-center"><i class="fa-regular fa-circle-user mr-1"></i>@{{ event.creator.username }}</a>
+                        </div>
+                        <div class="pt-3 border-t twitter-border flex items-center justify-end">
+                            <a href="/eventos" class="interactive-control text-xs font-bold text-indigo-500 hover:text-indigo-400 transition">Abrir em eventos</a>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% elif has_query %}
+            <p class="text-center text-secondary text-sm">Nenhum evento encontrado.</p>
+            {% endif %}
+            {% else %}
+            {% if search_results %}
+            <div class="grid gap-3">
+                {% for u in search_results %}
+                <div class="search-user-card p-3 rounded-xl border twitter-border flex items-center justify-between shadow-sm">
+                    <div>
+                        <p class="text-[14px] text-main font-bold">{{ u.name }}</p>
+                        <p class="text-[12px] text-secondary">@{{ u.username }}</p>
+                    </div>
+                    <a href="{{ url_for('perfil', username=u.username) }}" class="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs font-bold hover:bg-indigo-700 transition">Ver</a>
+                </div>
+                {% endfor %}
+            </div>
+            {% elif has_query %}
+            <p class="text-center text-secondary text-sm">Nada encontrado.</p>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="px-4 py-3 border-b twitter-border">
+        <form id="feed-post-form" action="/postar" method="POST" enctype="multipart/form-data" novalidate>
+            <div class="flex space-x-3">
+                <div class="w-10 h-10 rounded-full bg-indigo-600 flex-shrink-0 flex items-center justify-center font-bold text-white overflow-hidden text-lg">
+                    {% if session.get('profile_pic') %}
+                    <img src="{{ url_for('static', filename='uploads/' + session.get('profile_pic')) }}" alt="Foto de perfil" class="w-full h-full object-cover">
+                    {% else %}
+                    {{ session.get('username')[0].upper() if session.get('username') else '?' }}
+                    {% endif %}
+                </div>
+                <div class="w-full">
+                    <label for="feed-post-content" class="sr-only">Escreva sua postagem</label>
+                    <textarea id="feed-post-content" name="content" maxlength="300" class="form-field w-full text-[17px] resize-none text-main rounded-2xl px-3 py-2" placeholder="O que esta acontecendo?" rows="2" required></textarea>
+                    <p id="feed-post-error" class="form-error hidden mt-1 text-[11px] font-semibold">Digite algo para postar.</p>
+                    <img id="image-preview" alt="Preview da imagem selecionada" class="preview-img">
+                    <div class="flex justify-between items-center pt-2">
+                        <div class="relative text-indigo-500 cursor-pointer p-2 hover:bg-indigo-500/10 rounded-full">
+                            <i class="fa-regular fa-image text-base"></i>
+                            <input type="file" name="file" id="file-input" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*">
+                        </div>
+                        <div class="flex space-x-2">
+                            <button type="submit" name="anon_mode" value="true" class="interactive-control bg-gray-200 dark:bg-white/10 text-main font-bold px-4 py-1.5 rounded-full text-[12px] hover:bg-gray-300 dark:hover:bg-white/20 transition">Spottar ( Anonimo )</button>
+                            <button type="submit" name="anon_mode" value="false" class="interactive-control bg-indigo-500 text-white font-bold px-4 py-1.5 rounded-full text-[12px] hover:bg-indigo-600 transition">Spottar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div id="feed-posts-container">
+        {% include "_feed_posts.html" %}
+    </div>
+    <div id="feed-loading" class="hidden text-center text-secondary text-xs py-4">Carregando...</div>
+    <div id="feed-sentinel" class="h-2"></div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.__INDEX_PAGE__ = {
+        username: {{ session.get('username', '')|tojson }},
+        display_name: {{ session.get('name', '')|tojson }},
+        is_admin: {{ session.get('is_admin', false)|tojson }},
+        searching: {{ searching|default(false)|tojson }},
+        has_more: {{ has_more|default(false)|tojson }},
+        next_cursor_ts: {{ next_cursor_ts|default(None)|tojson }},
+        next_cursor_id: {{ next_cursor_id|default(None)|tojson }}
+    };
+</script>
+<script src="{{ url_for('public_files', filename='js/index-search.js') }}"></script>
+{% endblock %}
